@@ -1,0 +1,6 @@
+project_id = "eqvdvvyjrinagfexkpqk"
+
+[functions.media-token]
+# The handler verifies the Bearer user session with Supabase Auth before
+# issuing any media grant, including sessions signed with asymmetric keys.
+verify_jwt = false

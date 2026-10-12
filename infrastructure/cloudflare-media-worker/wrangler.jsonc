@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ezprawko-media",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-12",
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "ezprawko-media"
+    }
+  ],
+  // Set MEDIA_TOKEN_SECRET with `npx wrangler@latest secret put MEDIA_TOKEN_SECRET`.
+  // Never place it in this file, an Expo public variable, or the mobile app.
+}

@@ -14,27 +14,29 @@ import { Colors } from '@/constants/theme';
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const [preference, setPreference] = useState<ThemePreference>("system");
-  const [isTabBarHidden, setIsTabBarHidden] = useState(false);
   return (
     <SQLiteProvider databaseName="prawo-jazdy.db" assetSource={{ assetId: require('@/assets/database/questions.db') }} onInit={initializeDatabase}>
-      <ThemePreferenceLoader preference={preference} setPreference={setPreference}>
-      <ThemeProvider value={(preference === 'dark' || (preference === 'system' && colorScheme === 'dark')) ? DarkTheme : DefaultTheme}>
-        <AppThemeContext value={{ preference, setPreference: (value) => { setPreference(value); }, colors: Colors[(preference === 'dark' || (preference === 'system' && colorScheme === 'dark')) ? 'dark' : 'light'] }}>
+      <AppAppearance />
+    </SQLiteProvider>
+  );
+}
+
+function AppAppearance() {
+  const db = useSQLiteContext();
+  const colorScheme = useColorScheme();
+  const [preference, setPreference] = useState<ThemePreference>('system');
+  const [isTabBarHidden, setIsTabBarHidden] = useState(false);
+  useEffect(() => { void themePreference(db).then(setPreference); }, [db]);
+  const dark = preference === 'dark' || (preference === 'system' && colorScheme === 'dark');
+  const colors = Colors[dark ? 'dark' : 'light'];
+  return (
+      <ThemeProvider value={{ ...(dark ? DarkTheme : DefaultTheme), colors: { ...(dark ? DarkTheme : DefaultTheme).colors, background: colors.background, card: colors.surface, text: colors.textPrimary, border: colors.border, primary: colors.primaryText } }}>
+        <AppThemeContext value={{ preference, setPreference: (value) => { setPreference(value); void setThemePreference(db, value); }, colors }}>
         <TabBarContext value={{ isTabBarHidden, setIsTabBarHidden }}>
           <AnimatedSplashOverlay />
           <AppTabs />
         </TabBarContext>
         </AppThemeContext>
       </ThemeProvider>
-      </ThemePreferenceLoader>
-    </SQLiteProvider>
   );
-}
-
-function ThemePreferenceLoader({ children, preference, setPreference }: { children: React.ReactNode; preference: ThemePreference; setPreference: (value: ThemePreference) => void }) {
-  const db = useSQLiteContext();
-  useEffect(() => { void themePreference(db).then(setPreference); }, [db, setPreference]);
-  return <AppThemeContext value={{ preference, setPreference: (value) => { setPreference(value); void setThemePreference(db, value); }, colors: Colors.light }}>{children}</AppThemeContext>;
 }

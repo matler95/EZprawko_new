@@ -1,9 +1,10 @@
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useEventListener } from 'expo';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
-import { mediaConfig } from '@/config/media';
+import { deliveredMediaFilename, mediaConfig } from '@/config/media';
 import { cachedMediaUri } from '@/services/media-cache';
 
 type QuestionMediaProps = {
@@ -28,6 +29,8 @@ function VideoMedia({
   examMode?: boolean;
   onVideoEnd?: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const player = useVideoPlayer(uri, (instance) => {
     instance.loop = false;
     if (examMode) instance.play();
@@ -45,6 +48,9 @@ function VideoMedia({
 }
 
 export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaProps) {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
+  const [retry, setRetry] = useState(0);
   const [media, setMedia] = useState<{
     filename: string;
     uri?: string;
@@ -60,11 +66,11 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
       .then((value) => {
         if (active) setMedia({ filename, uri: value });
       })
-      .catch(() => {
+      .catch((reason: unknown) => {
         if (active) {
           setMedia({
             filename,
-            error: 'Nie udało się pobrać materiału. Spróbuj ponownie później.',
+            error: reason instanceof Error ? reason.message : 'Nie udało się pobrać materiału. Spróbuj ponownie później.',
           });
         }
       });
@@ -72,14 +78,14 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
     return () => {
       active = false;
     };
-  }, [filename]);
+  }, [filename, retry]);
 
   if (!filename) return null;
 
   const uri = media?.filename === filename ? media.uri : undefined;
   const error = media?.filename === filename ? media.error : undefined;
 
-  const fileExtension = extension(filename);
+  const fileExtension = extension(deliveredMediaFilename(filename));
   const canPlay = playableVideoExtensions.has(fileExtension);
   const isImage = imageExtensions.has(fileExtension);
 
@@ -97,6 +103,9 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
       <View style={styles.statusCard}>
         <Text style={styles.statusTitle}>Materiał niedostępny</Text>
         <Text style={styles.statusCopy}>{error}</Text>
+        <Pressable onPress={() => { setMedia(undefined); setRetry((value) => value + 1); }} style={{ minHeight: 44, justifyContent: 'center' }}>
+          <Text style={styles.statusTitle}>Spróbuj ponownie</Text>
+        </Pressable>
       </View>
     );
   }
@@ -104,7 +113,7 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
   if (!uri) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color="#F0C96A" />
+        <ActivityIndicator color={colors.accentGold} />
         <Text style={styles.statusCopy}>Pobieranie materiału…</Text>
       </View>
     );
@@ -122,11 +131,11 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppTheme) => StyleSheet.create({
   image: { width: '100%', height: 220, marginBottom: 16 },
   video: { width: '100%', height: 220, marginBottom: 16, borderRadius: 14, overflow: 'hidden' },
   loading: { minHeight: 100, gap: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  statusCard: { backgroundColor: '#18202A', borderRadius: 14, padding: 16, gap: 6, marginBottom: 16 },
-  statusTitle: { color: '#F4F7FA', fontWeight: '700', fontSize: 15 },
-  statusCopy: { color: '#AAB5C2', fontSize: 13, lineHeight: 19 },
+  statusCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 16, gap: 6, marginBottom: 16 },
+  statusTitle: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
+  statusCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
 });

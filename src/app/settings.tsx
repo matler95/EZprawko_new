@@ -14,11 +14,13 @@ import {
   disableDailyReminder,
   enableDailyReminder,
 } from "@/services/reminders";
-import { useAppTheme } from "@/context/app-theme-context";
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
+import { MediaAccountCard } from "@/components/media-account-card";
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
-  const { preference, setPreference } = useAppTheme();
+  const { preference, setPreference, colors } = useAppTheme();
+  const s = createStyles(colors);
   const [cache, setCache] = useState(0);
   const [reminder, setReminder] = useState<string | false>(false);
   const [category, setCategory] = useState("B");
@@ -30,8 +32,9 @@ export default function SettingsScreen() {
   }, [db]);
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView contentContainerStyle={s.content}>
+      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <Text style={s.title}>Ustawienia</Text>
+        <MediaAccountCard />
         <Text style={s.heading}>Wygląd</Text>
         <View style={s.categories}>
           {(["system", "light", "dark"] as const).map((item) => (
@@ -68,7 +71,7 @@ export default function SettingsScreen() {
         <MediaDownloadCard />
         <View style={s.card}>
           <View>
-            <Text>Cache mediów</Text>
+            <Text style={{ color: colors.textPrimary }}>Cache mediów</Text>
             <Text style={s.sub}>
               {(cache / 1024 / 1024).toFixed(1)} MB · limit 1 GB
             </Text>
@@ -85,7 +88,7 @@ export default function SettingsScreen() {
         <Text style={s.heading}>Przypomnienia</Text>
         <View style={s.card}>
           <View>
-            <Text>Codzienna powtórka</Text>
+            <Text style={{ color: colors.textPrimary }}>Codzienna powtórka</Text>
             <Text style={s.sub}>Codziennie o 19:00</Text>
           </View>
           <Pressable
@@ -112,13 +115,13 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F8F5" },
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, gap: 12 },
-  title: { fontSize: 30, fontWeight: "700", color: "#18221D" },
-  heading: { fontSize: 18, fontWeight: "700", marginTop: 16 },
+  title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
+  heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 16 },
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.surface,
     padding: 18,
     borderRadius: 16,
     flexDirection: "row",
@@ -126,11 +129,11 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   categories: { flexDirection: "row", gap: 8 },
-  category: { backgroundColor: "#E6F0E5", padding: 12, borderRadius: 12 },
-  categoryActive: { backgroundColor: "#1F704C" },
-  categoryText: { color: "#1F704C", fontWeight: "800" },
-  categoryTextActive: { color: "#FFF", fontWeight: "800" },
-  sub: { color: "#718076", fontSize: 12, marginTop: 4 },
-  action: { color: "#1F704C", fontWeight: "700" },
-  note: { color: "#718076", fontSize: 13, lineHeight: 19, marginTop: 16 },
+  category: { backgroundColor: colors.primarySurface, padding: 12, borderRadius: 12 },
+  categoryActive: { backgroundColor: colors.primary },
+  categoryText: { color: colors.primaryText, fontWeight: "800" },
+  categoryTextActive: { color: colors.onPrimary, fontWeight: "800" },
+  sub: { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
+  action: { color: colors.primaryText, fontWeight: "700" },
+  note: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 16 },
 });

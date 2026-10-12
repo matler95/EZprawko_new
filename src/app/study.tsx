@@ -1,3 +1,4 @@
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -30,6 +31,8 @@ function isStudyFilter(value: string | undefined): value is StudyFilter {
 }
 
 export default function StudyScreen() {
+  const { colors } = useAppTheme();
+  const s = createStyles(colors);
   const db = useSQLiteContext();
   const { filter: requestedFilter, count: requestedCount, topic: requestedTopic } = useLocalSearchParams<{
     filter?: string;
@@ -198,7 +201,7 @@ export default function StudyScreen() {
           accessibilityLabel="Szukaj w pytaniach"
           onChangeText={setSearch}
           placeholder="Szukaj w pytaniach"
-          placeholderTextColor="#718076"
+          placeholderTextColor={colors.textSecondary}
           style={s.search}
           value={search}
         />
@@ -244,52 +247,52 @@ export default function StudyScreen() {
     </SafeAreaView>
   );
 }
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F8F5" },
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, gap: 12 },
-  title: { fontSize: 30, fontWeight: "700", color: "#18221D" },
-  sub: { color: "#718076", marginBottom: 12 },
+  title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
+  sub: { color: colors.textSecondary, marginBottom: 12 },
   search: {
-    backgroundColor: "#FFF",
-    borderColor: "#DCE3DE",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
-    color: "#18221D",
+    color: colors.textPrimary,
     minHeight: 48,
     paddingHorizontal: 16,
   },
   filters: { flexDirection: "row", gap: 8, marginBottom: 8, flexWrap: "wrap" },
   topicSection: { gap: 8, marginBottom: 8 },
-  topicTitle: { color: "#18221D", fontSize: 18, fontWeight: "700", marginTop: 8 },
-  topicCard: { alignItems: "center", backgroundColor: "#E6F0E5", borderRadius: 16, flexDirection: "row", justifyContent: "space-between", padding: 14 },
-  topicName: { color: "#1E3126", fontWeight: "700" },
-  topicMeta: { color: "#526358", fontSize: 12, marginTop: 3 },
+  topicTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 8 },
+  topicCard: { alignItems: "center", backgroundColor: colors.primarySurface, borderRadius: 16, flexDirection: "row", justifyContent: "space-between", padding: 14 },
+  topicName: { color: colors.textPrimary, fontWeight: "700" },
+  topicMeta: { color: colors.textSecondary, fontSize: 12, marginTop: 3 },
   filter: {
-    backgroundColor: "#E6F0E5",
+    backgroundColor: colors.primarySurface,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    color: "#1F704C",
+    color: colors.primaryText,
   },
-  filterActive: { backgroundColor: "#1F704C", color: "#FFF" },
-  card: { backgroundColor: "#FFF", padding: 18, borderRadius: 18, gap: 10 },
+  filterActive: { backgroundColor: colors.primary, color: colors.onPrimary },
+  card: { backgroundColor: colors.surface, padding: 18, borderRadius: 18, gap: 10 },
   row: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
-  badge: { color: "#1F704C", fontWeight: "700" },
-  scope: { color: "#718076", fontSize: 12 },
+  badge: { color: colors.primaryText, fontWeight: "700" },
+  scope: { color: colors.textSecondary, fontSize: 12 },
   question: {
     fontSize: 18,
     lineHeight: 25,
-    color: "#26332B",
+    color: colors.textPrimary,
     marginVertical: 8,
   },
-  cardPosition: { alignSelf: "center", color: "#718076", fontSize: 13, fontVariant: ["tabular-nums"], marginTop: 4 },
-  link: { color: "#397355", fontWeight: "700" },
+  cardPosition: { alignSelf: "center", color: colors.textSecondary, fontSize: 13, fontVariant: ["tabular-nums"], marginTop: 4 },
+  link: { color: colors.primaryText, fontWeight: "700" },
   answer: {
     padding: 16,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#DCE3DE",
+    borderColor: colors.border,
     flexDirection: "row",
     gap: 12,
   },
@@ -297,27 +300,27 @@ const s = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#E6F0E5",
+    backgroundColor: colors.primarySurface,
     textAlign: "center",
     textAlignVertical: "center",
-    color: "#1F704C",
+    color: colors.primaryText,
     fontWeight: "700",
   },
   answerText: { flex: 1, lineHeight: 20 },
-  selected: { borderColor: "#397D5B" },
-  correct: { backgroundColor: "#E5F5E9", borderColor: "#2D9B5D" },
-  wrong: { backgroundColor: "#FCEBEC", borderColor: "#D95A5A" },
+  selected: { borderColor: colors.primaryText },
+  correct: { backgroundColor: colors.successSurface, borderColor: colors.success },
+  wrong: { backgroundColor: colors.errorSurface, borderColor: colors.error },
   feedback: {
-    backgroundColor: "#FFF7E2",
+    backgroundColor: colors.warningSurface,
     padding: 16,
     borderRadius: 16,
     marginTop: 12,
   },
   navigator: { flexDirection: "row", gap: 12, marginTop: 16 },
-  navButton: { alignItems: "center", backgroundColor: "#1F704C", borderRadius: 14, flex: 1, justifyContent: "center", minHeight: 52, paddingHorizontal: 8 },
-  navButtonDisabled: { backgroundColor: "#B6C2BA" },
-  navButtonText: { color: "#FFF", fontWeight: "700" },
-  feedbackTitle: { fontSize: 17, fontWeight: "700", color: "#634D18" },
-  explanation: { color: "#526358", lineHeight: 20, marginTop: 8 },
-  empty: { color: "#718076", paddingTop: 20 },
+  navButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 14, flex: 1, justifyContent: "center", minHeight: 52, paddingHorizontal: 8 },
+  navButtonDisabled: { backgroundColor: colors.disabledSurface },
+  navButtonText: { color: colors.onPrimary, fontWeight: "700" },
+  feedbackTitle: { fontSize: 17, fontWeight: "700", color: colors.warning },
+  explanation: { color: colors.textSecondary, lineHeight: 20, marginTop: 8 },
+  empty: { color: colors.textSecondary, paddingTop: 20 },
 });

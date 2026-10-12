@@ -1,22 +1,38 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { mediaConfig, mediaUrl } from '@/config/media';
+import { deliveredMediaFilename, deliveredMediaKey, mediaConfig, mediaUrl } from '@/config/media';
+import { mediaGrant } from '@/services/media-auth';
 
 const CACHE_DIRECTORY = `${FileSystem.cacheDirectory}question-media/`;
 const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
 
 const safeName = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-export async function cachedMediaUri(filename: string) {
+export async function cachedMediaUri(sourceFilename: string) {
+  const filename = deliveredMediaFilename(sourceFilename);
+  const objectKey = deliveredMediaKey(sourceFilename);
   if (!mediaConfig.enabled) return undefined;
   await FileSystem.makeDirectoryAsync(CACHE_DIRECTORY, { intermediates: true });
   const uri = `${CACHE_DIRECTORY}${safeName(filename)}`;
   const current = await FileSystem.getInfoAsync(uri);
   if (current.exists) return uri;
-  const remote = mediaUrl(filename);
+  const remote = mediaUrl(objectKey);
   if (!remote) return undefined;
-  const result = await FileSystem.downloadAsync(remote, uri);
+  const token = await mediaGrant(objectKey);
+  const temporaryUri = `${uri}.download`;
+  try {
+    const result = await FileSystem.downloadAsync(remote, temporaryUri, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (result.status === 401 || result.status === 403) throw new Error("Serwer multimediów odrzucił token dostępu. Sprawdź zgodność sekretów Supabase i Cloudflare.");
+    if (result.status === 404) throw new Error(`Nie znaleziono pliku w R2: ${objectKey}`);
+    if (result.status !== 200) throw new Error(`Błąd serwera multimediów (HTTP ${result.status}). Spróbuj ponownie.`);
+    await FileSystem.moveAsync({ from: temporaryUri, to: uri });
+  } catch (error) {
+    await FileSystem.deleteAsync(temporaryUri, { idempotent: true });
+    throw error;
+  }
   await evictOldMedia();
-  return result.uri;
+  return uri;
 }
 
 export async function cacheSizeBytes() {

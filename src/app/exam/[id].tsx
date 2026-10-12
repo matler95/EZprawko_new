@@ -1,3 +1,4 @@
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useFocusEffect, useLocalSearchParams, router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -29,7 +30,7 @@ const formatTime = (seconds: number) =>
     .padStart(2, "0")}`;
 
 const isVideoQuestion = (question: Question) =>
-  Boolean(question.mediaFilename?.toLowerCase().match(/\.(mp4|m4v|mov)$/));
+  Boolean(question.mediaFilename?.toLowerCase().match(/\.(wmv|mp4|m4v|mov)$/));
 
 const initialPhaseFor = (question: Question): ExamPhase => {
   if (question.scope === "SPECJALISTYCZNY") return "ANSWERING";
@@ -37,6 +38,8 @@ const initialPhaseFor = (question: Question): ExamPhase => {
 };
 
 export default function ExamScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const db = useSQLiteContext();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { setIsTabBarHidden } = useContext(TabBarContext);
@@ -266,35 +269,35 @@ export default function ExamScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F8F5" },
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   loading: { alignItems: "center", flex: 1, justifyContent: "center", padding: 24 },
   header: { alignItems: "center", flexDirection: "row", height: 64, justifyContent: "space-between", paddingHorizontal: 24 },
-  close: { color: "#18221D", fontSize: 32, lineHeight: 34 },
+  close: { color: colors.textPrimary, fontSize: 32, lineHeight: 34 },
   timerGroup: { alignItems: "center", flexDirection: "row", gap: 8 },
-  globalTimer: { backgroundColor: "#FFF0D8", borderRadius: 12, color: "#A65B0A", fontVariant: ["tabular-nums"], fontWeight: "800", paddingHorizontal: 10, paddingVertical: 7 },
-  questionTimer: { backgroundColor: "#E6F0E5", borderRadius: 12, color: "#216A49", fontVariant: ["tabular-nums"], fontWeight: "800", minWidth: 42, paddingHorizontal: 8, paddingVertical: 7, textAlign: "center" },
-  position: { color: "#526358", fontVariant: ["tabular-nums"], fontWeight: "700" },
-  progressTrack: { backgroundColor: "#DDE5DF", height: 5, marginHorizontal: 24 },
-  progressFill: { backgroundColor: "#2B7A55", height: "100%" },
+  globalTimer: { backgroundColor: colors.warningSurface, borderRadius: 12, color: colors.warning, fontVariant: ["tabular-nums"], fontWeight: "800", paddingHorizontal: 10, paddingVertical: 7 },
+  questionTimer: { backgroundColor: colors.primarySurface, borderRadius: 12, color: colors.primaryText, fontVariant: ["tabular-nums"], fontWeight: "800", minWidth: 42, paddingHorizontal: 8, paddingVertical: 7, textAlign: "center" },
+  position: { color: colors.textSecondary, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  progressTrack: { backgroundColor: colors.disabledSurface, height: 5, marginHorizontal: 24 },
+  progressFill: { backgroundColor: colors.primaryText, height: "100%" },
   scroll: { flex: 1 },
   content: { padding: 24, paddingBottom: 40 },
-  kicker: { color: "#397355", fontSize: 11, fontWeight: "800", letterSpacing: 0.9 },
-  phaseNotice: { alignSelf: "flex-start", backgroundColor: "#E6F0E5", borderRadius: 10, marginTop: 14, paddingHorizontal: 10, paddingVertical: 7 },
-  phaseNoticeText: { color: "#1E3126", fontSize: 13, fontWeight: "700" },
-  question: { color: "#18221D", fontSize: 23, fontWeight: "700", lineHeight: 31, marginBottom: 24, marginTop: 4 },
+  kicker: { color: colors.primaryText, fontSize: 11, fontWeight: "800", letterSpacing: 0.9 },
+  phaseNotice: { alignSelf: "flex-start", backgroundColor: colors.primarySurface, borderRadius: 10, marginTop: 14, paddingHorizontal: 10, paddingVertical: 7 },
+  phaseNoticeText: { color: colors.textPrimary, fontSize: 13, fontWeight: "700" },
+  question: { color: colors.textPrimary, fontSize: 23, fontWeight: "700", lineHeight: 31, marginBottom: 24, marginTop: 4 },
   answers: { gap: 12 },
-  answer: { alignItems: "center", backgroundColor: "#FFF", borderColor: "#DCE3DE", borderRadius: 16, borderWidth: 1, flexDirection: "row", minHeight: 68, padding: 16 },
-  answerDisabled: { backgroundColor: "#F0F2EF", borderColor: "#E4E8E4" },
-  answerLetter: { backgroundColor: "#E6F0E5", borderRadius: 16, color: "#216A49", fontWeight: "800", height: 32, marginRight: 12, overflow: "hidden", paddingTop: 7, textAlign: "center", width: 32 },
-  answerText: { color: "#18221D", flex: 1, fontSize: 15, lineHeight: 21 },
+  answer: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: "row", minHeight: 68, padding: 16 },
+  answerDisabled: { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+  answerLetter: { backgroundColor: colors.primarySurface, borderRadius: 16, color: colors.primaryText, fontWeight: "800", height: 32, marginRight: 12, overflow: "hidden", paddingTop: 7, textAlign: "center", width: 32 },
+  answerText: { color: colors.textPrimary, flex: 1, fontSize: 15, lineHeight: 21 },
   result: { alignItems: "center", flex: 1, justifyContent: "center", padding: 32 },
-  resultIcon: { color: "#287A50", fontSize: 52, marginBottom: 20 },
-  resultTitle: { color: "#18221D", fontSize: 30, fontWeight: "800", marginTop: 10 },
-  resultScore: { color: "#1F704C", fontSize: 42, fontVariant: ["tabular-nums"], fontWeight: "800", marginTop: 28 },
-  muted: { color: "#718076", fontSize: 14, lineHeight: 20, marginTop: 8, textAlign: "center" },
-  primaryButton: { alignItems: "center", backgroundColor: "#1F704C", borderRadius: 18, justifyContent: "center", marginTop: 28, minHeight: 56, paddingHorizontal: 24 },
-  primaryButtonText: { color: "#FFF", fontWeight: "800" },
-  reviewButton: { alignItems: "center", borderColor: "#1F704C", borderRadius: 18, borderWidth: 1, justifyContent: "center", marginTop: 24, minHeight: 56, paddingHorizontal: 24 },
-  reviewButtonText: { color: "#1F704C", fontWeight: "800" },
+  resultIcon: { color: colors.primaryText, fontSize: 52, marginBottom: 20 },
+  resultTitle: { color: colors.textPrimary, fontSize: 30, fontWeight: "800", marginTop: 10 },
+  resultScore: { color: colors.primaryText, fontSize: 42, fontVariant: ["tabular-nums"], fontWeight: "800", marginTop: 28 },
+  muted: { color: colors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 8, textAlign: "center" },
+  primaryButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 18, justifyContent: "center", marginTop: 28, minHeight: 56, paddingHorizontal: 24 },
+  primaryButtonText: { color: colors.onPrimary, fontWeight: "800" },
+  reviewButton: { alignItems: "center", borderColor: colors.primaryText, borderRadius: 18, borderWidth: 1, justifyContent: "center", marginTop: 24, minHeight: 56, paddingHorizontal: 24 },
+  reviewButtonText: { color: colors.primaryText, fontWeight: "800" },
 });

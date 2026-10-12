@@ -1,0 +1,9 @@
+{
+  "name": "ezprawko-cloudflare-media-worker",
+  "private": true,
+  "devDependencies": { "wrangler": "^4.0.0" },
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "typecheck": "echo Worker uses plain JavaScript; Wrangler validates it during deployment"
+  }
+}

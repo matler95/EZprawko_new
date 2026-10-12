@@ -1,3 +1,4 @@
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -19,6 +20,8 @@ import {
 const categories = ["AM", "A", "B", "C", "D"];
 
 export default function DashboardScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const db = useSQLiteContext();
   const [category, setCategory] = useState("B");
   const [onboardingChecked, setOnboardingChecked] = useState(false);
@@ -181,43 +184,43 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F8F5" },
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   loading: { alignItems: "center", flex: 1, justifyContent: "center", padding: 24 },
   onboarding: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  onboardingTitle: { color: "#18221D", fontSize: 30, fontWeight: "700", lineHeight: 36, marginTop: 12 },
+  onboardingTitle: { color: colors.textPrimary, fontSize: 30, fontWeight: "700", lineHeight: 36, marginTop: 12 },
   categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 32 },
-  categoryChoice: { alignItems: "center", backgroundColor: "#E6F0E5", borderRadius: 16, justifyContent: "center", minHeight: 72, minWidth: 72 },
-  categoryChoiceSelected: { backgroundColor: "#1F704C" },
-  categoryChoiceText: { color: "#1F704C", fontSize: 18, fontWeight: "800" },
-  categoryChoiceSelectedText: { color: "#FFF", fontSize: 18, fontWeight: "800" },
-  onboardingButton: { alignItems: "center", backgroundColor: "#1F704C", borderRadius: 18, justifyContent: "center", marginTop: 32, minHeight: 56 },
+  categoryChoice: { alignItems: "center", backgroundColor: colors.primarySurface, borderRadius: 16, justifyContent: "center", minHeight: 72, minWidth: 72 },
+  categoryChoiceSelected: { backgroundColor: colors.primary },
+  categoryChoiceText: { color: colors.primaryText, fontSize: 18, fontWeight: "800" },
+  categoryChoiceSelectedText: { color: colors.onPrimary, fontSize: 18, fontWeight: "800" },
+  onboardingButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 18, justifyContent: "center", marginTop: 32, minHeight: 56 },
   content: { padding: 24, paddingBottom: 48 },
-  hello: { color: "#18221D", fontSize: 24, fontWeight: "700" },
-  muted: { color: "#718076", fontSize: 14, marginTop: 6 },
-  categoryLink: { color: "#397355", fontWeight: "700", marginTop: 8 },
-  hero: { backgroundColor: "#216A49", borderRadius: 28, marginTop: 24, padding: 24 },
-  kicker: { color: "#B9DABE", fontSize: 11, fontWeight: "700", letterSpacing: 1 },
-  heroTitle: { color: "#FFF", fontSize: 28, fontWeight: "700", lineHeight: 34, marginTop: 12 },
-  heroText: { color: "#D8E9D8", fontSize: 14, lineHeight: 20, marginTop: 12 },
-  gold: { alignSelf: "flex-start", backgroundColor: "#F0C96A", borderRadius: 16, marginTop: 24, padding: 16 },
-  goldText: { color: "#27301A", fontWeight: "700" },
+  hello: { color: colors.textPrimary, fontSize: 24, fontWeight: "700" },
+  muted: { color: colors.textSecondary, fontSize: 14, marginTop: 6 },
+  categoryLink: { color: colors.primaryText, fontWeight: "700", marginTop: 8 },
+  hero: { backgroundColor: colors.brandSurface, borderRadius: 28, marginTop: 24, padding: 24 },
+  kicker: { color: colors.brandMuted, fontSize: 11, fontWeight: "700", letterSpacing: 1 },
+  heroTitle: { color: colors.onPrimary, fontSize: 28, fontWeight: "700", lineHeight: 34, marginTop: 12 },
+  heroText: { color: colors.brandMuted, fontSize: 14, lineHeight: 20, marginTop: 12 },
+  gold: { alignSelf: "flex-start", backgroundColor: colors.accentGold, borderRadius: 16, marginTop: 24, padding: 16 },
+  goldText: { color: colors.onGold, fontWeight: "700" },
   disabled: { opacity: 0.65 },
-  readinessCard: { alignItems: "center", backgroundColor: "#FFF", borderRadius: 18, flexDirection: "row", justifyContent: "space-between", marginTop: 16, padding: 20 },
-  readinessTitle: { color: "#18221D", fontSize: 16, fontWeight: "700" },
-  readinessCopy: { color: "#718076", lineHeight: 19, marginTop: 4, maxWidth: 230 },
-  readinessValue: { color: "#1F704C", fontSize: 24, fontWeight: "800" },
-  resumeCard: { alignItems: "center", backgroundColor: "#FFF0D8", borderColor: "#E8C77B", borderRadius: 18, borderWidth: 1, flexDirection: "row", justifyContent: "space-between", marginTop: 16, padding: 18 },
-  resumeTitle: { color: "#573A08", fontSize: 16, fontWeight: "800" },
-  resumeCopy: { color: "#765B1B", lineHeight: 19, marginTop: 4, maxWidth: 235 },
-  resumeAction: { color: "#8A520A", fontWeight: "800" },
-  section: { color: "#1B2921", fontSize: 18, fontWeight: "700", marginBottom: 16, marginTop: 32 },
-  card: { alignItems: "center", backgroundColor: "#FFF", borderRadius: 18, flexDirection: "row", justifyContent: "space-between", marginBottom: 12, padding: 20 },
-  cardTitle: { color: "#18221D", fontWeight: "600" },
-  recommendedCard: { alignItems: "center", backgroundColor: "#E6F0E5", borderRadius: 18, flexDirection: "row", justifyContent: "space-between", marginBottom: 12, padding: 20 },
-  recommendedKicker: { color: "#397355", fontSize: 11, fontWeight: "700", letterSpacing: 0.8 },
-  recommendedTitle: { color: "#1E3126", fontSize: 18, fontWeight: "700", marginTop: 4 },
-  recommendedCopy: { color: "#526358", lineHeight: 19, marginTop: 4, maxWidth: 250 },
-  chevron: { color: "#718076", fontSize: 24 },
-  buttonText: { color: "#FFF", fontWeight: "700" },
+  readinessCard: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 18, flexDirection: "row", justifyContent: "space-between", marginTop: 16, padding: 20 },
+  readinessTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: "700" },
+  readinessCopy: { color: colors.textSecondary, lineHeight: 19, marginTop: 4, maxWidth: 230 },
+  readinessValue: { color: colors.primaryText, fontSize: 24, fontWeight: "800" },
+  resumeCard: { alignItems: "center", backgroundColor: colors.warningSurface, borderColor: colors.warningBorder, borderRadius: 18, borderWidth: 1, flexDirection: "row", justifyContent: "space-between", marginTop: 16, padding: 18 },
+  resumeTitle: { color: colors.warning, fontSize: 16, fontWeight: "800" },
+  resumeCopy: { color: colors.warning, lineHeight: 19, marginTop: 4, maxWidth: 235 },
+  resumeAction: { color: colors.warning, fontWeight: "800" },
+  section: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginBottom: 16, marginTop: 32 },
+  card: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 18, flexDirection: "row", justifyContent: "space-between", marginBottom: 12, padding: 20 },
+  cardTitle: { color: colors.textPrimary, fontWeight: "600" },
+  recommendedCard: { alignItems: "center", backgroundColor: colors.primarySurface, borderRadius: 18, flexDirection: "row", justifyContent: "space-between", marginBottom: 12, padding: 20 },
+  recommendedKicker: { color: colors.primaryText, fontSize: 11, fontWeight: "700", letterSpacing: 0.8 },
+  recommendedTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 4 },
+  recommendedCopy: { color: colors.textSecondary, lineHeight: 19, marginTop: 4, maxWidth: 250 },
+  chevron: { color: colors.textSecondary, fontSize: 24 },
+  buttonText: { color: colors.onPrimary, fontWeight: "700" },
 });

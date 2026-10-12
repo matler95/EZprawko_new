@@ -1,3 +1,4 @@
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
@@ -13,6 +14,8 @@ const formatDuration = (seconds: number) => {
 };
 
 export default function ExamReviewScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const db = useSQLiteContext();
   const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
   const [review, setReview] = useState<ExamReview | null>(null);
@@ -123,38 +126,38 @@ export default function ExamReviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F8F5" },
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   loading: { alignItems: "center", flex: 1, justifyContent: "center" },
   content: { padding: 24, paddingBottom: 48 },
-  back: { color: "#397355", fontWeight: "800", marginBottom: 28 },
-  kicker: { color: "#397355", fontSize: 11, fontWeight: "800", letterSpacing: 0.9 },
+  back: { color: colors.primaryText, fontWeight: "800", marginBottom: 28 },
+  kicker: { color: colors.primaryText, fontSize: 11, fontWeight: "800", letterSpacing: 0.9 },
   hero: { borderRadius: 24, marginTop: 12, padding: 24 },
-  heroPassed: { backgroundColor: "#216A49" }, heroFailed: { backgroundColor: "#7F3131" },
-  verdict: { color: "#FFF", fontSize: 13, fontWeight: "800", letterSpacing: 1 },
-  score: { color: "#FFF", fontSize: 44, fontVariant: ["tabular-nums"], fontWeight: "800", marginTop: 8 },
-  heroCopy: { color: "#E1F0E4", marginTop: 4 },
-  diagnosis: { backgroundColor: "#FFF0D8", borderRadius: 18, marginTop: 16, padding: 20 },
-  diagnosisTitle: { color: "#573A08", fontSize: 16, fontWeight: "800" },
-  diagnosisCopy: { color: "#765B1B", lineHeight: 20, marginTop: 6 },
-  section: { color: "#18221D", fontSize: 20, fontWeight: "800", marginTop: 32 },
-  muted: { color: "#718076", lineHeight: 20, marginTop: 6 },
+  heroPassed: { backgroundColor: colors.brandSurface }, heroFailed: { backgroundColor: colors.error },
+  verdict: { color: colors.onPrimary, fontSize: 13, fontWeight: "800", letterSpacing: 1 },
+  score: { color: colors.onPrimary, fontSize: 44, fontVariant: ["tabular-nums"], fontWeight: "800", marginTop: 8 },
+  heroCopy: { color: colors.brandMuted, marginTop: 4 },
+  diagnosis: { backgroundColor: colors.warningSurface, borderRadius: 18, marginTop: 16, padding: 20 },
+  diagnosisTitle: { color: colors.warning, fontSize: 16, fontWeight: "800" },
+  diagnosisCopy: { color: colors.warning, lineHeight: 20, marginTop: 6 },
+  section: { color: colors.textPrimary, fontSize: 20, fontWeight: "800", marginTop: 32 },
+  muted: { color: colors.textSecondary, lineHeight: 20, marginTop: 6 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 20 },
   tile: { alignItems: "center", borderRadius: 12, height: 48, justifyContent: "center", width: "21%" },
-  tileCorrect: { backgroundColor: "#DDF3E4" }, tileWrong: { backgroundColor: "#FCE1E1" }, tileSkipped: { backgroundColor: "#E7EAE8" },
-  tileText: { color: "#18221D", fontVariant: ["tabular-nums"], fontWeight: "800" },
+  tileCorrect: { backgroundColor: colors.successSurface }, tileWrong: { backgroundColor: colors.errorSurface }, tileSkipped: { backgroundColor: colors.disabledSurface },
+  tileText: { color: colors.textPrimary, fontVariant: ["tabular-nums"], fontWeight: "800" },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 18 },
-  legendCorrect: { color: "#287A50", fontSize: 12, fontWeight: "700" }, legendWrong: { color: "#BA3636", fontSize: 12, fontWeight: "700" }, legendSkipped: { color: "#65756B", fontSize: 12, fontWeight: "700" },
-  primaryButton: { alignItems: "center", backgroundColor: "#1F704C", borderRadius: 18, justifyContent: "center", marginTop: 32, minHeight: 56 },
-  primaryButtonText: { color: "#FFF", fontWeight: "800" },
-  modalBackdrop: { backgroundColor: "rgba(24,34,29,0.45)", flex: 1, justifyContent: "flex-end" },
-  sheet: { backgroundColor: "#F7F8F5", borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "88%" },
-  closeButton: { alignSelf: "flex-end", paddingHorizontal: 24, paddingTop: 14 }, close: { color: "#18221D", fontSize: 30 },
+  legendCorrect: { color: colors.primaryText, fontSize: 12, fontWeight: "700" }, legendWrong: { color: colors.error, fontSize: 12, fontWeight: "700" }, legendSkipped: { color: colors.textSecondary, fontSize: 12, fontWeight: "700" },
+  primaryButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 18, justifyContent: "center", marginTop: 32, minHeight: 56 },
+  primaryButtonText: { color: colors.onPrimary, fontWeight: "800" },
+  modalBackdrop: { backgroundColor: colors.scrim, flex: 1, justifyContent: "flex-end" },
+  sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "88%" },
+  closeButton: { alignSelf: "flex-end", paddingHorizontal: 24, paddingTop: 14 }, close: { color: colors.textPrimary, fontSize: 30 },
   sheetContent: { padding: 24, paddingTop: 0 },
-  question: { color: "#18221D", fontSize: 21, fontWeight: "800", lineHeight: 29, marginBottom: 20, marginTop: 14 },
-  answer: { alignItems: "center", backgroundColor: "#FFF", borderColor: "#DCE3DE", borderRadius: 16, borderWidth: 1, flexDirection: "row", marginBottom: 10, minHeight: 60, padding: 14 },
-  answerCorrect: { backgroundColor: "#E5F5E9", borderColor: "#2D9B5D" }, answerWrong: { backgroundColor: "#FCEBEC", borderColor: "#D95A5A" },
-  answerLetter: { backgroundColor: "#E6F0E5", borderRadius: 14, color: "#1F704C", fontWeight: "800", height: 28, marginRight: 12, paddingTop: 5, textAlign: "center", width: 28 },
-  answerText: { color: "#18221D", flex: 1, lineHeight: 20 }, answerMark: { color: "#287A50", fontSize: 20, fontWeight: "800" },
-  answerSummary: { color: "#526358", lineHeight: 20, marginTop: 12 },
+  question: { color: colors.textPrimary, fontSize: 21, fontWeight: "800", lineHeight: 29, marginBottom: 20, marginTop: 14 },
+  answer: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: "row", marginBottom: 10, minHeight: 60, padding: 14 },
+  answerCorrect: { backgroundColor: colors.successSurface, borderColor: colors.success }, answerWrong: { backgroundColor: colors.errorSurface, borderColor: colors.error },
+  answerLetter: { backgroundColor: colors.primarySurface, borderRadius: 14, color: colors.primaryText, fontWeight: "800", height: 28, marginRight: 12, paddingTop: 5, textAlign: "center", width: 28 },
+  answerText: { color: colors.textPrimary, flex: 1, lineHeight: 20 }, answerMark: { color: colors.primaryText, fontSize: 20, fontWeight: "800" },
+  answerSummary: { color: colors.textSecondary, lineHeight: 20, marginTop: 12 },
 });

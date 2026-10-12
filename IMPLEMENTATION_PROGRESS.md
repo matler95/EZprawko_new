@@ -1,5 +1,36 @@
 # Implementation progress
 
+## Checkpoint — R2 folder-aware media access (2026-10-12)
+
+- Mapped converted video references to `wideo/<basename>.mp4` and images to `zdjecia/<filename>`, matching the user-confirmed bucket folders.
+- Grants and download URLs now use the same complete object key; URL encoding preserves folder separators and existing prefixes are not duplicated.
+- Preserved database question references and existing on-device cache filenames. Missing-file errors now include the full requested object key for diagnosis.
+- Physical-device verification of the folder mapping is pending; no new Worker or Supabase deployment is needed for this client-side mapping change.
+- Validation passed: TypeScript, Expo lint, and six filename/URL round-trip assertions including converted WMV, JPG, existing prefixes, and filenames with spaces and Polish characters.
+
+## Checkpoint — media download diagnosis and converted video mapping (2026-10-12)
+
+- Verified public Supabase configuration responds successfully and the deployed token function exists. The project advertises ES256 session signing keys; moved authorization to the existing Supabase Auth user validation with `verify_jwt = false` and deployed the corrected function.
+- Added explicit WMV → MP4 filename mapping before cache lookup, grant issuance, and download, preserving the database's original media names. Converted objects must preserve the original basename. JPG filenames are unchanged.
+- The renderer and exam video classification now recognize converted WMV references as playable videos.
+- Replaced generic media failures with actionable stage-specific messages and a retry action; no token or credential is displayed.
+- Full authenticated device playback still requires retesting after refreshing the app. A missing R2 key, changed basename, or bucket folder prefix will now be reported distinctly.
+
+## Checkpoint — mobile account login and authenticated cache (2026-10-12)
+
+- Added email/password login, persisted-session status, local sign-out, loading states, and recoverable errors in Settings.
+- Added successful-response-only media caching: downloads use a temporary file and move into the cache only after HTTP 200, so authorization errors cannot be mistaken for images/videos.
+- User confirmed matching signing secrets are configured in Supabase and Cloudflare. A signed-in physical-device download is still pending and is not claimed as verified.
+- Documented provisioning a private tester account and the existing limitation that the token issuer authorizes every authenticated Supabase user.
+- Validation passed: TypeScript, Expo lint, and Expo Doctor (21/21). The sign-in and signed media download still require physical-device testing.
+
+## Checkpoint — deployed media hostname connected (2026-10-12)
+
+- Set the local Expo media origin to `https://ezprawko-media.mateusz-learn.workers.dev/media`.
+- Corrected a transcription error in the public Supabase anon-key JWT header in ignored local configuration.
+- Verified the deployed Worker returns HTTP 401 for an unauthenticated media request. This confirms authentication is enforced; valid grants and matching signing secrets still require an end-to-end signed-in download test.
+- The mobile sign-in UI is still pending; an origin configured in Expo alone does not create a user session.
+
 ## Completed
 
 1. Imported the official XLSX into a 3,518-question SQLite catalog and media manifest.
@@ -66,6 +97,27 @@
 - Added a new native-tab Road Signs lexicon with search, group filters, and compact sign-code cards for fast revision.
 - Replaced repeated template tab artwork with distinct system-native icons for Home, Study, Progress, Settings, and Road Signs.
 - Translation storage and official EN/UA/DE import remain pending the official multilingual source workbook.
+- Validation passed: `npx tsc --noEmit` and `npx expo lint`.
+
+## Checkpoint — private R2 media gateway foundation (2026-10-12)
+
+- Added a dedicated Cloudflare Worker template with an R2 binding, strict object-key validation, GET/HEAD-only media delivery, private cache headers, and no storage credentials in application code.
+- Documented the Cloudflare Access deployment policy: protect all Worker traffic, allow only the tester identity, and keep the bucket and `r2.dev` endpoint private.
+- The remaining external configuration is the real bucket name, Worker deployment, protected hostname, and a mobile Access sign-in/token hand-off. Expo cannot safely store a Cloudflare Access service token.
+- Validation passed: `npx tsc --noEmit` and `npx expo lint`.
+
+## Checkpoint — production media authorization contract (2026-10-12)
+
+- Replaced the planned per-user Cloudflare Access approach with a consumer-scale media grant contract. The private R2 Worker now requires a short-lived, HMAC-signed grant bound to one filename and authenticated user.
+- Added a Supabase Edge Function reference that validates the user's Supabase session and mints a two-minute per-file grant. Neither R2 credentials nor signing secrets reach the Expo bundle.
+- Cloudflare Access is no longer required for learner media traffic; it remains suitable for operational/admin endpoints.
+- Validation passed: `npx tsc --noEmit` and `npx expo lint`.
+
+## Checkpoint — Supabase mobile foundation (2026-10-12)
+
+- Added the configured Supabase client with persisted React Native session storage and the SDK-compatible dependencies.
+- Added the protected-media grant resolver. Cached media downloads now obtain a user-bound grant from the `media-token` Edge Function and pass it as a Bearer token to the private R2 Worker.
+- Added an ignored local public Expo configuration file and a tracked `.env.example`; no service-role, R2, or HMAC secret was written into the mobile app.
 - Validation passed: `npx tsc --noEmit` and `npx expo lint`.
 # Checkpoint — media foundation (2026-10-12)
 

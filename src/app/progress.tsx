@@ -1,3 +1,4 @@
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
@@ -11,6 +12,8 @@ import {
 } from "@/database/repository";
 
 export default function ProgressScreen() {
+  const { colors } = useAppTheme();
+  const s = createStyles(colors);
   const db = useSQLiteContext();
   const [history, setHistory] = useState<ExamHistoryItem[]>([]);
   const [weak, setWeak] = useState<
@@ -36,7 +39,7 @@ export default function ProgressScreen() {
                 )
               : "—"}
           </Text>
-          <Text>średni wynik z egzaminów</Text>
+          <Text style={{ color: colors.onPrimary }}>średni wynik z egzaminów</Text>
         </View>
         <Text style={s.heading}>Trend wyników</Text>
         {history.length ? (
@@ -51,7 +54,7 @@ export default function ProgressScreen() {
                       s.bar,
                       {
                         height: Math.max(8, (item.score / 74) * 120),
-                        backgroundColor: item.passed ? "#F0C96A" : "#D96A6A",
+                        backgroundColor: item.passed ? colors.accentGold : colors.error,
                       },
                     ]}
                   />
@@ -65,7 +68,7 @@ export default function ProgressScreen() {
         <Text style={s.heading}>Słabsze obszary</Text>
         {weak.map((item) => (
           <View key={item.scope} style={s.card}>
-            <Text>{item.scope}</Text>
+            <Text style={{ color: colors.textPrimary }}>{item.scope}</Text>
             <Text style={s.score}>
               {item.attempted
                 ? Math.round((item.correct / item.attempted) * 100)
@@ -79,7 +82,7 @@ export default function ProgressScreen() {
           weakByCategory.slice(0, 3).map((item) => (
             <View key={item.category} style={s.card}>
               <View>
-                <Text>Kategoria {item.category}</Text>
+                <Text style={{ color: colors.textPrimary }}>Kategoria {item.category}</Text>
                 <Text style={s.cardDetail}>{item.attempted} odpowiedzi w nauce</Text>
               </View>
               <Text style={s.score}>
@@ -96,7 +99,7 @@ export default function ProgressScreen() {
         {history.length ? (
           history.map((item) => (
             <View key={item.id} style={s.card}>
-              <Text>Kat. {item.category}</Text>
+              <Text style={{ color: colors.textPrimary }}>Kat. {item.category}</Text>
               <Text style={s.score}>
                 {item.score}/74 {item.passed ? "✓" : "—"}
               </Text>
@@ -111,22 +114,22 @@ export default function ProgressScreen() {
     </SafeAreaView>
   );
 }
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F7F8F5" },
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, gap: 12 },
-  title: { fontSize: 30, fontWeight: "700", color: "#18221D" },
-  sub: { color: "#718076" },
+  title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
+  sub: { color: colors.textSecondary },
   metric: {
-    backgroundColor: "#1F704C",
+    backgroundColor: colors.primary,
     padding: 24,
     borderRadius: 24,
     marginVertical: 12,
   },
-  big: { fontSize: 40, color: "#FFF", fontWeight: "800" },
-  heading: { fontSize: 18, fontWeight: "700", marginTop: 12 },
+  big: { fontSize: 40, color: colors.onPrimary, fontWeight: "800" },
+  heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 12 },
   chart: {
     height: 154,
-    backgroundColor: "#FFF",
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     flexDirection: "row",
@@ -140,15 +143,15 @@ const s = StyleSheet.create({
     gap: 5,
   },
   bar: { width: "100%", maxWidth: 26, borderRadius: 8 },
-  barLabel: { fontSize: 11, color: "#718076" },
+  barLabel: { fontSize: 11, color: colors.textSecondary },
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: colors.surface,
     padding: 18,
     borderRadius: 16,
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  score: { fontWeight: "700", color: "#1F704C" },
-  cardDetail: { color: "#718076", fontSize: 12, marginTop: 4 },
-  empty: { color: "#718076", paddingVertical: 16 },
+  score: { fontWeight: "700", color: colors.primaryText },
+  cardDetail: { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
+  empty: { color: colors.textSecondary, paddingVertical: 16 },
 });

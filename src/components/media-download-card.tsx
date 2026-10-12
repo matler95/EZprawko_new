@@ -1,3 +1,4 @@
+import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -7,6 +8,8 @@ import { mediaFilenamesForCategory, selectedCategory } from '@/database/reposito
 import { preloadMedia } from '@/services/media-preload';
 
 export function MediaDownloadCard() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const db = useSQLiteContext();
   const [category, setCategory] = useState('B');
   const [progress, setProgress] = useState<{ completed: number; total: number }>();
@@ -52,20 +55,20 @@ export function MediaDownloadCard() {
           (!mediaConfig.enabled || Boolean(progress && progress.completed < progress.total)) && styles.buttonDisabled,
           pressed && styles.buttonPressed,
         ]}>
-        {progress && progress.completed < progress.total ? <ActivityIndicator color="#11202C" /> : <Text style={styles.buttonText}>Pobierz</Text>}
+        {progress && progress.completed < progress.total ? <ActivityIndicator color={colors.onGold} /> : <Text style={styles.buttonText}>Pobierz</Text>}
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: '#18202A', borderRadius: 16, padding: 16, gap: 14 },
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 14 },
   copy: { gap: 5 },
-  title: { color: '#F4F7FA', fontSize: 16, fontWeight: '700' },
-  detail: { color: '#AAB5C2', fontSize: 13, lineHeight: 19 },
-  error: { color: '#F28B82', fontSize: 13, lineHeight: 19 },
-  button: { alignItems: 'center', backgroundColor: '#F0C96A', borderRadius: 10, minHeight: 42, justifyContent: 'center', paddingHorizontal: 14 },
-  buttonDisabled: { backgroundColor: '#43505C' },
+  title: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  detail: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
+  error: { color: colors.error, fontSize: 13, lineHeight: 19 },
+  button: { alignItems: 'center', backgroundColor: colors.accentGold, borderRadius: 10, minHeight: 42, justifyContent: 'center', paddingHorizontal: 14 },
+  buttonDisabled: { backgroundColor: colors.disabledSurface },
   buttonPressed: { opacity: 0.82 },
-  buttonText: { color: '#11202C', fontSize: 14, fontWeight: '800' },
+  buttonText: { color: colors.onGold, fontSize: 14, fontWeight: '800' },
 });
