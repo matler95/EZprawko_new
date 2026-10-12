@@ -8,8 +8,10 @@ const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
 
 const safeName = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 const downloads = new Map<string, Promise<string | undefined>>();
+let clearing = false;
 
 export async function cachedMediaUri(sourceFilename: string, cacheOnly = false) {
+  if (clearing) throw new Error('Trwa czyszczenie materiałów. Spróbuj ponownie za chwilę.');
   if (cacheOnly) return fetchCachedMedia(sourceFilename, true);
   const key = `${userDataRevision()}:${safeName(deliveredMediaFilename(sourceFilename))}`;
   const previous = downloads.get(key);
@@ -57,13 +59,19 @@ async function fetchCachedMedia(sourceFilename: string, cacheOnly: boolean) {
 }
 
 export async function cacheSizeBytes() {
-  const names = await FileSystem.readDirectoryAsync(CACHE_DIRECTORY).catch(() => []);
+  const directory = await FileSystem.getInfoAsync(CACHE_DIRECTORY);
+  if (!directory.exists) return 0;
+  const names = await FileSystem.readDirectoryAsync(CACHE_DIRECTORY);
   const stats = await Promise.all(names.map((name) => FileSystem.getInfoAsync(`${CACHE_DIRECTORY}${name}`)));
   return stats.reduce((total, stat) => total + (stat.exists && 'size' in stat ? stat.size ?? 0 : 0), 0);
 }
 
 export async function clearMediaCache() {
-  await FileSystem.deleteAsync(CACHE_DIRECTORY, { idempotent: true });
+  if (!userDataWritable()) await Promise.allSettled([...downloads.values()]);
+  if (clearing || downloads.size) throw new Error('Trwa pobieranie lub czyszczenie materiałów. Poczekaj na zakończenie i spróbuj ponownie.');
+  clearing = true;
+  try { await FileSystem.deleteAsync(CACHE_DIRECTORY, { idempotent: true }); }
+  finally { clearing = false; }
 }
 
 async function evictOldMedia() {

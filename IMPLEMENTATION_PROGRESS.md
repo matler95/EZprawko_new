@@ -1,5 +1,14 @@
 # Implementation progress
 
+## Checkpoint — PLAN_UX_IMPLEMENTACJI.md, UX-4 settings (2026-10-12)
+
+- Reorganized Settings into Learning, Appearance, Account, Multimedia, Reminders, Data and Information. Theme-aware cards, wrapping selections, >=48px targets, radio checked/disabled states, headers and readable explanatory text follow the existing mobile design guidance. The screen retains keyboard-aware scrolling and limits content width on larger displays.
+- Language loading now has explicit unknown/read-error/retry states instead of silently showing Polish. Language/category/theme changes share saving/success/error feedback and a synchronous click lock. Failed language or theme writes retain the previous selection; theme is applied only after SQLite confirms persistence. Focus/foreground reads recover language changes and controls after an offscreen save.
+- Cache size starts unknown, refreshes on focus/foreground and after bounded preloading, and can be refreshed manually. Missing cache directory means zero; filesystem read errors propagate and show unavailable size rather than false 0 MB. Stale reads are ignored.
+- Removing downloaded media requires confirmation explaining re-download and preservation of questions/progress/account. Confirmation and deletion block starting a Settings preload; a running preload blocks clearing. The cache service additionally rejects ordinary clearing during an active download and prevents new downloads while clearing. Full local-data maintenance waits for obsolete downloads to settle before removal, retaining the existing generation fence and reset/export contracts.
+- Validation passed: npx tsc --noEmit, npx expo lint; scripts/test-settings.cjs (both themes, read/write errors, retry, double taps, foreground refresh, offscreen save recovery, confirmation/cancel and download/clear exclusion); scripts/test-media-preparation.cjs (including filesystem-size errors and pending-download/full-reset clearing); scripts/test-user-data.cjs.
+- Physical-device layout, large fonts, screen readers, keyboard and actual filesystem failures remain on QA_CHECKLIST.md. No dependencies, native directories or cloud configuration changed. UX-5 (continuous Study sessions) is the next proposed stage and has not started.
+
 ## Checkpoint — PLAN_UX_IMPLEMENTACJI.md, UX-3 local account UX (2026-10-12)
 
 - Implemented the confirmed local-only part of UX-3. Rebuilt MediaAccountCard with required/common-format e-mail validation before API calls, unchanged password bytes (no trimming/minimum-length policy for existing accounts), explicit Show/Hide, autofill hints, Next-to-password focus and Go submit. Actions have >=48px targets; Settings and inline account modal use keyboard-aware scroll containers. Mobile UI guidance informed calm theme-aware form/error hierarchy rather than extra navigation/decorative assets.

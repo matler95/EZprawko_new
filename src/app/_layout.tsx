@@ -62,6 +62,7 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
   const [onboardingRequired, setOnboardingRequired] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const categoryLock = useRef(false);
+  const themeLock = useRef(false);
   const [isTabBarHidden, setIsTabBarHidden] = useState(false);
   const navigation = useNavigationContainerRef();
   const rootState = useRootNavigationState();
@@ -99,7 +100,13 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} onLayout={() => { void SplashScreen.hideAsync(); }}>
       <ThemeProvider value={{ ...(dark ? DarkTheme : DefaultTheme), colors: { ...(dark ? DarkTheme : DefaultTheme).colors, background: colors.background, card: colors.surface, text: colors.textPrimary, border: colors.border, primary: colors.primaryText } }}>
-        <AppThemeContext value={{ preference, setPreference: (value) => { setPreference(value); void setThemePreference(db, value); }, colors }}>
+        <AppThemeContext value={{ preference, setPreference: async (value) => {
+          if (themeLock.current) return false;
+          themeLock.current = true;
+          try { await setThemePreference(db, value); setPreference(value); return true; }
+          catch { return false; }
+          finally { themeLock.current = false; }
+        }, colors }}>
         <TargetCategoryContext value={{ category, changing: categoryChanging, error: categoryError, setCategory: async (value) => {
           if (categoryLock.current) return false;
           categoryLock.current = true; setCategoryChanging(true); setCategoryError(null);

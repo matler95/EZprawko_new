@@ -2,6 +2,14 @@
 
 Run this checklist on a physical Android device and, before public release, an iPhone. Record the app version, device model, OS version, and outcome for every failed item.
 
+## PLAN_UX_IMPLEMENTACJI.md — UX-4 settings
+
+- [ ] On physical Android/iPhone, check Learning/Appearance/Account/Multimedia/Reminders/Data/Information in both themes, small screen and large fonts. All category/language/theme options wrap, have readable selected states and >=48px targets; verify screen-reader labels, roles and headers.
+- [ ] Change category and language; Study and newly started exams use the saved values. Existing exam category/language stay unchanged. Simulate a failed SQLite save: previous language/theme remain selected, error is actionable and retry succeeds. Rapid taps submit one setting write; returning after an offscreen save unlocks controls and rereads language.
+- [ ] Missing media cache shows 0 MB; actual filesystem read failure shows unavailable size. Re-enter Settings or return from background after downloading media and check refreshed size. Manual refresh retries read failure without deleting files.
+- [ ] Removing downloaded media first asks for confirmation. Cancel/back/system dismissal preserves files; confirm clears only downloaded media, preserving questions/progress/preferences/account. Failure leaves a retryable action, never announces successful removal. A running preload blocks clearing; the clear confirmation blocks starting a preload. After cancel/failure/completion both actions become available again.
+- [ ] During full local-data removal with a pending download, verify obsolete download cleanup completes and cannot recreate files after removal. Regression-check export, progress-only reset and full local removal; account/cache preservation still follows their displayed contracts.
+
 ## PLAN_UX_IMPLEMENTACJI.md — UX-3 local account UI
 
 - [ ] Use only an existing authorized test account. Empty/bad-format e-mail or empty password shows field feedback without a request. Entered password bytes, including intentional spaces, are not trimmed. Invalid credentials/unconfirmed e-mail/rate-limit/network failure have safe actionable messages, no backend/token/password dump.

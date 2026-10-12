@@ -1,15 +1,15 @@
 // File-system/network are in-memory stubs: never downloads real government media.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),React=require('react');
 const root=path.resolve(__dirname,'..'),cache=new Map(),files=new Map();
-let enabled=true,failName=null,emptyName=null,grantCalls=0,downloadCalls=0,delay=null;
+let enabled=true,failName=null,emptyName=null,grantCalls=0,downloadCalls=0,delay=null,readFailure=false;
 let states=[],refs=[],si=0,ri=0,focus,category='B',theme='light',uiFailure=false,uiCancel=false;
 const dir='file:///cache/question-media/';
 const fileSystem={cacheDirectory:'file:///cache/',makeDirectoryAsync:async()=>{},
-  getInfoAsync:async uri=>files.has(uri)?{exists:true,isDirectory:false,size:files.get(uri),modificationTime:1}:{exists:false},
+  getInfoAsync:async uri=>uri===dir&&files.size?{exists:true,isDirectory:true}:files.has(uri)?{exists:true,isDirectory:false,size:files.get(uri),modificationTime:1}:{exists:false},
   downloadAsync:async(remote,uri)=>{downloadCalls++;if(delay)await delay;if(remote.includes(failName??'NEVER'))throw Error('network failed');files.set(uri,remote.includes(emptyName??'NEVER')?0:123);return {status:200};},
   moveAsync:async({from,to})=>{files.set(to,files.get(from));files.delete(from);},
   deleteAsync:async uri=>{if(uri===dir)files.clear();else files.delete(uri);},
-  readDirectoryAsync:async()=>[...files.keys()].filter(k=>k.startsWith(dir)).map(k=>k.slice(dir.length))};
+  readDirectoryAsync:async()=>{if(readFailure)throw Error('FS unavailable');return [...files.keys()].filter(k=>k.startsWith(dir)).map(k=>k.slice(dir.length));}};
 function load(file){if(cache.has(file))return cache.get(file);const exports={};cache.set(file,exports);
 new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText)(name=>{
   if(name==='expo-file-system/legacy')return fileSystem;
@@ -38,6 +38,7 @@ function button(t,label){return nodes(t).find(n=>n.type==='Pressable'&&text(n).i
   const media=load('src/services/media-cache.ts'),preload=load('src/services/media-preload.ts');
   const pool=[{mediaFilename:'one.jpg'},{mediaFilename:'one.jpg'},{mediaFilename:'two.wmv'},{mediaFilename:null}];
   const events=[];await preload.prepareExamMedia(pool,p=>events.push(p));assert.equal(downloadCalls,2);assert.equal(events[0].completed,0);assert.equal(events.at(-1).completed,2);
+  assert.equal(await media.cacheSizeBytes(),246);readFailure=true;await assert.rejects(()=>media.cacheSizeBytes(),/FS unavailable/);readFailure=false;
   assert(files.has(dir+'two.mp4'));const oldCalls=grantCalls;await preload.prepareExamMedia(pool);assert.equal(grantCalls,oldCalls,'cached exam works without renewed network grant');
   await preload.prepareExamMedia([{mediaFilename:null}]);
   enabled=false;await assert.rejects(()=>preload.prepareExamMedia(pool));enabled=true;
@@ -49,7 +50,11 @@ function button(t,label){return nodes(t).find(n=>n.type==='Pressable'&&text(n).i
   await assert.rejects(()=>preload.prepareExamMedia(pool,p=>{if(p.completed===1)proceed=false;},()=>proceed),/przerwane/);assert(!files.has(dir+'two.mp4'));
   files.clear();await assert.rejects(()=>preload.prepareExamMedia(pool,p=>{if(p.completed===2)files.delete(dir+'one.jpg');}),/cache/,'final verification catches eviction');
   files.clear();let release;delay=new Promise(r=>release=r);const first=media.cachedMediaUri('shared.jpg'),second=media.cachedMediaUri('shared.jpg');await new Promise(setImmediate);const before=downloadCalls;release();await Promise.all([first,second]);delay=null;assert.equal(downloadCalls,before,'same-file requests share one download');
+  files.clear();delay=new Promise(r=>release=r);const clearingConflict=media.cachedMediaUri('pending.jpg');await new Promise(setImmediate);
+  await assert.rejects(()=>media.clearMediaCache(),/pobieranie/);release();await clearingConflict;delay=null;await media.clearMediaCache();assert.equal(await media.cacheSizeBytes(),0);
   const {withDataMaintenance}=load('src/domain/data-maintenance.ts');
+  files.clear();delay=new Promise(r=>release=r);const resetDownload=media.cachedMediaUri('reset-pending.jpg');const downloadOutcome=resetDownload.catch(()=>undefined);await new Promise(setImmediate);
+  const resetClear=withDataMaintenance(()=>media.clearMediaCache());release();await Promise.all([downloadOutcome,resetClear]);delay=null;assert.equal(await media.cacheSizeBytes(),0,'full local removal waits for obsolete download cleanup');
   files.clear();delay=new Promise(r=>release=r);const obsolete=preload.prepareExamMedia(pool);await new Promise(setImmediate);await withDataMaintenance(async()=>{files.clear();});release();await assert.rejects(()=>obsolete);delay=null;assert(!files.has(dir+'one.jpg'),'reset cannot be followed by old download commit');
   const Card=load('src/components/media-download-card.tsx').MediaDownloadCard;
   for(theme of ['light','dark']){

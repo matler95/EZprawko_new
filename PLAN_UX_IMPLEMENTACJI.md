@@ -115,6 +115,8 @@ globalny streak zachowany, zmiana kategorii/zerowa historia nie tworzą fałszyw
 - UX-3: lokalny formularz/sesja/powrót do materiału wdrożone i zweryfikowane
   (2026-10-12). Rejestracja, e-maile/linki i usunięcie konta serwerowego nadal
   wymagają osobnego zakresu i decyzji; nie oznaczamy całego uwierzytelniania jako gotowego.
-- UX-4–UX-7: zaplanowane, niewdrożone w tym etapie.
+- UX-4: uporządkowane sekcje, zapis/retry ustawień i zarządzanie zajętością
+  multimediów wdrożone i zweryfikowane lokalnie (2026-10-12); fizyczne QA otwarte.
+- UX-5–UX-7: zaplanowane, niewdrożone w tym etapie.
 - Zewnętrzne: EAS, konfiguracja rejestracji/maili/linków/usuwania konta,
   prawne zatwierdzenie treści i multimedia, fizyczne QA.

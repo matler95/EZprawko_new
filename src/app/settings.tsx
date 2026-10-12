@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { Alert, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSQLiteContext } from "expo-sqlite";
 import { cacheSizeBytes, clearMediaCache } from "@/services/media-cache";
@@ -11,117 +12,191 @@ import { AppAboutCard } from "@/components/app-about-card";
 import { UserDataCard } from "@/components/user-data-card";
 import { useTargetCategory } from "@/context/target-category-context";
 import { categoryLabel, drivingCategories } from "@/domain/driving-categories";
+import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { questionLanguages, selectedQuestionLanguage, setQuestionLanguage, translationCoverage, type QuestionLanguage } from "@/database/translations";
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
   const { preference, setPreference, colors } = useAppTheme();
-  const s = createStyles(colors);
-  const [cache, setCache] = useState(0);
   const { category, setCategory, changing, error: categoryError } = useTargetCategory();
-  const [language, setLanguage] = useState<QuestionLanguage>('pl');
-  const refresh = () => cacheSizeBytes().then(setCache);
-  useEffect(() => {
-    refresh();
-    selectedQuestionLanguage(db).then(setLanguage);
+  const s = createStyles(colors);
+  const [language, setLanguage] = useState<QuestionLanguage | null>(null);
+  const [languageError, setLanguageError] = useState<string | null>(null);
+  const [cache, setCache] = useState<number | null>(null);
+  const [cacheError, setCacheError] = useState<string | null>(null);
+  const [cacheReading, setCacheReading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const focused = useRef(false);
+  const reads = useRef(0);
+  const cacheReads = useRef(0);
+  const saveLock = useRef(false);
+  const clearLock = useRef(false);
+  const downloadLock = useRef(false);
+  const downloadCount = useRef(0);
+
+  const refreshCache = useCallback(async () => {
+    const request = ++cacheReads.current;
+    setCacheReading(true);
+    try {
+      const size = await cacheSizeBytes();
+      if (focused.current && request === cacheReads.current) { setCache(size); setCacheError(null); }
+    } catch {
+      if (focused.current && request === cacheReads.current) setCacheError("Nie udało się odczytać zajętości materiałów.");
+    } finally {
+      if (focused.current && request === cacheReads.current) setCacheReading(false);
+    }
+  }, []);
+  const refreshLanguage = useCallback(async () => {
+    if (saveLock.current) return;
+    setSaving(null);
+    const request = ++reads.current;
+    try {
+      const value = await selectedQuestionLanguage(db);
+      if (focused.current && request === reads.current) { setLanguage(value); setLanguageError(null); }
+    } catch {
+      if (focused.current && request === reads.current) setLanguageError("Nie udało się odczytać języka pytań.");
+    }
   }, [db]);
-  return (
-    <SafeAreaView style={s.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+  useFocusEffect(useCallback(() => {
+    focused.current = true;
+    void refreshCache(); void refreshLanguage();
+    const listener = AppState.addEventListener("change", state => {
+      if (state === "active") { void refreshCache(); void refreshLanguage(); }
+    });
+    return () => { focused.current = false; listener.remove(); };
+  }, [refreshCache, refreshLanguage]));
+
+  const save = async (label: string, operation: () => Promise<boolean>) => {
+    if (saveLock.current || changing) return;
+    saveLock.current = true; ++reads.current;
+    const revision = userDataRevision();
+    setSaving(label); setSaveError(null); setSaveStatus(null);
+    try {
+      if (!userDataWritable(revision) || !await operation()) throw new Error("save");
+      if (focused.current && userDataWritable(revision)) setSaveStatus(`${label}: zapisano.`);
+    } catch {
+      if (focused.current && userDataWritable(revision)) setSaveError(`Nie udało się zapisać: ${label.toLowerCase()}. Wybierz opcję ponownie, aby spróbować jeszcze raz.`);
+    } finally {
+      saveLock.current = false;
+      if (focused.current) setSaving(null);
+    }
+  };
+  const changeLanguage = (value: QuestionLanguage) => save("Język pytań", async () => {
+    const revision = userDataRevision();
+    await setQuestionLanguage(db, value);
+    if (focused.current && userDataWritable(revision)) setLanguage(value);
+    return true;
+  });
+  const downloadChanged = useCallback((value: boolean) => {
+    downloadCount.current += value ? 1 : -1;
+    downloadLock.current = downloadCount.current > 0;
+    setDownloading(downloadLock.current);
+    if (!downloadLock.current && focused.current) void refreshCache();
+  }, [refreshCache]);
+  const confirmClear = () => {
+    if (clearLock.current || downloadLock.current) return;
+    clearLock.current = true; setClearing(true); setCacheError(null);
+    const finish = () => { clearLock.current = false; if (focused.current) setClearing(false); };
+    let executing = false;
+    const revision = userDataRevision();
+    Alert.alert("Usunąć pobrane materiały?", "Zdjęcia i filmy trzeba będzie pobrać ponownie. Pytania, postępy, ustawienia i konto pozostaną.", [
+      { text: "Anuluj", style: "cancel", onPress: finish },
+      { text: "Usuń materiały", style: "destructive", onPress: () => {
+        if (!focused.current || !userDataWritable(revision)) { finish(); return; }
+        executing = true;
+        void clearMediaCache().then(() => {
+          if (focused.current) { setCache(null); void refreshCache(); }
+        }).catch(() => {
+          if (focused.current) setCacheError("Nie udało się usunąć materiałów. Poczekaj na zakończenie pobierania i spróbuj ponownie.");
+        }).finally(finish);
+      } },
+    ], { cancelable: true, onDismiss: () => { if (!executing) finish(); } });
+  };
+  const disabled = saving !== null || changing;
+  return <SafeAreaView style={s.safe}>
+    <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        <Text style={s.title}>Ustawienia</Text>
-        <MediaAccountCard />
-        <Text style={s.heading}>Język pytań</Text>
-        <View style={[s.categories, { flexWrap: 'wrap' }]}>
-          {questionLanguages.map((item) => (
-            <Pressable key={item.code} onPress={async () => { await setQuestionLanguage(db, item.code); setLanguage(item.code); }} style={[s.category, language === item.code && s.categoryActive]}>
-              <Text style={language === item.code ? s.categoryTextActive : s.categoryText}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={s.sub}>
-          {language === 'pl' ? 'Pełny oficjalny katalog po polsku.' : `Oficjalne tłumaczenia: ${translationCoverage[language]}/3518 pytań. Brakujące pytania pokażemy po polsku z oznaczeniem.`}
-          {' '}Język rozpoczętego egzaminu pozostaje bez zmian.
-        </Text>
-        <Text style={s.heading}>Wygląd</Text>
-        <View style={s.categories}>
-          {(["system", "light", "dark"] as const).map((item) => (
-            <Pressable key={item} onPress={() => setPreference(item)} style={[s.category, preference === item && s.categoryActive]}>
-              <Text style={preference === item ? s.categoryTextActive : s.categoryText}>{item === "system" ? "System" : item === "light" ? "Jasny" : "Ciemny"}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={s.heading}>Twoja kategoria — Nauka i egzamin</Text>
-        <View style={[s.categories, { flexWrap: 'wrap' }]}>
-          {drivingCategories.map((item) => (
-            <Pressable
-              key={item}
-              disabled={changing}
-              accessibilityRole="radio"
-              accessibilityLabel={categoryLabel(item)}
-              accessibilityState={{ checked: category === item, disabled: changing }}
-              onPress={() => void setCategory(item)}
-              style={[s.category, category === item && s.categoryActive]}
-            >
-              <Text
-                style={
-                  category === item ? s.categoryTextActive : s.categoryText
-                }
-              >
-                {item}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={s.sub}>
-          {categoryLabel(category)}. Jedna wspólna kategoria dla Nauki, działów i nowych egzaminów. PT oznacza pozwolenie na tramwaj. Trwający egzamin zachowuje kategorię, z którą został rozpoczęty.
-        </Text>
-        {categoryError && <Text accessibilityRole="alert" style={s.sub}>{categoryError}</Text>}
-        <Text style={s.heading}>Multimedia</Text>
-        <MediaDownloadCard />
+        <Text accessibilityRole="header" style={s.title}>Ustawienia</Text>
+        <Text style={s.sub}>Dostosuj naukę i korzystanie z aplikacji na tym urządzeniu.</Text>
+        <Text accessibilityRole="header" style={s.heading}>Nauka</Text>
         <View style={s.card}>
-          <View>
-            <Text style={{ color: colors.textPrimary }}>Cache mediów</Text>
-            <Text style={s.sub}>
-              {(cache / 1024 / 1024).toFixed(1)} MB · limit 1 GB
-            </Text>
-          </View>
-          <Pressable
-            onPress={async () => {
-              await clearMediaCache();
-              refresh();
-            }}
-          >
-            <Text style={s.action}>Wyczyść</Text>
-          </Pressable>
+          <Text style={s.label}>Twoja kategoria</Text>
+          <View style={s.options}>{drivingCategories.map(item => <Pressable key={item} disabled={disabled}
+            accessibilityRole="radio" accessibilityLabel={categoryLabel(item)} accessibilityState={{ checked: category === item, disabled, busy: changing }}
+            onPress={() => void save("Kategoria", () => setCategory(item))}
+            style={[s.option, category === item && s.active, disabled && s.disabled]}>
+            <Text style={category === item ? s.activeText : s.optionText}>{item}</Text>
+          </Pressable>)}</View>
+          <Text style={s.sub}>{categoryLabel(category)}. Jedna kategoria dla Nauki i nowych egzaminów. PT to pozwolenie na tramwaj. Rozpoczęty egzamin zachowuje swoją kategorię.</Text>
+          {categoryError && <Text accessibilityRole="alert" style={s.error}>{categoryError}</Text>}
+          <Text style={s.label}>Język pytań</Text>
+          {languageError ? <><Text accessibilityRole="alert" style={s.error}>{languageError}</Text><Pressable accessibilityRole="button" style={s.button} onPress={() => void refreshLanguage()}><Text style={s.action}>Ponów odczyt języka</Text></Pressable></> : language === null ? <Text style={s.sub}>Odczytywanie języka…</Text> : <>
+            <View style={s.options}>{questionLanguages.map(item => <Pressable key={item.code} disabled={disabled}
+              accessibilityRole="radio" accessibilityState={{ checked: language === item.code, disabled }}
+              onPress={() => void changeLanguage(item.code)} style={[s.option, language === item.code && s.active, disabled && s.disabled]}>
+              <Text style={language === item.code ? s.activeText : s.optionText}>{item.label}</Text>
+            </Pressable>)}</View>
+            <Text style={s.sub}>{language === "pl" ? "Pełny oficjalny katalog po polsku." : `Oficjalne tłumaczenia: ${translationCoverage[language]}/3518 pytań. Brakujące pokażemy po polsku z oznaczeniem.`} Język rozpoczętego egzaminu pozostaje bez zmian.</Text>
+          </>}
         </View>
-        <Text style={s.heading}>Przypomnienia</Text>
+        <Text accessibilityRole="header" style={s.heading}>Wygląd</Text>
+        <View style={s.card}>
+          <View style={s.options}>{(["system", "light", "dark"] as const).map(item => <Pressable key={item} disabled={disabled}
+            accessibilityRole="radio" accessibilityState={{ checked: preference === item, disabled }}
+            onPress={() => void save("Wygląd", () => setPreference(item))} style={[s.option, preference === item && s.active, disabled && s.disabled]}>
+            <Text style={preference === item ? s.activeText : s.optionText}>{item === "system" ? "Systemowy" : item === "light" ? "Jasny" : "Ciemny"}</Text>
+          </Pressable>)}</View>
+          <Text style={s.sub}>Systemowy dopasowuje wygląd do ustawień telefonu.</Text>
+        </View>
+        {saving && <Text accessibilityLiveRegion="polite" style={s.sub}>Zapisywanie: {saving.toLowerCase()}…</Text>}
+        {saveStatus && <Text accessibilityLiveRegion="polite" style={s.sub}>{saveStatus}</Text>}
+        {saveError && <Text accessibilityRole="alert" style={s.error}>{saveError}</Text>}
+        <Text accessibilityRole="header" style={s.heading}>Konto</Text>
+        <MediaAccountCard />
+        <Text accessibilityRole="header" style={s.heading}>Multimedia</Text>
+        <MediaDownloadCard disabled={clearing} canStart={() => !clearLock.current} onBusyChange={downloadChanged} />
+        <View style={s.card}>
+          <Text style={s.label}>Pobrane materiały</Text>
+          <Text style={s.sub}>{cacheReading ? "Sprawdzanie zajętości…" : cacheError ? "Zajętość aktualnie niedostępna." : cache === null ? "Zajętość nieznana." : `${(cache / 1024 / 1024).toFixed(1)} MB · limit 1 GB`}</Text>
+          <Text style={s.sub}>Usunięcie zwolni miejsce. Do kolejnego pobrania zdjęć i filmów będzie potrzebne połączenie z internetem.</Text>
+          {cacheError && <Text accessibilityRole="alert" style={s.error}>{cacheError}</Text>}
+          <Pressable accessibilityRole="button" disabled={clearing} accessibilityState={{ disabled: clearing }} style={s.button} onPress={() => void refreshCache()}><Text style={s.action}>Odśwież zajętość</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={clearing || downloading} accessibilityState={{ disabled: clearing || downloading, busy: clearing }} style={[s.button, (clearing || downloading) && s.disabled]} onPress={confirmClear}>
+            <Text style={s.danger}>{clearing ? "Czyszczenie materiałów…" : "Usuń pobrane materiały"}</Text>
+          </Pressable>
+          {downloading && <Text style={s.sub}>Czyszczenie będzie dostępne po zakończeniu lub przerwaniu pobierania.</Text>}
+        </View>
+        <Text accessibilityRole="header" style={s.heading}>Przypomnienia</Text>
         <ReminderCard />
+        <Text accessibilityRole="header" style={s.heading}>Dane</Text>
         <UserDataCard />
+        <Text accessibilityRole="header" style={s.heading}>Informacje</Text>
         <AppAboutCard />
       </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+    </KeyboardAvoidingView>
+  </SafeAreaView>;
 }
 const createStyles = (colors: AppTheme) => StyleSheet.create({
+  flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 12 },
+  content: { padding: 24, paddingBottom: 48, gap: 12, width: "100%", maxWidth: 600, alignSelf: "center" },
   title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
   heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 16 },
-  card: {
-    backgroundColor: colors.surface,
-    padding: 18,
-    borderRadius: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  categories: { flexDirection: "row", gap: 8 },
-  category: { backgroundColor: colors.primarySurface, padding: 12, borderRadius: 12, minHeight: 48, justifyContent: "center" },
-  categoryActive: { backgroundColor: colors.primary },
-  categoryText: { color: colors.primaryText, fontWeight: "800" },
-  categoryTextActive: { color: colors.onPrimary, fontWeight: "800" },
-  sub: { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
-  action: { color: colors.primaryText, fontWeight: "700" },
+  label: { color: colors.textPrimary, fontSize: 16, fontWeight: "700" },
+  card: { backgroundColor: colors.surface, padding: 24, borderRadius: 24, gap: 12 },
+  options: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  option: { backgroundColor: colors.primarySurface, padding: 12, borderRadius: 12, minHeight: 48, minWidth: 48, justifyContent: "center", alignItems: "center" },
+  active: { backgroundColor: colors.primary },
+  disabled: { opacity: 0.6 },
+  optionText: { color: colors.primaryText, fontSize: 16, fontWeight: "700" },
+  activeText: { color: colors.onPrimary, fontSize: 16, fontWeight: "700" },
+  sub: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  error: { color: colors.error, fontSize: 14, lineHeight: 20 },
+  button: { minHeight: 48, paddingVertical: 12, justifyContent: "center" },
+  action: { color: colors.primaryText, fontSize: 16, fontWeight: "700" },
+  danger: { color: colors.error, fontSize: 16, fontWeight: "700" },
 });

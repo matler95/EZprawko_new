@@ -10,12 +10,13 @@ import { useTargetCategory } from '@/context/target-category-context';
 import { preloadMedia } from '@/services/media-preload';
 import type { DrivingCategory } from '@/domain/driving-categories';
 
-export function MediaDownloadCard() {
+type DownloadControls = { disabled?: boolean; canStart?: () => boolean; onBusyChange?: (busy: boolean) => void };
+export function MediaDownloadCard(controls: DownloadControls = {}) {
   const { category } = useTargetCategory();
-  return <CategoryMediaDownloadCard key={category} category={category} />;
+  return <CategoryMediaDownloadCard key={category} category={category} {...controls} />;
 }
 
-function CategoryMediaDownloadCard({ category }: { category: DrivingCategory }) {
+function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBusyChange }: { category: DrivingCategory } & DownloadControls) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
@@ -33,8 +34,9 @@ function CategoryMediaDownloadCard({ category }: { category: DrivingCategory }) 
   }, []));
 
   const preload = async () => {
-    if (!mediaConfig.enabled || running.current) return;
+    if (!mediaConfig.enabled || running.current || disabled || canStart?.() === false) return;
     running.current = true;
+    onBusyChange?.(true);
     cancelled.current = false;
     const request = ++generation.current;
     setBusy(true);
@@ -55,6 +57,7 @@ function CategoryMediaDownloadCard({ category }: { category: DrivingCategory }) 
       if (request === generation.current) setError('Nie udało się pobrać wszystkich materiałów. Sprawdź połączenie i spróbuj ponownie.');
     } finally {
       running.current = false;
+      onBusyChange?.(false);
       if (focused.current) setBusy(false);
     }
   };
@@ -75,11 +78,12 @@ function CategoryMediaDownloadCard({ category }: { category: DrivingCategory }) 
       </View>
       <Pressable
         accessibilityRole="button"
-        disabled={!mediaConfig.enabled || busy}
+        disabled={!mediaConfig.enabled || busy || disabled}
+        accessibilityState={{ disabled: !mediaConfig.enabled || busy || disabled, busy }}
         onPress={preload}
         style={({ pressed }) => [
           styles.button,
-          (!mediaConfig.enabled || busy) && styles.buttonDisabled,
+          (!mediaConfig.enabled || busy || disabled) && styles.buttonDisabled,
           pressed && styles.buttonPressed,
         ]}>
         {busy ? <ActivityIndicator color={colors.onGold} /> : <Text style={styles.buttonText}>{error ? 'Spróbuj ponownie' : 'Pobierz'}</Text>}
