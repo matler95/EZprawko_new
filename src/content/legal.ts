@@ -1,5 +1,5 @@
 export type LegalDocument = { title: string; sections: { title: string; paragraphs: string[] }[] };
-export const legalRevision = "12.10.2026 · wersja robocza 1";
+export const legalRevision = "12.10.2026 · wersja robocza 3";
 export const legalNotice = "Prywatna wersja testowa. Dokumenty robocze — nie są zatwierdzonym pakietem do publikacji. Dane operatora, podstawy przetwarzania, retencja usług chmurowych i prawa do treści wymagają uzupełnienia oraz przeglądu prawnego.";
 export const ministrySource = "https://www.gov.pl/web/infrastruktura/prawo-jazdy";
 export const uodoSource = "https://uodo.gov.pl/pl/493/2254";
@@ -13,7 +13,7 @@ export const privacy: LegalDocument = {
       "Administrator danych i operator aplikacji: do uzupełnienia przed udostępnieniem innym użytkownikom. Nazwa lub imię i nazwisko, adres oraz kontakt do spraw prywatności nie zostały jeszcze ustalone w tym dokumencie. W prywatnym teście kwestie danych zgłaszaj bezpośrednio osobie udostępniającej aplikację.",
     ] },
     { title: "2. Dane nauki na urządzeniu", paragraphs: [
-      "SQLite przechowuje odpowiedzi, wyniki i daty egzaminów, historię ćwiczeń, oznaczone pytania, postęp, dni nauki oraz preferencje kategorii, języka, motywu i przypomnień. Baza pytań i tłumaczeń jest dostarczana z aplikacją.",
+      "SQLite przechowuje odpowiedzi, wyniki i daty egzaminów, historię ćwiczeń, oznaczone pytania, postęp, dni nauki, lokalny dzień aktywności i zdobyte odznaki oraz preferencje kategorii, języka, motywu i przypomnień. Baza pytań i tłumaczeń jest dostarczana z aplikacją.",
       "Obecny kod nie wysyła historii odpowiedzi ani wyników do Supabase i nie synchronizuje ich między urządzeniami. Dane służą do odtworzenia sesji, powtórek i statystyk. Kopie systemowe urządzenia mogą działać zgodnie z ustawieniami Androida lub iOS; nie obiecujemy wyłączenia takich kopii.",
     ] },
     { title: "3. Opcjonalne konto i multimedia", paragraphs: [
@@ -37,7 +37,7 @@ export const privacy: LegalDocument = {
     ] },
     { title: "8. Prawa i kontakt", paragraphs: [
       "W zakresie przewidzianym RODO można żądać dostępu do danych, sprostowania, usunięcia, ograniczenia przetwarzania lub przeniesienia, a w odpowiednich przypadkach wnieść sprzeciw albo wycofać zgodę. Można złożyć skargę do Prezesa UODO. Zakres praw zależy od rodzaju danych i podstawy przetwarzania.",
-      "Kontakt administratora do realizacji żądań musi zostać uzupełniony przed publikacją. Obecny interfejs nie oferuje jeszcze eksportu postępu ani usunięcia konta. Te ekrany nie potwierdzają realizacji takich żądań. Usunięcie danych lokalnych jest odrębne od usunięcia konta i danych serwerowych.",
+      "Ustawienia oferują eksport lokalnych sesji, odpowiedzi, postępów i preferencji do JSON, reset postępów oraz usunięcie danych lokalnych wraz z cache, przypomnieniami i lokalną sesją. Eksport nie zawiera haseł, tokenów, multimediów ani danych konta z chmury i nie jest kopią do przywrócenia w aplikacji. Kopie udostępnione poza aplikacją trzeba usunąć osobno. Brak nadal funkcji usunięcia konta Supabase; kontakt administratora do żądań dotyczących danych serwerowych musi być uzupełniony przed publikacją.",
     ] },
     { title: "9. Bezpieczeństwo i zmiany", paragraphs: [
       "Dostęp do nowych mediów jest uwierzytelniany. Sesja w AsyncStorage oraz lokalny postęp nie mają w tej wersji osobno wdrożonego szyfrowania przez aplikację; zabezpiecz telefon blokadą ekranu i nie przekazuj nikomu haseł ani tokenów. Nie gwarantujemy całkowitego wyeliminowania ryzyka.",
@@ -70,7 +70,7 @@ export const terms: LegalDocument = {
       "Niniejszy tekst nie wyłącza praw użytkownika wynikających z bezwzględnie obowiązujących przepisów ani nie ustanawia ogólnego zrzeczenia się odpowiedzialności operatora.",
     ] },
     { title: "7. Dane i zakończenie testu", paragraphs: [
-      "Sposób przetwarzania danych opisuje Polityka prywatności. Można wyłączyć przypomnienia, wylogować się i wyczyścić cache. Usunięcie aplikacji nie stanowi żądania usunięcia konta ani danych serwerowych. Eksport postępu i kompleksowe usuwanie danych w interfejsie pozostają do wdrożenia.",
+      "Sposób przetwarzania danych opisuje Polityka prywatności. Ustawienia pozwalają eksportować dane lokalne, resetować postępy lub usuwać lokalne dane użytkownika. Usunięcie danych lokalnych zachowuje bazę pytań, lecz usuwa cache i lokalną sesję. Nie usuwa konta Supabase, danych serwerowych ani kopii zapisanych poza aplikacją. Operacje usuwania wymagają potwierdzenia i są nieodwracalne; eksport nie zapewnia przywrócenia postępów w aplikacji.",
     ] },
     { title: "8. Zmiany i publiczne wydanie", paragraphs: [
       "Przed udostępnieniem publicznym wymagane są zgody i weryfikacja praw do materiałów, kompletne dane operatora oraz zatwierdzenie dokumentów odpowiednich do docelowego modelu usługi. Samo wyświetlenie regulaminu nie oznacza zawarcia umowy płatnej, udzielenia zgody marketingowej ani potwierdzenia gotowości prawnej aplikacji.",

@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { deliveredMediaFilename, deliveredMediaKey, mediaConfig, mediaUrl } from '@/config/media';
 import { mediaGrant } from '@/services/media-auth';
+import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
 
 const CACHE_DIRECTORY = `${FileSystem.cacheDirectory}question-media/`;
 const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
@@ -8,6 +9,8 @@ const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
 const safeName = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 
 export async function cachedMediaUri(sourceFilename: string) {
+  const revision = userDataRevision();
+  if (!userDataWritable(revision)) return undefined;
   const filename = deliveredMediaFilename(sourceFilename);
   const objectKey = deliveredMediaKey(sourceFilename);
   if (!mediaConfig.enabled) return undefined;
@@ -26,6 +29,7 @@ export async function cachedMediaUri(sourceFilename: string) {
     if (result.status === 401 || result.status === 403) throw new Error("Serwer multimediów odrzucił token dostępu. Sprawdź zgodność sekretów Supabase i Cloudflare.");
     if (result.status === 404) throw new Error(`Nie znaleziono pliku w R2: ${objectKey}`);
     if (result.status !== 200) throw new Error(`Błąd serwera multimediów (HTTP ${result.status}). Spróbuj ponownie.`);
+    if (!userDataWritable(revision)) throw new Error("Pobieranie przerwane przez usunięcie danych lokalnych.");
     await FileSystem.moveAsync({ from: temporaryUri, to: uri });
   } catch (error) {
     await FileSystem.deleteAsync(temporaryUri, { idempotent: true });

@@ -1,4 +1,5 @@
 import { cachedMediaUri } from '@/services/media-cache';
+import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
 
 export type MediaPreloadProgress = {
   completed: number;
@@ -16,11 +17,12 @@ export async function preloadMedia(
   onProgress?: (progress: MediaPreloadProgress) => void,
   shouldContinue: () => boolean = () => true,
 ) {
+  const revision = userDataRevision();
   const uniqueFilenames = [...new Set(filenames.filter(Boolean))];
   let completed = 0;
 
   for (const filename of uniqueFilenames) {
-    if (!shouldContinue()) break;
+    if (!shouldContinue() || !userDataWritable(revision)) break;
 
     await cachedMediaUri(filename);
     completed += 1;

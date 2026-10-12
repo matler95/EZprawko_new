@@ -1,22 +1,16 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  dailyReminderIdentifier,
-  selectedCategory,
-  setDailyReminderIdentifier,
-  setSelectedCategory,
-} from "@/database/repository";
 import { useSQLiteContext } from "expo-sqlite";
 import { cacheSizeBytes, clearMediaCache } from "@/services/media-cache";
 import { MediaDownloadCard } from "@/components/media-download-card";
-import {
-  disableDailyReminder,
-  enableDailyReminder,
-} from "@/services/reminders";
+import { ReminderCard } from "@/components/reminder-card";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { MediaAccountCard } from "@/components/media-account-card";
 import { AppAboutCard } from "@/components/app-about-card";
+import { UserDataCard } from "@/components/user-data-card";
+import { useTargetCategory } from "@/context/target-category-context";
+import { categoryLabel, drivingCategories } from "@/domain/driving-categories";
 import { questionLanguages, selectedQuestionLanguage, setQuestionLanguage, translationCoverage, type QuestionLanguage } from "@/database/translations";
 
 export default function SettingsScreen() {
@@ -24,14 +18,11 @@ export default function SettingsScreen() {
   const { preference, setPreference, colors } = useAppTheme();
   const s = createStyles(colors);
   const [cache, setCache] = useState(0);
-  const [reminder, setReminder] = useState<string | false>(false);
-  const [category, setCategory] = useState("B");
+  const { category, setCategory, changing, error: categoryError } = useTargetCategory();
   const [language, setLanguage] = useState<QuestionLanguage>('pl');
   const refresh = () => cacheSizeBytes().then(setCache);
   useEffect(() => {
     refresh();
-    selectedCategory(db).then(setCategory);
-    dailyReminderIdentifier(db).then(setReminder);
     selectedQuestionLanguage(db).then(setLanguage);
   }, [db]);
   return (
@@ -59,15 +50,16 @@ export default function SettingsScreen() {
             </Pressable>
           ))}
         </View>
-        <Text style={s.heading}>Kategoria egzaminu</Text>
-        <View style={s.categories}>
-          {["AM", "A", "B", "C", "D"].map((item) => (
+        <Text style={s.heading}>Twoja kategoria — Nauka i egzamin</Text>
+        <View style={[s.categories, { flexWrap: 'wrap' }]}>
+          {drivingCategories.map((item) => (
             <Pressable
               key={item}
-              onPress={async () => {
-                await setSelectedCategory(db, item);
-                setCategory(item);
-              }}
+              disabled={changing}
+              accessibilityRole="radio"
+              accessibilityLabel={categoryLabel(item)}
+              accessibilityState={{ checked: category === item, disabled: changing }}
+              onPress={() => void setCategory(item)}
               style={[s.category, category === item && s.categoryActive]}
             >
               <Text
@@ -81,8 +73,9 @@ export default function SettingsScreen() {
           ))}
         </View>
         <Text style={s.sub}>
-          Wybrana kategoria określa 12 pytań specjalistycznych.
+          {categoryLabel(category)}. Jedna wspólna kategoria dla Nauki, działów i nowych egzaminów. PT oznacza pozwolenie na tramwaj. Trwający egzamin zachowuje kategorię, z którą został rozpoczęty.
         </Text>
+        {categoryError && <Text accessibilityRole="alert" style={s.sub}>{categoryError}</Text>}
         <Text style={s.heading}>Multimedia</Text>
         <MediaDownloadCard />
         <View style={s.card}>
@@ -102,27 +95,8 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
         <Text style={s.heading}>Przypomnienia</Text>
-        <View style={s.card}>
-          <View>
-            <Text style={{ color: colors.textPrimary }}>Codzienna powtórka</Text>
-            <Text style={s.sub}>Codziennie o 19:00</Text>
-          </View>
-          <Pressable
-            onPress={async () => {
-              if (reminder) {
-                await disableDailyReminder(reminder);
-                await setDailyReminderIdentifier(db, false);
-                setReminder(false);
-              } else {
-                const identifier = await enableDailyReminder();
-                if (identifier) await setDailyReminderIdentifier(db, identifier);
-                setReminder(identifier);
-              }
-            }}
-          >
-            <Text style={s.action}>{reminder ? "Wyłącz" : "Włącz"}</Text>
-          </Pressable>
-        </View>
+        <ReminderCard />
+        <UserDataCard />
         <AppAboutCard />
       </ScrollView>
     </SafeAreaView>
@@ -142,7 +116,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
     alignItems: "center",
   },
   categories: { flexDirection: "row", gap: 8 },
-  category: { backgroundColor: colors.primarySurface, padding: 12, borderRadius: 12 },
+  category: { backgroundColor: colors.primarySurface, padding: 12, borderRadius: 12, minHeight: 48, justifyContent: "center" },
   categoryActive: { backgroundColor: colors.primary },
   categoryText: { color: colors.primaryText, fontWeight: "800" },
   categoryTextActive: { color: colors.onPrimary, fontWeight: "800" },

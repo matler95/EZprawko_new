@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>EZprawko — droga do zaliczenia</title>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M270 520 L455 705 L770 310" stroke="#82D6A6" stroke-width="136"/>
+    <path d="M270 520 L455 705 L770 310" stroke="#143D2C" stroke-width="64"/>
+    <path d="M270 520 L455 705 L770 310" stroke="#F0C96A" stroke-width="12" stroke-dasharray="32 32"/>
+  </g>
+</svg>

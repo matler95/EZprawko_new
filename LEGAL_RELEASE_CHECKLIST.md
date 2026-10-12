@@ -8,7 +8,7 @@ Point 4.1 adds working screens, not a declaration of GDPR compliance or cleared 
 - Optional Supabase password sign-in uses AsyncStorage session persistence. Passwords are submitted to Auth, not saved in the progress database.
 - Media-token verifies the authenticated account and issues a 120-second per-file HMAC grant containing account ID. Cloudflare validates it and serves private R2 objects. Cloud services receive network request information; deployed log configuration has not been audited.
 - Reminders are locally scheduled, not server push. No remote push registration, advertising or behavioral analytics implementation was found.
-- Existing cache clearing does not delete account, history, infrastructure logs or system backups. Export/reset/account deletion are not promised as implemented by these documents.
+- Point 4.2 adds local JSON export, transactional progress reset and local-user-data removal (preferences, reminders, session and managed media/export cache). Neither operation deletes the cloud account, infrastructure logs, system backups or already shared external exports. Documents have been updated to distinguish these scopes.
 
 ## Must be supplied and reviewed before public distribution
 
@@ -16,7 +16,7 @@ Point 4.1 adds working screens, not a declaration of GDPR compliance or cleared 
 - [ ] Review lawful basis for each purpose, including any legitimate-interest assessment. Define the intended user audience/age and any additional requirements.
 - [ ] Verify Supabase project region, Cloudflare processing locations, contracts/DPAs, subprocessors and any non-EEA transfers/safeguards.
 - [ ] Define and implement retention/deletion periods for accounts, Auth/function/Worker/access logs and backups. Token lifetime is not log retention.
-- [ ] Implement and document effective rights-request handling, including remote account deletion separately from local reset; complete point 4.2 and reassess copy afterwards.
+- [ ] Implement and document effective rights-request handling, including remote account deletion separately from the implemented local reset/export/removal; legal/operator review is still required.
 - [ ] Confirm OS backup behavior and adequate session storage/security for the intended release.
 - [ ] Record permissions/licence evidence for question text, translations, images, videos and sign graphics. The repository's template MIT licence does not automatically license question-bank assets.
 - [ ] Have the privacy policy and terms reviewed for the actual service model, mandatory consumer protections and complaint procedure; supply all missing details. No paid-contract or marketing-consent flow is introduced here.

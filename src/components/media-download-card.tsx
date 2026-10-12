@@ -1,23 +1,20 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 
 import { mediaConfig } from '@/config/media';
-import { mediaFilenamesForCategory, selectedCategory } from '@/database/repository';
+import { mediaFilenamesForCategory } from '@/database/repository';
+import { useTargetCategory } from '@/context/target-category-context';
 import { preloadMedia } from '@/services/media-preload';
 
 export function MediaDownloadCard() {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
-  const [category, setCategory] = useState('B');
+  const { category } = useTargetCategory();
   const [progress, setProgress] = useState<{ completed: number; total: number }>();
   const [error, setError] = useState<string>();
-
-  useEffect(() => {
-    selectedCategory(db).then(setCategory);
-  }, [db]);
 
   const preload = async () => {
     if (!mediaConfig.enabled) return;

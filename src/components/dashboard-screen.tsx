@@ -2,31 +2,33 @@ import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { router, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { LearningRewards } from "@/components/learning-rewards";
+import { learningProgress, type LearningProgress } from "@/database/learning-progress";
+import { useTargetCategory } from "@/context/target-category-context";
+import { categoryLabel, drivingCategories } from "@/domain/driving-categories";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReadinessRing } from "@/components/readiness-ring";
 import { ExamBriefing } from "@/components/exam-briefing";
 import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 
 import {
-  challengeStatus,
+  clearActiveExam,
   completeOnboarding,
   examReadiness,
   hasCompletedOnboarding,
   resumeActiveExam,
-  selectedCategory,
-  setSelectedCategory,
   startActiveExam,
   type ExamReadiness,
 } from "@/database/repository";
 
-const categories = ["AM", "A", "B", "C", "D"];
+const categories = drivingCategories;
 
 export default function DashboardScreen() {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
-  const [category, setCategory] = useState("B");
+  const { category, setCategory, changing, error: categoryError } = useTargetCategory();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [failedRevision, setFailedRevision] = useState<number | null>(null);
   const [reload, setReload] = useState(0);
@@ -38,33 +40,29 @@ export default function DashboardScreen() {
   const [startError, setStartError] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<ExamReadiness | null>(null);
-  const [challenge, setChallenge] = useState({
-    daysCompleted: 0,
-    correctToday: 0,
-    complete: false,
-  });
+  const [learning, setLearning] = useState<LearningProgress | null>(null);
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
     setFailedRevision(null);
-    void Promise.all([
-      selectedCategory(db),
+    const refresh = () => { void Promise.all([
       hasCompletedOnboarding(db),
-      challengeStatus(db),
+      learningProgress(db, category),
       examReadiness(db),
       resumeActiveExam(db),
-    ]).then(([storedCategory, completed, nextChallenge, nextReadiness, active]) => {
+    ]).then(([completed, nextChallenge, nextReadiness, active]) => {
       if (!mounted) return;
-      setIsStarting(false);
-      setCategory(storedCategory);
       setOnboardingComplete(completed);
-      setChallenge(nextChallenge);
+      setLearning(nextChallenge);
       setReadiness(nextReadiness);
       setActiveExamId(active?.id ?? null);
       setOnboardingChecked(true);
-    }).catch(() => { if (mounted) setFailedRevision(reload); });
-    return () => { mounted = false; };
-  }, [db, reload]));
+    }).catch(() => { if (mounted) setFailedRevision(reload); }); };
+    refresh();
+    const timer = setInterval(() => { if (AppState.currentState === 'active') refresh(); }, 60_000);
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
+    return () => { mounted = false; clearInterval(timer); subscription.remove(); };
+  }, [category, db, reload]));
 
   const startExam = async () => {
     if (startLock.current) return;
@@ -103,11 +101,16 @@ export default function DashboardScreen() {
           <Text style={styles.muted}>
             Dopasujemy pytania specjalistyczne i egzamin próbny.
           </Text>
+          <Text style={styles.muted}>Wybierz jedną kategorię dla Nauki i egzaminu. PT — pozwolenie na kierowanie tramwajem.</Text>
           <View style={styles.categoryGrid}>
             {categories.map((item) => (
               <Pressable
                 key={item}
-                onPress={() => setCategory(item)}
+                disabled={changing}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: category === item, disabled: changing }}
+                accessibilityLabel={categoryLabel(item)}
+                onPress={() => void setCategory(item)}
                 style={[styles.categoryChoice, category === item && styles.categoryChoiceSelected]}
               >
                 <Text style={category === item ? styles.categoryChoiceSelectedText : styles.categoryChoiceText}>
@@ -117,9 +120,9 @@ export default function DashboardScreen() {
             ))}
           </View>
           <Pressable
+            disabled={changing}
             onPress={() => {
               void (async () => {
-                await setSelectedCategory(db, category);
                 await completeOnboarding(db);
                 setOnboardingComplete(true);
               })();
@@ -128,6 +131,7 @@ export default function DashboardScreen() {
           >
             <Text style={styles.buttonText}>Ustaw kategorię i kontynuuj</Text>
           </Pressable>
+          {categoryError && <Text accessibilityRole="alert" style={styles.muted}>{categoryError}</Text>}
         </ScrollView>
       </SafeAreaView>
     );
@@ -137,14 +141,21 @@ export default function DashboardScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.hello}>EZprawko</Text>
-        <Text style={styles.muted}>Oficjalna teoria · kategoria {category}</Text>
+        <Text style={styles.muted}>Oficjalna teoria · {categoryLabel(category)}</Text>
         <Pressable onPress={() => router.navigate("/settings")}>
           <Text style={styles.categoryLink}>Zmień kategorię</Text>
         </Pressable>
 
         {activeExamId ? (
           <Pressable
-            onPress={() => router.push({ pathname: "/exam/[id]", params: { id: activeExamId } })}
+            onPress={async () => {
+              try {
+                const active = await resumeActiveExam(db);
+                setActiveExamId(active?.id ?? null);
+                if (active) router.push({ pathname: "/exam/[id]", params: { id: active.id } });
+                else setStartError("Ta próba wygasła lub ma niepełny zapis. Możesz rozpocząć nowy egzamin.");
+              } catch { setStartError("Nie udało się odczytać próby. Możesz ją porzucić i rozpocząć nową."); }
+            }}
             style={styles.resumeCard}
           >
             <View>
@@ -154,9 +165,14 @@ export default function DashboardScreen() {
             <Text style={styles.resumeAction}>Wznów</Text>
           </Pressable>
         ) : null}
+        {activeExamId && <Pressable accessibilityRole="button" style={{ minHeight: 48, justifyContent: 'center' }} onPress={() => Alert.alert("Porzucić próbę?", "Usuniemy tylko niezakończoną próbę. Historia ukończonych egzaminów i nauki pozostanie bez zmian.", [
+          { text: "Anuluj", style: "cancel" },
+          { text: "Porzuć próbę", style: "destructive", onPress: () => { void clearActiveExam(db).then(() => setActiveExamId(null)).catch(() => setStartError("Nie udało się porzucić próby. Spróbuj ponownie.")); } },
+        ])}><Text style={styles.categoryLink}>Porzuć egzamin w toku</Text></Pressable>}
+        {(startError || categoryError) && <Text accessibilityRole="alert" style={styles.resumeCopy}>{startError || categoryError}</Text>}
 
         <View style={styles.hero}>
-          <Text style={styles.kicker}>EGZAMIN PAŃSTWOWY</Text>
+          <Text style={styles.kicker}>SYMULACJA EGZAMINU WORD</Text>
           <Text style={styles.heroTitle}>32 pytania.{"\n"}25 minut. 74 punkty.</Text>
           <Text style={styles.heroText}>
             20 pytań podstawowych i 12 specjalistycznych. Próg zdania: 68 punktów.
@@ -180,15 +196,7 @@ export default function DashboardScreen() {
           <ReadinessRing value={readiness?.passRate ?? null} />
         </View>
 
-        <View style={styles.card}>
-          <View>
-            <Text style={styles.cardTitle}>
-              {challenge.complete ? "Wyzwanie ukończone!" : `Wyzwanie: ${challenge.daysCompleted}/3 dni`}
-            </Text>
-            <Text style={styles.muted}>{challenge.correctToday}/5 poprawnych odpowiedzi dzisiaj</Text>
-          </View>
-          <Text style={styles.chevron}>{challenge.complete ? "✓" : "◌"}</Text>
-        </View>
+        {learning && <LearningRewards progress={learning} category={category} />}
 
         <Text style={styles.section}>Dzisiejsza nauka</Text>
         <Pressable onPress={() => router.navigate("/study?filter=three&count=5")} style={styles.recommendedCard}>
@@ -203,6 +211,7 @@ export default function DashboardScreen() {
           <Text style={styles.cardTitle}>Powtórz błędne odpowiedzi</Text>
           <Text style={styles.chevron}>›</Text>
         </Pressable>
+        {learning && <LearningRewards progress={learning} category={category} part="achievements" />}
       </ScrollView>
       <ExamBriefing visible={briefing} category={category} hasActiveExam={Boolean(activeExamId)} starting={isStarting} error={startError} onCancel={() => setBriefing(false)} onStart={() => void startExam()} />
     </SafeAreaView>

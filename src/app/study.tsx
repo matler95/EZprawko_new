@@ -19,6 +19,11 @@ import { getQuestionExplanation, type QuestionExplanation } from "@/database/exp
 import { isStudyFilter, studyFilterSql, type StudyFilter } from "@/database/study-filters";
 import { ExplanationCard } from "@/components/explanation-card";
 import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
+import { useTargetCategory } from "@/context/target-category-context";
+import { categoryClause, categoryLabel } from "@/domain/driving-categories";
+import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
+import { studySummary, type StudyAnswers } from '@/domain/study-session';
+import { studyMastery, type MasterySnapshot } from '@/database/study-session';
 
 type StudyQuestion = {
   id: number;
@@ -31,9 +36,15 @@ type StudyQuestion = {
 };
 type Answer = { label: string; answer: string };
 export default function StudyScreen() {
+  const { category } = useTargetCategory();
+  return <StudySession key={category} />;
+}
+
+function StudySession() {
   const { colors } = useAppTheme();
   const s = createStyles(colors);
   const db = useSQLiteContext();
+  const { category } = useTargetCategory();
   const { filter: requestedFilter, count: requestedCount, topic: requestedTopic, sign: requestedSign } = useLocalSearchParams<{
     filter?: string;
     count?: string;
@@ -50,6 +61,16 @@ export default function StudyScreen() {
   const [explanationLoading, setExplanationLoading] = useState(false);
   const [explanationFailed, setExplanationFailed] = useState(false);
   const openRequest = useRef(0);
+  const ledger = useRef<StudyAnswers>({});
+  const writing = useRef(false);
+  const baseline = useRef<MasterySnapshot | null>(null);
+  const [roundItems, setRoundItems] = useState<StudyQuestion[] | null>(null);
+  const [summary, setSummary] = useState<ReturnType<typeof studySummary> | null>(null);
+  const [masteryAfter, setMasteryAfter] = useState<MasterySnapshot | null>(null);
+  const [masteryDelta, setMasteryDelta] = useState<number | null>(null);
+  const [masteryFailed, setMasteryFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StudyFilter>("all");
   const [search, setSearch] = useState("");
   const [topics, setTopics] = useState<TopicProgress[]>([]);
@@ -61,13 +82,13 @@ export default function StudyScreen() {
   useFocusEffect(useCallback(() => {
     let current = true;
     void selectedQuestionLanguage(db).then((value) => {
-      if (current) { setLanguage(value); setActive(null); setLanguageReady(true); }
+      if (current) { setLanguage(value); setActive(null); setSummary(null); setRoundItems(null); setBusy(false); setActionError(null); ledger.current = {}; baseline.current = null; setLanguageReady(true); }
     }).catch(() => { if (current) setFailedQuery(`language:${reload}`); });
-    return () => { current = false; };
+    return () => { current = false; openRequest.current++; };
   }, [db, reload, setActive]));
   const activeFilter = isStudyFilter(requestedFilter) ? requestedFilter : filter;
   const sessionLimit = requestedCount === "5" ? 5 : 12;
-  const queryKey = JSON.stringify([activeFilter, language, reload, requestedSign, requestedTopic, search, sessionLimit]);
+  const queryKey = JSON.stringify([activeFilter, category, language, reload, requestedSign, requestedTopic, search, sessionLimit]);
   const loading = !languageReady || loadedQuery !== queryKey;
   const readError = failedQuery === queryKey || failedQuery === `language:${reload}`;
   useEffect(() => {
@@ -79,29 +100,45 @@ export default function StudyScreen() {
     const topicClause = requestedTopic ? " AND EXISTS (SELECT 1 FROM question_topics t WHERE t.question_id = q.id AND t.topic = ?)" : "";
     const signClause = requestedSign ? " AND EXISTS (SELECT 1 FROM question_signs s WHERE s.question_id = q.id AND s.sign_code = ?)" : "";
     const searchClause = trimmedSearch ? " AND COALESCE(tr.question, q.question) LIKE ?" : "";
-    const query = `SELECT DISTINCT q.id, COALESCE(tr.question, q.question) AS question, CASE WHEN tr.question IS NULL THEN 'pl' ELSE tr.language END AS contentLanguage, q.points, q.scope, q.correct_answer, q.media_filename FROM questions q LEFT JOIN question_translations tr ON tr.question_id = q.id AND tr.language = ? ${joins} WHERE (${where})${topicClause}${signClause}${searchClause} ORDER BY ${order} LIMIT ${sessionLimit}`;
-    const params = [language, ...(requestedTopic ? [requestedTopic] : []), ...(requestedSign ? [requestedSign] : []), ...(trimmedSearch ? [`%${trimmedSearch}%`] : [])];
-    void Promise.all([db.getAllAsync<StudyQuestion>(query, params), topicProgress(db)]).then(([rows, nextTopics]) => {
+    const query = `SELECT DISTINCT q.id, COALESCE(tr.question, q.question) AS question, CASE WHEN tr.question IS NULL THEN 'pl' ELSE tr.language END AS contentLanguage, q.points, q.scope, q.correct_answer, q.media_filename FROM questions q LEFT JOIN question_translations tr ON tr.question_id = q.id AND tr.language = ? ${joins} WHERE (${where}) AND ${categoryClause}${topicClause}${signClause}${searchClause} ORDER BY ${order} LIMIT ${sessionLimit}`;
+    const params = [language, category, ...(requestedTopic ? [requestedTopic] : []), ...(requestedSign ? [requestedSign] : []), ...(trimmedSearch ? [`%${trimmedSearch}%`] : [])];
+    void Promise.all([db.getAllAsync<StudyQuestion>(query, params), topicProgress(db, category)]).then(([rows, nextTopics]) => {
       if (current) { setItems(rows); setTopics(nextTopics); setFailedQuery(null); }
     }).catch(() => { if (current) setFailedQuery(queryKey); })
       .finally(() => { if (current) setLoadedQuery(queryKey); });
     return () => { current = false; };
-  }, [activeFilter, db, language, languageReady, queryKey, requestedSign, requestedTopic, search, sessionLimit]);
-  const open = async (item: StudyQuestion, itemIndex = items.findIndex((value) => value.id === item.id)) => {
+  }, [activeFilter, category, db, language, languageReady, queryKey, requestedSign, requestedTopic, search, sessionLimit]);
+  const batch = roundItems ?? items;
+  const open = async (item: StudyQuestion, itemIndex = batch.findIndex((value) => value.id === item.id)) => {
+    if (writing.current) return;
     const request = ++openRequest.current;
-    const content = await questionContent(db, item.id, language);
+    setBusy(true);
+    setActionError(null);
+    let content: Awaited<ReturnType<typeof questionContent>>;
+    let nextBaseline: MasterySnapshot;
+    try {
+      nextBaseline = baseline.current ?? await studyMastery(db, category);
+      content = await questionContent(db, item.id, language);
+    } catch {
+      if (request === openRequest.current) { setActionError('Nie udało się otworzyć pytania. Spróbuj ponownie.'); setBusy(false); }
+      return;
+    }
     if (request !== openRequest.current) return;
+    baseline.current = nextBaseline;
+    setBusy(false);
+    setRoundItems((previous) => previous ?? batch);
     setActiveIndex(itemIndex);
     setActive({ ...item, question: content.question, contentLanguage: content.contentLanguage });
     setExplanation(null);
     setExplanationLoading(true);
     setExplanationFailed(false);
     setAnswers(content.answers);
-    setSelected(null);
-    const flag = await db.getFirstAsync("SELECT question_id FROM flags WHERE question_id = ?", item.id);
-    if (request !== openRequest.current) return;
-    setFlagged(Boolean(flag));
+    setSelected(ledger.current[item.id]?.label ?? null);
+    setFlagged(false);
     try {
+      const flag = await db.getFirstAsync("SELECT question_id FROM flags WHERE question_id = ?", item.id);
+      if (request !== openRequest.current) return;
+      setFlagged(Boolean(flag));
       const details = await getQuestionExplanation(db, item.id);
       if (request === openRequest.current) setExplanation(details);
     } catch {
@@ -112,26 +149,94 @@ export default function StudyScreen() {
   };
   const move = (direction: -1 | 1) => {
     const nextIndex = activeIndex + direction;
-    if (nextIndex >= 0 && nextIndex < items.length) void open(items[nextIndex], nextIndex);
+    if (nextIndex >= 0 && nextIndex < batch.length) void open(batch[nextIndex], nextIndex);
   };
   const answer = async (label: string) => {
-    if (!active || selected) return;
-    setSelected(label);
+    const revision = userDataRevision();
+    if (!active || selected || writing.current || busy || ledger.current[active.id]) return;
+    writing.current = true;
+    setBusy(true);
+    setActionError(null);
+    const request = openRequest.current;
     const correct = label === active.correct_answer;
-    await Haptics.notificationAsync(
-      correct
-        ? Haptics.NotificationFeedbackType.Success
-        : Haptics.NotificationFeedbackType.Error,
-    );
-    playAnswerSound(correct);
-    await recordPracticeAnswer(db, active.id, label, correct);
+    try {
+      await recordPracticeAnswer(db, active.id, label, correct);
+      if (!userDataWritable(revision) || request !== openRequest.current) return;
+      ledger.current = { ...ledger.current, [active.id]: { label, correct } };
+      setSelected(label);
+      playAnswerSound(correct);
+      void Haptics.notificationAsync(correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } catch {
+      if (request === openRequest.current) setActionError('Nie zapisano odpowiedzi. Wybierz ją ponownie, aby spróbować jeszcze raz.');
+    } finally {
+      writing.current = false;
+      if (request === openRequest.current) setBusy(false);
+    }
   };
+  const finish = async () => {
+    if (writing.current || busy) return;
+    const request = ++openRequest.current;
+    setSummary(studySummary(batch.map((item) => item.id), ledger.current));
+    setActive(null);
+    setMasteryAfter(null);
+    setMasteryDelta(null);
+    setMasteryFailed(false);
+    try {
+      const snapshot = await studyMastery(db, category);
+      if (request === openRequest.current) { setMasteryAfter(snapshot); setMasteryDelta(baseline.current ? snapshot.mastered - baseline.current.mastered : null); }
+    } catch { if (request === openRequest.current) setMasteryFailed(true); }
+  };
+  const exit = () => {
+    openRequest.current++;
+    ledger.current = {};
+    baseline.current = null;
+    setSummary(null); setActive(null); setRoundItems(null); setActionError(null);
+    setReload((value) => value + 1);
+  };
+  const replay = async () => {
+    if (!summary || busy) return;
+    const mistakes = batch.filter((item) => summary.mistakes.includes(item.id));
+    if (!mistakes.length) return;
+    setBusy(true);
+    const request = ++openRequest.current;
+    try {
+      const snapshot = await studyMastery(db, category);
+      if (request !== openRequest.current) return;
+      baseline.current = snapshot;
+      ledger.current = {};
+      setRoundItems(mistakes); setSummary(null);
+      await open(mistakes[0], 0);
+    } catch { if (request === openRequest.current) setActionError('Nie udało się rozpocząć powtórki. Spróbuj ponownie.'); }
+    finally { if (request === openRequest.current) setBusy(false); }
+  };
+  if (summary) return (
+    <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
+      <Text style={s.title}>Podsumowanie nauki</Text>
+      <Text style={s.sub}>{categoryLabel(category)} · {summary.total} pytań w tej partii</Text>
+      <View style={s.card}>
+        <Text style={s.topicTitle}>{summary.unanswered ? 'Sesja zakończona wcześniej' : 'Partia ukończona!'}</Text>
+        <Text style={s.question}>Poprawne: {summary.correct} · Błędne: {summary.incorrect}</Text>
+        <Text style={s.sub}>Bez odpowiedzi: {summary.unanswered}. Samo obejrzenie pytania nie liczy się jako rozwiązanie.</Text>
+      </View>
+      <View style={s.card}>
+        <Text style={s.topicTitle}>Opanowanie materiału kategorii</Text>
+        {masteryAfter && masteryDelta !== null ? <>
+          <Text style={s.question}>{masteryAfter.mastered}/{masteryAfter.total} opanowanych pytań</Text>
+          <Text style={s.sub}>Zmiana w tej sesji: {masteryDelta > 0 ? '+' : ''}{masteryDelta} pytań.</Text>
+        </> : masteryFailed ? <LoadingError onRetry={() => void finish()} /> : <Text style={s.sub}>Odczyt postępu…</Text>}
+        <Text style={s.sub}>Opanowanie wymaga 3 poprawnych powtórek zaliczanych nie częściej niż co 24 godziny. Błąd zeruje serię danego pytania.</Text>
+      </View>
+      {actionError ? <Text accessibilityRole="alert" style={s.sub}>{actionError}</Text> : null}
+      {summary.incorrect ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void replay()} style={s.navButton}><Text style={s.navButtonText}>{busy ? 'Przygotowanie…' : `Powtórz błędy (${summary.incorrect})`}</Text></Pressable> : <Text style={s.sub}>Brak błędnych odpowiedzi w tej sesji.</Text>}
+      <Pressable accessibilityRole="button" disabled={busy} onPress={exit} style={s.navButton}><Text style={s.navButtonText}>Wróć do menu Nauki</Text></Pressable>
+    </ScrollView></SafeAreaView>
+  );
   if (active)
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView contentContainerStyle={s.content}>
-          <Pressable onPress={() => setActive(null)}>
-            <Text style={s.link}>← Wróć do pytań</Text>
+          <Pressable disabled={busy} onPress={() => void finish()} style={s.endButton}>
+            <Text style={s.link}>Zakończ sesję i zobacz podsumowanie</Text>
           </Pressable>
           <View style={s.row}>
             <Text style={s.badge}>{active.points} pkt</Text>
@@ -141,14 +246,16 @@ export default function StudyScreen() {
               <Text style={s.link}>{flagged ? "★ Zapisane" : "☆ Oznacz"}</Text>
             </Pressable>
           </View>
-          <Text style={s.cardPosition}>{activeIndex + 1} z {items.length}</Text>
+          <Text style={s.cardPosition}>{activeIndex + 1} z {batch.length}</Text>
           <QuestionMedia filename={active.media_filename} />
           <Text style={s.question}>{active.question}</Text>
           {active.contentLanguage !== language ? <Text style={s.sub}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
-          {active.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={answers} disabled={Boolean(selected)} selectedAnswer={selected} correctAnswer={selected ? active.correct_answer : undefined} onAnswer={(key) => void answer(key)} /> : answers.map((item) => (
+          {actionError ? <Text accessibilityRole="alert" style={s.sub}>{actionError}</Text> : null}
+          {busy ? <Text style={s.sub}>Zapisywanie lub wczytywanie…</Text> : null}
+          {active.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={answers} disabled={Boolean(selected) || busy} selectedAnswer={selected} correctAnswer={selected ? active.correct_answer : undefined} onAnswer={(key) => void answer(key)} /> : answers.map((item) => (
             <Pressable
               key={item.label}
-              disabled={Boolean(selected)}
+              disabled={Boolean(selected) || busy}
               onPress={() => answer(item.label)}
               style={[
                 s.answer,
@@ -177,11 +284,11 @@ export default function StudyScreen() {
             </View>
           )}
           <View style={s.navigator}>
-            <Pressable disabled={activeIndex <= 0} onPress={() => move(-1)} style={[s.navButton, activeIndex <= 0 && s.navButtonDisabled]}>
+            <Pressable disabled={activeIndex <= 0 || busy} onPress={() => move(-1)} style={[s.navButton, activeIndex <= 0 && s.navButtonDisabled]}>
               <Text style={s.navButtonText}>← Poprzednie</Text>
             </Pressable>
-            <Pressable disabled={activeIndex >= items.length - 1} onPress={() => move(1)} style={[s.navButton, activeIndex >= items.length - 1 && s.navButtonDisabled]}>
-              <Text style={s.navButtonText}>Następne →</Text>
+            <Pressable disabled={busy} onPress={() => activeIndex >= batch.length - 1 ? void finish() : move(1)} style={s.navButton}>
+              <Text style={s.navButtonText}>{activeIndex >= batch.length - 1 ? 'Podsumowanie' : 'Następne →'}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -191,6 +298,8 @@ export default function StudyScreen() {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
         <Text style={s.title}>Nauka</Text>
+        {actionError ? <Text accessibilityRole="alert" style={s.sub}>{actionError}</Text> : null}
+        <Text style={s.sub}>{categoryLabel(category)} · wspólna z egzaminem</Text>
         {requestedSign ? <View style={s.row}><Text style={s.badge}>Znak {requestedSign}</Text><Pressable onPress={() => { setActive(null); router.setParams({ sign: undefined }); }}><Text style={s.link}>Usuń filtr znaku</Text></Pressable></View> : null}
         <Text style={s.sub}>
           {sessionLimit === 5
@@ -302,6 +411,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   },
   cardPosition: { alignSelf: "center", color: colors.textSecondary, fontSize: 13, fontVariant: ["tabular-nums"], marginTop: 4 },
   link: { color: colors.primaryText, fontWeight: "700" },
+  endButton: { minHeight: 48, justifyContent: 'center' },
   answer: {
     minHeight: 60,
     alignItems: "center",

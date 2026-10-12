@@ -18,6 +18,8 @@ import { AnimatedProgress } from "@/components/animated-progress";
 import { ExamTimer } from "@/components/exam-timer";
 import { questionTimerSeconds } from "@/domain/timer-presentation";
 import { QuestionTransition } from "@/components/question-transition";
+import { LoadingError } from "@/components/skeleton";
+import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { AnimatedExamScore, SuccessBadge } from "@/components/exam-result-motion";
 import type { QuestionLanguage } from "@/database/translations";
 import { TabBarContext } from "@/context/tab-bar-context";
@@ -40,10 +42,14 @@ const initialPhaseFor = (question: Question): ExamPhase => {
 };
 
 export default function ExamScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <ActiveExamScreen key={id} id={id} />;
+}
+
+function ActiveExamScreen({ id }: { id: string }) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
-  const { id } = useLocalSearchParams<{ id: string }>();
   const { setIsTabBarHidden } = useContext(TabBarContext);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [category, setCategory] = useState("B");
@@ -58,6 +64,8 @@ export default function ExamScreen() {
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [result, setResult] = useState<{ id: string; score: number; passed: boolean } | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reload, setReload] = useState(0);
 
   const question = questions[index];
   const clockKey = question ? `${question.id}:${phase}` : '';
@@ -92,11 +100,12 @@ export default function ExamScreen() {
       setQuestions(exam.questions);
       setSelections(exam.selections);
       setPhase(initialPhaseFor(current));
-    });
+      setLoadFailed(false);
+    }).catch(() => { if (active) setLoadFailed(true); });
     return () => {
       active = false;
     };
-  }, [db, id]);
+  }, [db, id, reload]);
 
   useEffect(() => {
     if (!expiresAt || result) return;
@@ -109,10 +118,12 @@ export default function ExamScreen() {
 
   const finishExam = useCallback(
     async (answers: Record<number, string>) => {
-      if (isFinishing || !questions.length) return;
+      if (isFinishing || !questions.length || !userDataWritable()) return;
+      const revision = userDataRevision();
       setIsFinishing(true);
       const startedAt = expiresAt ? expiresAt - 25 * 60 * 1000 : Date.now();
       const completed = await saveCompletedExam(db, category, questions, answers, startedAt, language);
+      if (!userDataWritable(revision)) return;
       await clearActiveExam(db);
       setSessionId(null);
       setResult(completed);
@@ -122,12 +133,14 @@ export default function ExamScreen() {
 
   const advance = useCallback(
     async (answer: string | null) => {
-      if (!question || isAdvancing || result) return;
+      if (!question || isAdvancing || result || !userDataWritable()) return;
+      const revision = userDataRevision();
       setIsAdvancing(true);
       const updated = answer ? { ...selections, [question.id]: answer } : selections;
       if (sessionId) {
         await saveActiveProgress(db, sessionId, index + 1, question.id, answer);
       }
+      if (!userDataWritable(revision)) return;
       if (index === questions.length - 1) {
         setSelections(updated);
         await finishExam(updated);
@@ -218,7 +231,10 @@ export default function ExamScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.loading}>
-          <Text style={styles.muted}>Przygotowujemy egzamin…</Text>
+          {loadFailed ? <>
+            <LoadingError onRetry={() => setReload((value) => value + 1)} />
+            <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => router.replace("/")}><Text style={styles.primaryButtonText}>Wróć do panelu</Text></Pressable>
+          </> : <Text style={styles.muted}>Przygotowujemy egzamin…</Text>}
         </View>
       </SafeAreaView>
     );
