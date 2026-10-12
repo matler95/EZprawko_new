@@ -1,5 +1,17 @@
 # Implementation progress
 
+## Checkpoint — PLAN_IMPLEMENTACJI.md, point 4.1: about and legal document screens (2026-10-12)
+
+- Added an About card in Settings with project/installed-binary version and build metadata, ministry question-bank source and explicit pending media-rights notice. Removed the obsolete CDN-not-configured footer; this does not change private CDN access.
+- Added Router screens `/legal/privacy` and `/legal/terms`, backed by bundled Polish content readable offline without account/network requests. A shared themed reader provides selectable paragraphs, semantic headings, 48px back/link controls, bounded text width and direct-link fallback to Settings. External browser-opening failures are caught and expose a copyable URL.
+- Audited current SQLite, Supabase auth/session storage, media-token, Cloudflare Worker/cache and reminder code. Drafts distinguish local progress from optional network media/auth, AsyncStorage tokens, 120-second file grants, potential infrastructure logs/system backups, local reminders and separate local/account deletion. They do not promise not-yet-implemented export/deletion or complete explanations.
+- Documents visibly remain private-test drafts. Operator/controller identity/contact, lawful bases, cloud retention/regions/transfers, complaints procedure and licence evidence cannot be invented from source code. LEGAL_RELEASE_CHECKLIST.md records publication dependencies and reviewed UODO/ministry references; no GDPR-compliance/legal-approval claim is made.
+- Added SDK-compatible `expo-application ~57.0.3` via `npx expo install` for actual installed-binary metadata; Expo Go's host build is not labelled as EZprawko. Rebuild a development client if it lacks this native module. No native directories, SQLite schemas/data, exam engine, translations, sign lexicon or CDN deployment were changed.
+- Mobile UI guidance informed restrained themed typography, readable line lengths, large controls and accessible source/navigation affordances. Device/large-text/offline QA is recorded in QA_CHECKLIST.md, separately from stubbed contracts.
+- Validation passed: `npx tsc --noEmit`, `npx expo lint`, legal UI/metadata/link-failure contracts in both themes, Phase 1 UI/explanation-card and bank-progress regressions, 24 contrast checks, Android export (1,725 modules, 6.5 MB) and `git diff --check`. An export is not an EAS native build or legal approval.
+- Installer reported 30 dependency audit findings (12 moderate, 18 high); no automatic or breaking audit fix was applied in this UI/content point. A scoped dependency security review remains necessary before release.
+- Point 4.2 (data reset/export/deletion) awaits separate user confirmation. These draft texts must be updated as data-management capabilities are implemented.
+
 ## Checkpoint — PLAN_IMPLEMENTACJI.md, point 3.4: score trend and full-bank coverage (2026-10-12)
 
 - Implemented only the approved point 3.4. Progress now shows the latest seven completed exams in chronological order, an exact 68/74 reference line, a truthful 0–74 scale (zero scores have zero-height bars), score labels and explicit pass/fail text.

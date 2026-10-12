@@ -16,6 +16,7 @@ import {
 } from "@/services/reminders";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { MediaAccountCard } from "@/components/media-account-card";
+import { AppAboutCard } from "@/components/app-about-card";
 import { questionLanguages, selectedQuestionLanguage, setQuestionLanguage, translationCoverage, type QuestionLanguage } from "@/database/translations";
 
 export default function SettingsScreen() {
@@ -122,10 +123,7 @@ export default function SettingsScreen() {
             <Text style={s.action}>{reminder ? "Wyłącz" : "Włącz"}</Text>
           </Pressable>
         </View>
-        <Text style={s.note}>
-          Media pozostają prywatne, dopóki nie skonfigurujesz zatwierdzonego
-          CDN.
-        </Text>
+        <AppAboutCard />
       </ScrollView>
     </SafeAreaView>
   );
@@ -150,5 +148,4 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   categoryTextActive: { color: colors.onPrimary, fontWeight: "800" },
   sub: { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
   action: { color: colors.primaryText, fontWeight: "700" },
-  note: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 16 },
 });

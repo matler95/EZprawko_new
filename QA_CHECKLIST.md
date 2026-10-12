@@ -2,6 +2,16 @@
 
 Run this checklist on a physical Android device and, before public release, an iPhone. Record the app version, device model, OS version, and outcome for every failed item.
 
+## New plan — point 4.1 about and legal documents
+
+- [ ] Settings shows project version, installed-binary build number and ministry source/rights notice. Compare version/build with the installed EAS binary; Expo Go must not show its host build as EZprawko's build. Missing/web metadata is explicitly unavailable.
+- [ ] Open Privacy and Terms from Settings in both themes; verify full Polish text, visible draft/revision notices, readable paragraphs, selectable text and 48px navigation/link controls at large font size on a compact phone.
+- [ ] Read both documents in airplane mode without an account: local text must remain available. External links may fail but must not crash the screen; address can be copied.
+- [ ] Verify Back returns from each document; a cold deep link without history falls back to Settings. Android system Back also leaves the document without resetting SQLite or logging out.
+- [ ] Documents must not imply a granted ministry/media licence, completed export/account deletion, guaranteed exam success or a legally approved public release. Follow LEGAL_RELEASE_CHECKLIST.md before changing draft status.
+- [ ] If the current development-client binary lacks expo-application, rebuild it using Expo/EAS (no manual native edits). Do not treat the Android JS export as a successful native build.
+- [ ] Run `node scripts/test-legal-ui.cjs`; contract tests are not legal review or device QA.
+
 ## New plan — point 3.4 progress chart and coverage
 
 - [ ] In light/dark mode, verify 0, 67, 68 and 74-point bars against the dashed 68/74 threshold. Zero must not be drawn as a nonzero score; dates, years, local times and categories remain visible below columns.
