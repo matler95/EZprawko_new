@@ -7,9 +7,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import {
   questionExplanation,
   recordPracticeAnswer,
+  topicProgress,
   toggleFlag,
+  type TopicProgress,
 } from "@/database/repository";
 import { playAnswerSound } from "@/services/answer-feedback";
+import { QuestionMedia } from "@/components/question-media";
 
 type StudyQuestion = {
   id: number;
@@ -17,6 +20,7 @@ type StudyQuestion = {
   points: number;
   scope: string;
   correct_answer: string;
+  media_filename: string | null;
 };
 type Answer = { label: string; answer: string };
 type StudyFilter = "all" | "three" | "basic" | "specialist" | "mistakes" | "flags";
@@ -27,18 +31,21 @@ function isStudyFilter(value: string | undefined): value is StudyFilter {
 
 export default function StudyScreen() {
   const db = useSQLiteContext();
-  const { filter: requestedFilter, count: requestedCount } = useLocalSearchParams<{
+  const { filter: requestedFilter, count: requestedCount, topic: requestedTopic } = useLocalSearchParams<{
     filter?: string;
     count?: string;
+    topic?: string;
   }>();
   const [items, setItems] = useState<StudyQuestion[]>([]);
   const [active, setActive] = useState<StudyQuestion | null>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [flagged, setFlagged] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [filter, setFilter] = useState<StudyFilter>("all");
   const [search, setSearch] = useState("");
+  const [topics, setTopics] = useState<TopicProgress[]>([]);
   const activeFilter = isStudyFilter(requestedFilter) ? requestedFilter : filter;
   const sessionLimit = requestedCount === "5" ? 5 : 12;
   useEffect(() => {
@@ -59,12 +66,15 @@ export default function StudyScreen() {
     }
 
     const trimmedSearch = search.trim();
+    const topicClause = requestedTopic ? " AND EXISTS (SELECT 1 FROM question_topics t WHERE t.question_id = q.id AND t.topic = ?)" : "";
     const searchClause = trimmedSearch ? " AND q.question LIKE ?" : "";
-    const query = `SELECT DISTINCT q.id, q.question, q.points, q.scope, q.correct_answer FROM questions q ${joins} WHERE (${where})${searchClause} ORDER BY ${order} LIMIT ${sessionLimit}`;
-    const params = trimmedSearch ? [`%${trimmedSearch}%`] : [];
+    const query = `SELECT DISTINCT q.id, q.question, q.points, q.scope, q.correct_answer, q.media_filename FROM questions q ${joins} WHERE (${where})${topicClause}${searchClause} ORDER BY ${order} LIMIT ${sessionLimit}`;
+    const params = [...(requestedTopic ? [requestedTopic] : []), ...(trimmedSearch ? [`%${trimmedSearch}%`] : [])];
     db.getAllAsync<StudyQuestion>(query, params).then(setItems);
-  }, [activeFilter, db, search, sessionLimit]);
-  const open = async (item: StudyQuestion) => {
+    void topicProgress(db).then(setTopics);
+  }, [activeFilter, db, requestedTopic, search, sessionLimit]);
+  const open = async (item: StudyQuestion, itemIndex = items.findIndex((value) => value.id === item.id)) => {
+    setActiveIndex(itemIndex);
     setActive(item);
     setExplanation(null);
     setAnswers(
@@ -83,6 +93,10 @@ export default function StudyScreen() {
       ),
     );
     setExplanation(await questionExplanation(db, item.id));
+  };
+  const move = (direction: -1 | 1) => {
+    const nextIndex = activeIndex + direction;
+    if (nextIndex >= 0 && nextIndex < items.length) void open(items[nextIndex], nextIndex);
   };
   const answer = async (label: string) => {
     if (!active || selected) return;
@@ -111,6 +125,8 @@ export default function StudyScreen() {
               <Text style={s.link}>{flagged ? "★ Zapisane" : "☆ Oznacz"}</Text>
             </Pressable>
           </View>
+          <Text style={s.cardPosition}>{activeIndex + 1} z {items.length}</Text>
+          <QuestionMedia filename={active.media_filename} />
           <Text style={s.question}>{active.question}</Text>
           {answers.map((item) => (
             <Pressable
@@ -145,6 +161,14 @@ export default function StudyScreen() {
               ) : null}
             </View>
           )}
+          <View style={s.navigator}>
+            <Pressable disabled={activeIndex <= 0} onPress={() => move(-1)} style={[s.navButton, activeIndex <= 0 && s.navButtonDisabled]}>
+              <Text style={s.navButtonText}>← Poprzednie</Text>
+            </Pressable>
+            <Pressable disabled={activeIndex >= items.length - 1} onPress={() => move(1)} style={[s.navButton, activeIndex >= items.length - 1 && s.navButtonDisabled]}>
+              <Text style={s.navButtonText}>Następne →</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </SafeAreaView>
     );
@@ -157,6 +181,19 @@ export default function StudyScreen() {
             ? "Krótka sesja: 5 pytań o największej wadze."
             : "Wybierz pytanie z oficjalnej bazy."}
         </Text>
+        {!requestedTopic ? (
+          <View style={s.topicSection}>
+            <Text style={s.topicTitle}>Ucz się według działów</Text>
+            {topics.map((topic) => (
+              <Pressable key={topic.topic} onPress={() => router.setParams({ topic: topic.topic })} style={s.topicCard}>
+                <View><Text style={s.topicName}>{topic.topic}</Text><Text style={s.topicMeta}>Opanowane {topic.mastered}/{topic.total} · przerobione {topic.practiced}</Text></View>
+                <Text style={s.link}>›</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Pressable onPress={() => router.setParams({ topic: undefined })}><Text style={s.link}>← Wszystkie działy</Text></Pressable>
+        )}
         <TextInput
           accessibilityLabel="Szukaj w pytaniach"
           onChangeText={setSearch}
@@ -222,6 +259,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
   },
   filters: { flexDirection: "row", gap: 8, marginBottom: 8, flexWrap: "wrap" },
+  topicSection: { gap: 8, marginBottom: 8 },
+  topicTitle: { color: "#18221D", fontSize: 18, fontWeight: "700", marginTop: 8 },
+  topicCard: { alignItems: "center", backgroundColor: "#E6F0E5", borderRadius: 16, flexDirection: "row", justifyContent: "space-between", padding: 14 },
+  topicName: { color: "#1E3126", fontWeight: "700" },
+  topicMeta: { color: "#526358", fontSize: 12, marginTop: 3 },
   filter: {
     backgroundColor: "#E6F0E5",
     paddingHorizontal: 12,
@@ -240,6 +282,7 @@ const s = StyleSheet.create({
     color: "#26332B",
     marginVertical: 8,
   },
+  cardPosition: { alignSelf: "center", color: "#718076", fontSize: 13, fontVariant: ["tabular-nums"], marginTop: 4 },
   link: { color: "#397355", fontWeight: "700" },
   answer: {
     padding: 16,
@@ -270,6 +313,10 @@ const s = StyleSheet.create({
     borderRadius: 16,
     marginTop: 12,
   },
+  navigator: { flexDirection: "row", gap: 12, marginTop: 16 },
+  navButton: { alignItems: "center", backgroundColor: "#1F704C", borderRadius: 14, flex: 1, justifyContent: "center", minHeight: 52, paddingHorizontal: 8 },
+  navButtonDisabled: { backgroundColor: "#B6C2BA" },
+  navButtonText: { color: "#FFF", fontWeight: "700" },
   feedbackTitle: { fontSize: 17, fontWeight: "700", color: "#634D18" },
   explanation: { color: "#526358", lineHeight: 20, marginTop: 8 },
   empty: { color: "#718076", paddingTop: 20 },

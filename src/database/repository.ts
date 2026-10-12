@@ -18,6 +18,27 @@ type QuestionRow = {
   media_filename: string | null;
 };
 
+export const learningTopics = [
+  "Znaki i sygnały drogowe",
+  "Skrzyżowania i pierwszeństwo",
+  "Zasady jazdy i manewry",
+  "Pierwsza pomoc i wypadki",
+  "Technika pojazdu i ładunek",
+  "Pozostałe zagadnienia",
+] as const;
+
+export type LearningTopic = (typeof learningTopics)[number];
+
+function classifyTopic(question: string): LearningTopic {
+  const normalized = question.toLocaleLowerCase("pl-PL");
+  if (/(znak|sygnał|sygnaliz|tabliczk|światł)/.test(normalized)) return "Znaki i sygnały drogowe";
+  if (/(skrzyż|pierwszeństw|rondo|ustąp)/.test(normalized)) return "Skrzyżowania i pierwszeństwo";
+  if (/(pierwszej pomocy|wypadk|rann|krwotok|resuscyt|poszkodowan)/.test(normalized)) return "Pierwsza pomoc i wypadki";
+  if (/(pojazd|opon|hamul|ładunk|przyczep|silnik|ciśnien|technicz)/.test(normalized)) return "Technika pojazdu i ładunek";
+  if (/(wyprzedz|prędko|pas ruchu|manewr|zatrzym|parkow|kierunkowskaz|odległo)/.test(normalized)) return "Zasady jazdy i manewry";
+  return "Pozostałe zagadnienia";
+}
+
 export async function initializeDatabase(db: SQLiteDatabase) {
   await db.execAsync(`
     PRAGMA foreign_keys = ON;
@@ -30,7 +51,43 @@ export async function initializeDatabase(db: SQLiteDatabase) {
     CREATE TABLE IF NOT EXISTS challenge_days (day TEXT PRIMARY KEY, correct_answers INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS question_explanations (question_id INTEGER PRIMARY KEY, explanation TEXT NOT NULL, source_url TEXT, reviewed_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS question_topics (question_id INTEGER PRIMARY KEY, topic TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS practice_mastery (question_id INTEGER PRIMARY KEY, correct_streak INTEGER NOT NULL DEFAULT 0, last_correct_at INTEGER);
   `);
+  const topicCount = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) AS count FROM question_topics");
+  if (!topicCount?.count) {
+    const questions = await db.getAllAsync<{ id: number; question: string }>("SELECT id, question FROM questions");
+    await db.withExclusiveTransactionAsync(async (transaction) => {
+      for (const question of questions) {
+        await transaction.runAsync(
+          "INSERT OR REPLACE INTO question_topics (question_id, topic) VALUES (?, ?)",
+          question.id,
+          classifyTopic(question.question),
+        );
+      }
+    });
+  }
+}
+
+export type TopicProgress = { topic: LearningTopic; total: number; practiced: number; mastered: number };
+
+export async function topicProgress(db: SQLiteDatabase): Promise<TopicProgress[]> {
+  const rows = await db.getAllAsync<{ topic: LearningTopic; total: number; practiced: number; mastered: number }>(
+    `SELECT t.topic, COUNT(*) AS total,
+       SUM(CASE WHEN p.question_id IS NOT NULL THEN 1 ELSE 0 END) AS practiced,
+       SUM(CASE WHEN COALESCE(m.correct_streak, 0) >= 3 THEN 1 ELSE 0 END) AS mastered
+     FROM question_topics t
+     LEFT JOIN (
+       SELECT question_id,
+         COUNT(*) FILTER (WHERE is_correct = 1) AS correct_streak,
+         MAX(CASE WHEN is_correct = 1 THEN answered_at END) AS last_correct_at
+       FROM practice_attempts GROUP BY question_id
+     ) p ON p.question_id = t.question_id
+     LEFT JOIN practice_mastery m ON m.question_id = t.question_id
+     GROUP BY t.topic`,
+  );
+  const byTopic = new Map(rows.map((row) => [row.topic, row]));
+  return learningTopics.map((topic) => byTopic.get(topic) ?? { topic, total: 0, practiced: 0, mastered: 0 });
 }
 
 export async function createExam(
@@ -71,6 +128,7 @@ export async function saveCompletedExam(
   category: string,
   questions: Question[],
   selected: Record<number, string | undefined>,
+  startedAt = Date.now(),
 ) {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const score = questions.reduce(
@@ -84,7 +142,7 @@ export async function saveCompletedExam(
       "INSERT INTO exam_sessions VALUES (?, ?, ?, ?, ?, ?, ?)",
       id,
       category,
-      Date.now(),
+      startedAt,
       Date.now(),
       Date.now(),
       score,
@@ -100,6 +158,91 @@ export async function saveCompletedExam(
       );
   });
   return { id, score, passed: score >= 68 };
+}
+
+export type ExamReviewQuestion = {
+  position: number;
+  id: number;
+  scope: ExamQuestion["scope"];
+  points: 1 | 2 | 3;
+  question: string;
+  correctAnswer: string;
+  selectedAnswer: string | null;
+  isCorrect: boolean;
+  mediaFilename: string | null;
+  answers: { label: string; answer: string }[];
+};
+
+export type ExamReview = {
+  id: string;
+  category: string;
+  score: number;
+  passed: boolean;
+  durationSeconds: number;
+  questions: ExamReviewQuestion[];
+};
+
+export async function examReview(
+  db: SQLiteDatabase,
+  sessionId: string,
+): Promise<ExamReview | null> {
+  const session = await db.getFirstAsync<{
+    id: string;
+    category: string;
+    started_at: number;
+    completed_at: number;
+    score: number;
+    passed: number;
+  }>(
+    "SELECT id, category, started_at, completed_at, score, passed FROM exam_sessions WHERE id = ?",
+    sessionId,
+  );
+  if (!session || !session.completed_at || session.score === null || session.passed === null) {
+    return null;
+  }
+  const rows = await db.getAllAsync<{
+    question_id: number;
+    selected_answer: string | null;
+    is_correct: number;
+    scope: ExamQuestion["scope"];
+    points: 1 | 2 | 3;
+    question: string;
+    correct_answer: string;
+    media_filename: string | null;
+  }>(
+    `SELECT a.question_id, a.selected_answer, a.is_correct,
+            q.scope, q.points, q.question, q.correct_answer, q.media_filename
+     FROM exam_answers a
+     JOIN questions q ON q.id = a.question_id
+     WHERE a.session_id = ?
+     ORDER BY a.rowid`,
+    sessionId,
+  );
+  const questions = await Promise.all(
+    rows.map(async (row, position) => ({
+      position,
+      id: row.question_id,
+      scope: row.scope,
+      points: row.points,
+      question: row.question,
+      correctAnswer: row.correct_answer,
+      selectedAnswer: row.selected_answer,
+      isCorrect: row.is_correct === 1,
+      mediaFilename: row.media_filename,
+      answers: await db.getAllAsync<{ label: string; answer: string }>(
+        "SELECT label, answer FROM answers WHERE question_id = ? ORDER BY label",
+        row.question_id,
+      ),
+    })),
+  );
+  return {
+    id: session.id,
+    category: session.category,
+    score: session.score,
+    passed: session.passed === 1,
+    durationSeconds: Math.max(0, Math.round((session.completed_at - session.started_at) / 1000)),
+    questions,
+  };
 }
 
 export type ExamHistoryItem = {
@@ -210,12 +353,25 @@ export async function recordPracticeAnswer(
   selectedAnswer: string,
   correct: boolean,
 ) {
+  const answeredAt = Date.now();
   await db.runAsync(
     "INSERT INTO practice_attempts (question_id, selected_answer, is_correct, answered_at) VALUES (?, ?, ?, ?)",
     questionId,
     selectedAnswer,
     correct ? 1 : 0,
-    Date.now(),
+    answeredAt,
+  );
+  const mastery = await db.getFirstAsync<{ correct_streak: number; last_correct_at: number | null }>(
+    "SELECT correct_streak, last_correct_at FROM practice_mastery WHERE question_id = ?",
+    questionId,
+  );
+  const canIncrease = correct && (!mastery?.last_correct_at || answeredAt - mastery.last_correct_at >= 24 * 60 * 60 * 1000);
+  await db.runAsync(
+    `INSERT INTO practice_mastery (question_id, correct_streak, last_correct_at) VALUES (?, ?, ?)
+     ON CONFLICT(question_id) DO UPDATE SET correct_streak = excluded.correct_streak, last_correct_at = excluded.last_correct_at`,
+    questionId,
+    correct ? (canIncrease ? (mastery?.correct_streak ?? 0) + 1 : (mastery?.correct_streak ?? 1)) : 0,
+    correct ? (canIncrease ? answeredAt : mastery?.last_correct_at ?? answeredAt) : null,
   );
   if (correct) {
     const day = new Date().toISOString().slice(0, 10);
@@ -404,6 +560,8 @@ export async function resumeActiveExam(db: SQLiteDatabase) {
       scope: item.scope,
       points: item.points,
       categories: JSON.parse(item.categories),
+      readingTimeSeconds: item.scope === "PODSTAWOWY" ? 20 : 0,
+      answeringTimeSeconds: item.scope === "PODSTAWOWY" ? 15 : 50,
     } as ExamQuestion;
   });
   return {
@@ -425,7 +583,7 @@ export async function saveActiveProgress(
   sessionId: string,
   index: number,
   questionId: number,
-  selectedAnswer: string,
+  selectedAnswer: string | null,
 ) {
   await db.withExclusiveTransactionAsync(async (transaction) => {
     await transaction.runAsync(

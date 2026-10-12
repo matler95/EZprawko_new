@@ -1,3 +1,10 @@
+export { default } from "@/components/dashboard-screen";
+
+/* Historical implementation retained temporarily for source migration. It is
+ * not part of the application bundle; the dashboard now lives in its own
+ * component and the active exam in /exam/[id].
+ */
+/*
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
@@ -792,3 +799,4 @@ const styles = StyleSheet.create({
   recoveryButtonText: { color: "#FFF", fontWeight: "700" },
   link: { color: "#397355", fontWeight: "700", padding: 16 },
 });
+*/

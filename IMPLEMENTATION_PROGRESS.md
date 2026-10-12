@@ -22,6 +22,37 @@
 - Detailed answer explanations. The imported official source contains no explanation field, so detailed explanations require a separately reviewed content source rather than generated legal/road-safety guidance.
 - Configure a signed private CDN/media-token service and transcode source WMV videos to MP4 before private device testing.
 - Physical-device QA, EAS configuration, and release-readiness review.
+
+## Checkpoint — Phase 1: official WORD exam flow and routing (2026-10-12)
+
+- Corrected the generator to always produce the official sequence: questions 1–20 are basic YES/NO (10×3, 6×2, 4×1), followed by questions 21–32 from the selected specialist category (6×3, 4×2, 2×1). Randomization now happens only inside those sections.
+- Added per-question timing metadata: basic questions use a 20-second reading/media phase and 15-second answer phase; specialist questions use 50 seconds to answer.
+- Moved the live exam into the dedicated full-screen `/exam/[id]` route. The dashboard now only starts or resumes an exam, and the tab bar is dynamically hidden throughout the exam route.
+- Implemented the question state machine and two timers: a 25-minute global deadline, enforced reading/answering states, disabled answers before the answer phase, and automatic zero-point advancement on question timeout.
+- In exam mode, MP4 video begins automatically once, does not loop, has no native controls, and unlocks the answer state when playback completes.
+- Validation passed: `npx tsc --noEmit`, `npx expo lint`, and `npx expo-doctor` (21/21 checks).
+
+## Checkpoint — Phase 2: exam review and mistake bank (2026-10-12)
+
+- Added the `/exam/review` route, reached directly from the completed-exam result screen.
+- The review gives the learner a 32-question outcome grid: green for correct, red for incorrect, and gray for a timed-out answer. Selecting a tile opens the full question, its media when available, every answer, the learner's choice, and the official key.
+- Added a diagnostic card that quantifies lost high-value points and identifies missed 3-point basic questions. The review records and displays the actual active-exam duration.
+- Exam errors are available immediately through the existing Study “Błędy” filter, which combines incorrect practice and completed-exam answers without duplicating question data.
+- Validation passed: `npx tsc --noEmit`, `npx expo lint`, and `npx expo-doctor` (21/21 checks).
+
+## Checkpoint — Phase 3: topic learning and spaced repetition foundation (2026-10-12)
+
+- Added a local topic index for the complete official question catalog, generated deterministically from question text and stored in SQLite without changing source questions.
+- Added thematic study cards with total, attempted, and mastered counts, plus one-tap filtering to a selected topic.
+- Added persistent mastery tracking: a question reaches mastery after three correct practice answers separated by at least 24 hours; an incorrect answer resets the sequence.
+- Validation passed: `npx tsc --noEmit` and `npx expo lint`.
+
+## Checkpoint — Phase 3: flashcard navigation (2026-10-12)
+
+- Extended the Study question view into a free-navigation flashcard flow. Learners can move backward and forward through the current session without the forward-only restriction of the exam.
+- Added the question's cached image or compatible video to the study card, along with a clear session position indicator and thumb-reachable previous/next controls.
+- Answer feedback, flagging, and reviewed explanations remain intact when moving between cards.
+- Validation passed: `npx tsc --noEmit` and `npx expo lint`.
 # Checkpoint — media foundation (2026-10-12)
 
 - Installed SDK-compatible `expo-video`.

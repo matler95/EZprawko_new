@@ -1,3 +1,4 @@
+import { useEventListener } from 'expo';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -7,6 +8,8 @@ import { cachedMediaUri } from '@/services/media-cache';
 
 type QuestionMediaProps = {
   filename?: string | null;
+  examMode?: boolean;
+  onVideoEnd?: () => void;
 };
 
 const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
@@ -16,15 +19,32 @@ function extension(filename: string) {
   return filename.split('.').pop()?.toLowerCase() ?? '';
 }
 
-function VideoMedia({ uri }: { uri: string }) {
+function VideoMedia({
+  uri,
+  examMode = false,
+  onVideoEnd,
+}: {
+  uri: string;
+  examMode?: boolean;
+  onVideoEnd?: () => void;
+}) {
   const player = useVideoPlayer(uri, (instance) => {
     instance.loop = false;
+    if (examMode) instance.play();
   });
+  useEventListener(player, 'playToEnd', () => onVideoEnd?.());
 
-  return <VideoView contentFit="contain" nativeControls player={player} style={styles.video} />;
+  return (
+    <VideoView
+      contentFit="contain"
+      nativeControls={!examMode}
+      player={player}
+      style={styles.video}
+    />
+  );
 }
 
-export function QuestionMedia({ filename }: QuestionMediaProps) {
+export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaProps) {
   const [media, setMedia] = useState<{
     filename: string;
     uri?: string;
@@ -92,7 +112,7 @@ export function QuestionMedia({ filename }: QuestionMediaProps) {
 
   if (isImage) return <Image accessibilityLabel="Materiał do pytania" resizeMode="contain" source={{ uri }} style={styles.image} />;
 
-  if (canPlay) return <VideoMedia uri={uri} />;
+  if (canPlay) return <VideoMedia examMode={examMode} onVideoEnd={onVideoEnd} uri={uri} />;
 
   return (
     <View style={styles.statusCard}>

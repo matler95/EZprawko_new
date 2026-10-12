@@ -5,6 +5,10 @@ export type ExamQuestion = {
   scope: ExamScope;
   points: 1 | 2 | 3;
   categories: string[];
+  /** Time during which an answer is intentionally unavailable. */
+  readingTimeSeconds: number;
+  /** Time available to select the answer after the reading phase. */
+  answeringTimeSeconds: number;
 };
 
 export type Exam = {
@@ -14,6 +18,11 @@ export type Exam = {
   maxScore: number;
   questions: ExamQuestion[];
 };
+
+type ExamQuestionSource = Omit<
+  ExamQuestion,
+  'readingTimeSeconds' | 'answeringTimeSeconds'
+>;
 
 const QUOTAS: Record<ExamScope, Record<1 | 2 | 3, number>> = {
   PODSTAWOWY: { 3: 10, 2: 6, 1: 4 },
@@ -29,9 +38,14 @@ const shuffle = <T,>(items: T[], random: () => number) => {
   return copy;
 };
 
-export function buildOfficialExam(questions: ExamQuestion[], category: string, random = Math.random): Exam {
-  const selected: ExamQuestion[] = [];
+export function buildOfficialExam(
+  questions: ExamQuestionSource[],
+  category: string,
+  random = Math.random,
+): Exam {
+  const questionsByScope = {} as Record<ExamScope, ExamQuestion[]>;
   for (const scope of ['PODSTAWOWY', 'SPECJALISTYCZNY'] as const) {
+    const selected: ExamQuestion[] = [];
     for (const points of [3, 2, 1] as const) {
       const candidates = questions.filter((question) =>
         question.scope === scope && question.points === points &&
@@ -41,10 +55,24 @@ export function buildOfficialExam(questions: ExamQuestion[], category: string, r
       if (candidates.length < needed) {
         throw new Error(`Not enough ${scope} ${points}-point questions for category ${category}`);
       }
-      selected.push(...shuffle(candidates, random).slice(0, needed));
+      selected.push(
+        ...shuffle(candidates, random)
+          .slice(0, needed)
+          .map((question) => ({
+            ...question,
+            readingTimeSeconds: scope === 'PODSTAWOWY' ? 20 : 0,
+            answeringTimeSeconds: scope === 'PODSTAWOWY' ? 15 : 50,
+          })),
+      );
     }
+    // Only randomize within an official section. Basic questions must remain
+    // in positions 1-20 and specialist questions in positions 21-32.
+    questionsByScope[scope] = shuffle(selected, random);
   }
-  const questionsInOrder = shuffle(selected, random);
+  const questionsInOrder = [
+    ...questionsByScope.PODSTAWOWY,
+    ...questionsByScope.SPECJALISTYCZNY,
+  ];
   const total = questionsInOrder.reduce((sum, question) => sum + question.points, 0);
   if (questionsInOrder.length !== 32 || total !== 74 || new Set(questionsInOrder.map((question) => question.id)).size !== 32) {
     throw new Error('Generated exam violates the official structure');
