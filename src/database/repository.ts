@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { buildOfficialExam, type ExamQuestion } from "@/domain/exam-engine";
 import { installTranslations, selectedQuestionLanguage, examQuestionLanguage, questionContent, type QuestionLanguage } from "@/database/translations";
 import { installQuestionSigns } from "@/database/signs";
+import { getQuestionExplanation, installExplanations } from "@/database/explanations";
 
 export type Question = ExamQuestion & {
   question: string;
@@ -49,6 +50,7 @@ export async function initializeDatabase(db: SQLiteDatabase) {
     CREATE TABLE IF NOT EXISTS exam_answers (session_id TEXT NOT NULL, question_id INTEGER NOT NULL, selected_answer TEXT, is_correct INTEGER, PRIMARY KEY(session_id, question_id));
     CREATE TABLE IF NOT EXISTS flags (question_id INTEGER PRIMARY KEY, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS practice_attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, question_id INTEGER NOT NULL, selected_answer TEXT NOT NULL, is_correct INTEGER NOT NULL, answered_at INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS practice_attempts_question_correct ON practice_attempts(question_id, is_correct);
     CREATE TABLE IF NOT EXISTS active_exam (id TEXT PRIMARY KEY, category TEXT NOT NULL, expires_at INTEGER NOT NULL, current_index INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS active_exam_questions (session_id TEXT NOT NULL, position INTEGER NOT NULL, question_id INTEGER NOT NULL, selected_answer TEXT, PRIMARY KEY(session_id, position));
     CREATE TABLE IF NOT EXISTS challenge_days (day TEXT PRIMARY KEY, correct_answers INTEGER NOT NULL DEFAULT 0);
@@ -60,6 +62,7 @@ export async function initializeDatabase(db: SQLiteDatabase) {
   `);
   await installTranslations(db);
   await installQuestionSigns(db);
+  await installExplanations(db);
   const topicCount = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) AS count FROM question_topics");
   if (!topicCount?.count) {
     const questions = await db.getAllAsync<{ id: number; question: string }>("SELECT id, question FROM questions");
@@ -387,11 +390,7 @@ export async function recordPracticeAnswer(
 }
 
 export async function questionExplanation(db: SQLiteDatabase, questionId: number) {
-  const row = await db.getFirstAsync<{ explanation: string }>(
-    "SELECT explanation FROM question_explanations WHERE question_id = ?",
-    questionId,
-  );
-  return row?.explanation ?? null;
+  return (await getQuestionExplanation(db, questionId))?.explanationText ?? null;
 }
 
 export async function toggleFlag(db: SQLiteDatabase, questionId: number) {

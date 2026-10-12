@@ -6,7 +6,11 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { QuestionMedia } from "@/components/question-media";
+import { BasicAnswerButtons, basicAnswerText } from "@/components/basic-answer-buttons";
 import { examReview, type ExamReview, type ExamReviewQuestion } from "@/database/repository";
+import { getQuestionExplanation, type QuestionExplanation } from "@/database/explanations";
+import { ExplanationCard } from "@/components/explanation-card";
+import { AnimatedExamScore, SuccessBadge } from "@/components/exam-result-motion";
 
 const formatDuration = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
@@ -20,6 +24,15 @@ export default function ExamReviewScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
   const [review, setReview] = useState<ExamReview | null>(null);
   const [selected, setSelected] = useState<ExamReviewQuestion | null>(null);
+  const [explanation, setExplanation] = useState<{ id: number; value: QuestionExplanation | null; failed: boolean } | null>(null);
+  useEffect(() => {
+    if (!selected) return;
+    let current = true;
+    void getQuestionExplanation(db, selected.id).then((value) => {
+      if (current) setExplanation({ id: selected.id, value, failed: false });
+    }).catch(() => { if (current) setExplanation({ id: selected.id, value: null, failed: true }); });
+    return () => { current = false; };
+  }, [db, selected]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -52,8 +65,9 @@ export default function ExamReviewScreen() {
         <Pressable onPress={() => router.replace("/")}><Text style={styles.back}>← Panel główny</Text></Pressable>
         <Text style={styles.kicker}>PODSUMOWANIE EGZAMINU</Text>
         <View style={[styles.hero, review.passed ? styles.heroPassed : styles.heroFailed]}>
+          {review.passed ? <SuccessBadge key={review.id} inverse /> : null}
           <Text style={styles.verdict}>{review.passed ? "POZYTYWNY" : "NEGATYWNY"}</Text>
-          <Text style={styles.score}>{review.score}/74</Text>
+          <AnimatedExamScore key={review.id} score={review.score} sessionId={review.id} style={styles.score} />
           <Text style={styles.heroCopy}>Kategoria {review.category} · czas {formatDuration(review.durationSeconds)}</Text>
         </View>
 
@@ -104,7 +118,7 @@ export default function ExamReviewScreen() {
                 <QuestionMedia filename={selected.mediaFilename} />
                 <Text style={styles.question}>{selected.question}</Text>
                 {selected.contentLanguage !== review.language ? <Text style={styles.muted}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
-                {selected.answers.map((answer) => {
+                {selected.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={selected.answers} selectedAnswer={selected.selectedAnswer} correctAnswer={selected.correctAnswer} /> : selected.answers.map((answer) => {
                   const wasSelected = selected.selectedAnswer === answer.label;
                   const isCorrect = selected.correctAnswer === answer.label;
                   return (
@@ -116,8 +130,9 @@ export default function ExamReviewScreen() {
                   );
                 })}
                 <Text style={styles.answerSummary}>
-                  {selected.selectedAnswer ? `Twoja odpowiedź: ${selected.selectedAnswer}` : "Nie udzielono odpowiedzi"} · poprawna: {selected.correctAnswer}
+                  {selected.selectedAnswer ? `Twoja odpowiedź: ${selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.selectedAnswer) : selected.selectedAnswer}` : "Nie udzielono odpowiedzi"} · poprawna: {selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.correctAnswer) : selected.correctAnswer}
                 </Text>
+                <ExplanationCard explanation={explanation?.id === selected.id ? explanation.value : null} loading={explanation?.id !== selected.id} failed={explanation?.id === selected.id && explanation.failed} />
               </ScrollView>
             ) : null}
           </View>

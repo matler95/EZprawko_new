@@ -1,0 +1,89 @@
+// Native-stub contracts: timings are manually advanced; phone QA is separate.
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const React=require('react');
+const ts=require('typescript');
+const root=path.resolve(__dirname,'..');
+let ready=true,reduced=false,focused=true,refs=[],states=[],effects=[],prior=[],ri=0,si=0;
+const animations=[];
+class Value {
+  constructor(v){this.value=v;this.listeners=new Map();}
+  setValue(v){this.value=v;for(const fn of this.listeners.values())fn({value:v});}
+  addListener(fn){const id=String(this.listeners.size+1);this.listeners.set(id,fn);return id;}
+  removeListener(id){this.listeners.delete(id);}
+  interpolate(config){return config;}
+}
+const native={ View:'View',Text:'Text',StyleSheet:{create:(s)=>s,absoluteFill:{}},Platform:{select:(v)=>v.default},
+  Animated:{View:'AnimatedView',Value,timing:(value,config)=>{
+    const entry={value,config,started:false,stopped:false};animations.push(entry);
+    return { start:(callback)=>{entry.started=true;entry.callback=callback;},stop:()=>{entry.stopped=true;entry.callback?.({finished:false});} };
+  }},
+};
+const cache=new Map();
+function load(file){
+  if(cache.has(file))return cache.get(file);
+  const exports={};const code=ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
+  new Function('require','exports',code)((name)=>{
+    if(name==='react')return {...React,useEffect:(fn,deps)=>effects.push({fn,deps}),useRef:(initial)=>{const i=ri++;return refs[i]??(refs[i]={current:initial});},
+      useState:(initial)=>{const i=si++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],(v)=>{states[i]=typeof v==='function'?v(states[i]):v;}];}};
+    if(name==='react/jsx-runtime')return require(name);
+    if(name==='react-native')return native;
+    if(name==='expo-router')return {useIsFocused:()=>focused};
+    if(name==='@/hooks/use-reduced-motion')return {useMotionPreference:()=>({ready,reduced})};
+    if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors.light})};
+    if(name==='@/global.css')return {};
+    throw Error(`Unexpected dependency ${name}`);
+  },exports);cache.set(file,exports);return exports;
+}
+function render(component,props){
+  ri=0;si=0;effects=[];const tree=component(props);
+  prior=effects.map((e,i)=>{const old=prior[i];if(old&&old.deps.every((v,j)=>Object.is(v,e.deps[j])))return old;old?.cleanup?.();return {...e,cleanup:e.fn()};});
+  return tree;
+}
+function reset(){prior.forEach((e)=>e.cleanup?.());refs=[];states=[];prior=[];ready=true;reduced=false;focused=true;}
+const text=(node)=>React.isValidElement(node)?React.Children.toArray(node.props.children).map(text).join(''):String(node);
+const {QuestionTransition}=load('src/components/question-transition.tsx');
+const {AnimatedExamScore,SuccessBadge}=load('src/components/exam-result-motion.tsx');
+const child=React.createElement('Pressable',{disabled:false},'Answer');
+let tree=render(QuestionTransition,{children:child});
+assert.equal(tree.props.children,child,'entry transition must not replace or disable the live answer controls');
+assert.equal(animations.at(-1).config.duration,180);assert(animations.at(-1).config.useNativeDriver);
+reset();assert(animations.at(-1).stopped);
+const props={score:71,sessionId:'session-1'};
+ready=false;tree=render(AnimatedExamScore,props);assert.equal(text(tree),'—/74');assert(tree.props.accessibilityLabel.includes('71'));
+ready=true;render(AnimatedExamScore,props);const count=animations.at(-1);
+assert.equal(count.config.duration,900);assert.equal(count.config.useNativeDriver,false);assert.equal(count.config.toValue,71);
+count.value.setValue(100);tree=render(AnimatedExamScore,props);assert.equal(text(tree),'71/74');
+count.value.setValue(-10);tree=render(AnimatedExamScore,props);assert.equal(text(tree),'0/74');
+count.value.setValue(35.4);tree=render(AnimatedExamScore,props);assert.equal(text(tree),'35/74');
+focused=false;tree=render(AnimatedExamScore,props);assert.equal(text(tree),'71/74');assert(count.stopped);
+const before=animations.length;focused=true;tree=render(AnimatedExamScore,props);tree=render(AnimatedExamScore,props);
+assert.equal(text(tree),'71/74');assert.equal(animations.length,before,'focus return must not replay partial score counting');
+reset();assert.equal(count.value.listeners.size,0,'score listener must be removed');
+render(SuccessBadge,{});const halo=animations.at(-1);assert.equal(halo.config.duration,650);assert(halo.config.useNativeDriver);
+const unchanged=animations.length;render(SuccessBadge,{});assert.equal(animations.length,unchanged);reset();assert(halo.stopped);
+for(const component of [QuestionTransition,AnimatedExamScore,SuccessBadge]){
+  reset();reduced=true;const before=animations.length;const props=component===AnimatedExamScore?{score:0,sessionId:'zero'}:{children:child};
+  const tree=render(component,props);assert.equal(animations.length,before,'Reduce Motion must disable animation');
+  if(component===AnimatedExamScore)assert.equal(text(tree),'0/74');
+}
+reset();assert(animations.every((a)=>a.config.isInteraction===false));
+console.log('Exam motion: live controls, 180ms slide, 900ms score/count clamps, truthful accessibility, interrupted recovery, listener cleanup, 650ms success halo and reduced motion passed.');
+(async()=>{
+  let resolvePreference,onChange,removed=false;
+  native.AccessibilityInfo={
+    isReduceMotionEnabled:()=>new Promise((resolve)=>{resolvePreference=resolve;}),
+    addEventListener:(_,callback)=>{onChange=callback;return {remove:()=>{removed=true;}};},
+  };
+  const {useMotionPreference}=load('src/hooks/use-reduced-motion.ts');
+  reset();assert.deepEqual(render(useMotionPreference),{reduced:true,ready:false});
+  onChange(true);resolvePreference(false);await Promise.resolve();
+  assert.deepEqual(render(useMotionPreference),{reduced:true,ready:true},'late initial preference must not overwrite a newer setting event');
+  reset();assert(removed);
+  render(useMotionPreference);reset();resolvePreference(false);await Promise.resolve();assert.equal(states.length,0,'unmounted hook must ignore late resolution');
+  native.AccessibilityInfo.isReduceMotionEnabled=()=>Promise.reject(Error('unavailable'));
+  render(useMotionPreference);await new Promise((resolve)=>setImmediate(resolve));
+  assert.deepEqual(render(useMotionPreference),{reduced:true,ready:true});reset();
+  console.log('Motion preference: conservative initial state, setting-event race, unmount guard and failed-read fallback passed.');
+})().catch((error)=>{console.error(error);process.exitCode=1;});

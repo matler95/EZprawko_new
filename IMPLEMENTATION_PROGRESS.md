@@ -1,5 +1,62 @@
 # Implementation progress
 
+## Checkpoint — PLAN_IMPLEMENTACJI.md, point 3.3: question entries and result motion (2026-10-12)
+
+- Implemented only the user-approved point 3.3. Added a short 180ms, 16px native-driver question-entry slide; no animation callback gates answer submission or clock progression.
+- The question scroll region is keyed by session/question, not reading/answer phase. New questions reset scroll and media playback instances; changing phase does not remount/replay the same film. Question/media visibility and answer controls are not delayed behind animation completion.
+- Added a shared 900ms score reveal in the result and completed-exam review, clamped to the recorded score. Screen readers receive the true final score immediately, not successive count values. Interruption/Reduce Motion/focus changes resolve to the correct final score; listeners and animations clean up.
+- Passed attempts receive one restrained 650ms themed halo/check celebration; failed attempts have no success animation. The mobile UI guidance informed short, non-blocking transitions and a readable, non-flashing result treatment. No new packages or bitmap assets were required.
+- Extended the motion-preference hook with readiness information while preserving the existing boolean useReducedMotion API. Unknown/failed preference reads remain conservative; Reduce Motion disables the new slide, counting and success animation.
+- Native-stub contracts passed for live controls, durations/drivers, true-score accessibility, count clamping, interruption/focus recovery, listener cleanup, success animation and reduced motion. Timer contracts, all 5,000 exam-engine trials and skeleton tests passed. Phone animation/media QA remains separate.
+- Final validation passed: `npx tsc --noEmit`, `npx expo lint`, motion-preference race/unmount/failure tests, Phase 1 UI, explanation and translation regressions, and Android export (1,716 modules, 6.4 MB bundle). `git diff --check` passed.
+- Exam selection, 20+12 ordering, 74-point scoring, deadlines, auto-advance, translations, SQLite records and cache services were not changed. Point 3.4 progress-chart improvements await explicit user confirmation; approved explanation content remains an independent open dependency.
+
+## Checkpoint — PLAN_IMPLEMENTACJI.md, point 3.2: timer warnings and one-shot haptics (2026-10-12)
+
+- Completed only the approved timer-warning point after resuming the interrupted tool-approval attempt. Question answering time is neutral above 10 seconds, warning at 5–10, critical below 5, and static red when expired. Reading/video phases remain neutral.
+- Added a single best-effort Warning haptic per keyed question/answer phase, not on every tick. No warning haptic is requested during reading/advancing/finishing, for the global clock, off-focus, in the background or under Reduce Motion. Unsupported-device/rejected haptic promises are caught.
+- Kept the existing global-clock warning thresholds (60/30 seconds) and all actual exam durations, scoring and auto-advance rules. Bound displayed question time to question ID plus phase so the preceding question's low countdown cannot trigger a spurious warning on the next one.
+- Critical warnings pulse the red outline with native non-interaction animation while text remains fully opaque/readable; Reduce Motion/off-focus disables the loop and cleanup stops it. The mobile UI guidance informed restraint, theme-aware contrast and accessible warning labels.
+- Contract tests cover exact 11/10/5/4/1/0 thresholds, both themes, one warning per question, new-question reset, stale-clock isolation, global quiet mode, reduced-motion/focus/background suppression, haptic failure and animation cleanup. Engine (5,000 trials), Phase 1 UI and skeleton regression tests passed.
+- Final validation passed: `npx tsc --noEmit`, `npx expo lint`, 24 semantic contrast checks, `git diff --check` and Android export (1,714 modules, 6.4 MB bundle). The outline uses the RN 0.86-compatible StyleSheet.absoluteFill API; text is not faded by the animation.
+- No dependencies, native directories, question bank, translations, sign lexicon or cache were changed. Native vibration feel and visual warnings still require phone QA. Work on 3.3 awaits the user's explicit confirmation.
+
+## Checkpoint — PLAN_IMPLEMENTACJI.md, point 3.1: loading skeletons (2026-10-12)
+
+- Implemented only the user-approved point 3.1. Added reusable themed Skeleton, LoadingSkeleton and retry/error components without new dependencies.
+- Dashboard initial loading now uses card/statistic placeholders instead of the raw preparation text. Study renders placeholders for topic/question reads and new filter/search requests, and does not mistake pending results for an empty bank. Progress waits for history/weak-area/category reads before showing metrics or empty states and refreshes on tab focus.
+- Added explicit read-failure/retry states and cancellation guards so rejected or obsolete SQLite promises do not leave a permanent skeleton or replace newer results. Existing populated Dashboard data is retained during normal focus refreshes.
+- Pulsing uses one native-driver opacity loop per placeholder group with non-interaction animations. Reduce Motion and unfocused screens disable the loop; cleanup stops it. Screen readers receive one busy loading label, not every decorative shape.
+- Mobile UI guidance informed card-shaped layouts, 16/24px spacing, semantic light/dark surfaces, accessible busy/error states and 48px retry controls. The native exam timer, engine, question bank, translations, sign lexicon and cache were not changed.
+- Contract tests passed for three layouts/two themes, loading accessibility, animation configuration/cleanup, reduced-motion/focus guards and retry; Phase 1 UI, explanation migration/ranking and translation regression tests also passed. TypeScript and Expo lint passed without errors/warnings.
+- Android export passed (1,713 modules, 6.4 MB bundle). No dependency upgrades or infrastructure deployments were performed in this point.
+- Physical-device appearance, slow-read/error injection, screen-reader and Reduce Motion QA remain in QA_CHECKLIST.md. No claim of native visual QA is made from stubbed component tests.
+- Remaining: point 3.2 timer/haptic polish, 3.3 transitions/results and 3.4 progress charts. Work on the next point awaits the user's explicit confirmation. Reviewed explanation content remains an independent open dependency.
+
+## Checkpoint — PLAN_IMPLEMENTACJI.md, Phase 2: reviewed-content infrastructure and hardest filter (2026-10-12)
+
+- Added a backwards-compatible, in-place explanation-table migration with teaching text, legal basis, review identity and original question/key/media snapshots. Preserved the legacy explanation column/getter and user data; added an index for per-question practice failures.
+- Added validated, versioned, transactional offline pack import. Unknown/mismatched question snapshots roll back the entire content update; unsafe links, missing review metadata, duplicate IDs and future dates are rejected. Existing reviewed records are retained and newer review timestamps are protected from downgrade. Snapshot-backed content is hidden if source questions change.
+- Added shared, theme-aware explanation cards in Study (after answering only) and completed-exam Review: text, legal basis, official-source link, Polish-language notice, and explicit missing/loading/error states. The mobile UI skill informed legibility, themed surfaces and source-link target sizing. Active exam behavior is unchanged.
+- Added Najtrudniejsze: all three-point questions plus questions with at least two incorrect practice attempts, ranked by failure frequency, point value and stable ID. The filter composes with language, topic, sign and search, with a visible explanation of ranking.
+- Added editorial CLI/report/template generation. The priority queue has 1,882 question IDs, including all 1,699 three-point questions. The ignored `.expo/explanations-review-template.json` contains original question/key/media snapshots and empty editorial fields, not invented explanations.
+- Passed explanation migration/import/idempotence/rollback/source-mismatch/data-preservation/ranking tests, translation integration, Phase 1 UI contracts, all 5,000 exam-engine tests and road-sign tests. No changes to exam-engine.ts, road-signs.ts, the original question database, translation data or media cache.
+- Final validation passed: `npx tsc --noEmit`, `npx expo lint`, explanation-card missing/loading/error/legal-link UI contracts, `git diff --check`, and Android export (1,712 modules, 6.4 MB bundle). No claim of physical-device QA or approved content coverage is made.
+- CONTENT BLOCKER: the workspace has no qualified-reviewer-approved explanation pack. The shipped package intentionally contains zero entries; source-link/reviewer metadata validation does not constitute legal review. Phase 2 is therefore not fully complete and cannot satisfy its content acceptance criteria until approved explanations/legal bases are supplied.
+
+## Checkpoint — PLAN_IMPLEMENTACJI.md, Phase 1: basic-answer UI, briefing and recovery (2026-10-12)
+
+- Read the complete new PLAN_IMPLEMENTACJI.md; this checkpoint follows its Phase 1 numbering, distinct from the earlier IMPLEMENTATION_PLAN.md phases.
+- Added shared basic-answer controls in Exam, Study and Review: two 80px-minimum targets with success/error accents, no T/N prefixes, and official translated labels (TAK/NIE, YES/NO, JA/NEIN, ТАК/НІ). Internal ministerial T/N keys remain unchanged.
+- Exam disables the controls during reading/video and while advancing; the locked phase has a neutral appearance and an explicit notice. Study retains immediate answer feedback; review marks both the learner's choice and the MI key with text, not color alone. Specialist A/B/C controls are unchanged.
+- Added a themed, scrollable pre-exam briefing on Dashboard with category, 32 questions, 20+12 split, 25 minutes, 68/74 threshold and forward-only rules. No session/deadline is created until confirmation. Cancellation preserves any active exam; replacement is explicitly disclosed, duplicate start taps are guarded, and startup failures can be retried.
+- Added src/components/error-boundary.tsx: an outer React boundary protects provider/startup rendering, and SDK 57 screen boundaries retain the navigator during route failures. Retry/Home recovery does not delete SQLite data or media and warns that an active exam clock continues. Raw exception details are not displayed. Error boundaries cover render/lifecycle errors, not arbitrary asynchronous/event-handler failures.
+- The mobile UI skill informed the 80px targets, readable lock/selection labels, semantic theme colors and scrollable briefing/recovery layouts. No new dependencies or manual native-directory changes were introduced; exam-engine.ts, translations, SQLite schema, media cache and road-signs.ts were not modified.
+- Passed component contract tests (native primitives stubbed), all 5,000 exam-engine trials, translation integration tests and the 235-sign/26-link tests. TypeScript and Expo lint passed. Physical-device visual/render-error injection QA remains on QA_CHECKLIST.md; contract tests are not claimed as native end-to-end tests.
+- Android export passed (1,707 modules, 6.4 MB bundle). Protected domain/database files have no diff; `git diff --check` is clean.
+- Additional Expo Doctor run: 20/21 checks passed. The dependency-version check now recommends newer SDK 57 patch versions for expo, @expo/ui, expo-dev-client, expo-router and expo-splash-screen. Existing pinned versions were not changed as part of this UI phase; native dependency upgrades and rebuilt-client validation remain separate maintenance work. TypeScript/lint and the Android export are clean.
+- Remaining in the new plan: Phase 2 reviewed explanations/legal bases/hardest-question filter, then Phases 3–6. No unreviewed road-safety explanation content was generated in this phase.
+
 ## Checkpoint — Phase 6: media-grant negative tests (2026-10-12)
 
 - Fixed the active Cloudflare Worker (src/index.js): grants must have an integer expiry in the future and no more than five minutes ahead, plus a nonempty string subject. Existing two-minute Supabase grants remain compatible.

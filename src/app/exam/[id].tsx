@@ -13,8 +13,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { QuestionMedia } from "@/components/question-media";
+import { BasicAnswerButtons } from "@/components/basic-answer-buttons";
 import { AnimatedProgress } from "@/components/animated-progress";
 import { ExamTimer } from "@/components/exam-timer";
+import { questionTimerSeconds } from "@/domain/timer-presentation";
+import { QuestionTransition } from "@/components/question-transition";
+import { AnimatedExamScore, SuccessBadge } from "@/components/exam-result-motion";
 import type { QuestionLanguage } from "@/database/translations";
 import { TabBarContext } from "@/context/tab-bar-context";
 import {
@@ -50,12 +54,15 @@ export default function ExamScreen() {
   const [selections, setSelections] = useState<Record<number, string>>({});
   const [phase, setPhase] = useState<ExamPhase>("READING");
   const [globalSeconds, setGlobalSeconds] = useState(25 * 60);
-  const [questionSeconds, setQuestionSeconds] = useState(0);
+  const [questionClock, setQuestionClock] = useState({ key: '', seconds: 0 });
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [result, setResult] = useState<{ id: string; score: number; passed: boolean } | null>(null);
 
   const question = questions[index];
+  const clockKey = question ? `${question.id}:${phase}` : '';
+  const questionSeconds = questionTimerSeconds(questionClock, clockKey,
+    question ? (phase === 'ANSWERING' ? question.answeringTimeSeconds : question.readingTimeSeconds) : 0);
 
   useFocusEffect(
     useCallback(() => {
@@ -152,8 +159,11 @@ export default function ExamScreen() {
       return () => clearTimeout(transition);
     }
     const deadline = Date.now() + seconds * 1000;
-    const tick = () =>
-      setQuestionSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    const key = `${question.id}:${phase}`;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setQuestionClock((previous) => previous.key === key && previous.seconds === remaining ? previous : { key, seconds: remaining });
+    };
     tick();
     const interval = setInterval(tick, 250);
     const timeout = setTimeout(() => {
@@ -183,10 +193,10 @@ export default function ExamScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.result}>
-          <Text style={styles.resultIcon}>{result.passed ? "✓" : "↗"}</Text>
+          {result.passed ? <SuccessBadge key={result.id} /> : <Text style={styles.resultIcon}>↗</Text>}
           <Text style={styles.kicker}>EGZAMIN ZAKOŃCZONY</Text>
           <Text style={styles.resultTitle}>{result.passed ? "Zdane!" : "Spróbuj ponownie"}</Text>
-          <Text style={styles.resultScore}>{result.score}/74</Text>
+          <AnimatedExamScore key={result.id} score={result.score} sessionId={result.id} style={styles.resultScore} />
           <Text style={styles.muted}>
             {result.passed ? "Wynik spełnia próg 68 punktów." : `Brakuje ${68 - result.score} pkt do zaliczenia.`}
           </Text>
@@ -228,12 +238,13 @@ export default function ExamScreen() {
         </Pressable>
         <View style={styles.timerGroup}>
           <ExamTimer seconds={globalSeconds} />
-          <ExamTimer seconds={questionSeconds} question active={phase === "ANSWERING"} />
+          <ExamTimer key={clockKey} seconds={questionSeconds} question active={phase === "ANSWERING" && globalSeconds > 0 && !isAdvancing && !isFinishing} />
         </View>
         <Text style={styles.position}>{index + 1}/32</Text>
       </View>
       <AnimatedProgress progress={(index + 1) / 32} />
-      <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
+      <ScrollView key={`${sessionId}:${question.id}`} contentContainerStyle={styles.content} style={styles.scroll}>
+        <QuestionTransition>
         <Text style={styles.kicker}>
           {question.scope === "PODSTAWOWY" ? "WIEDZA PODSTAWOWA" : `KATEGORIA ${category}`} · {question.points} PKT
         </Text>
@@ -250,7 +261,7 @@ export default function ExamScreen() {
         <Text style={styles.question}>{question.question}</Text>
         {language !== question.contentLanguage ? <Text style={styles.muted}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
         <View style={styles.answers}>
-          {question.answers.map((answer) => (
+          {question.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={question.answers} disabled={!canAnswer} locked={phase !== "ANSWERING"} onAnswer={(key) => void advance(key)} /> : question.answers.map((answer) => (
             <Pressable
               accessibilityState={{ disabled: !canAnswer }}
               disabled={!canAnswer}
@@ -263,6 +274,7 @@ export default function ExamScreen() {
             </Pressable>
           ))}
         </View>
+        </QuestionTransition>
       </ScrollView>
     </SafeAreaView>
   );

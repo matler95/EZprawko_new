@@ -15,6 +15,7 @@ function loadSource(relative) {
   }).outputText;
   new Function('require', 'exports', compiled)((name) => {
     if (name === '../../assets/data/question-signs.json') return require('../assets/data/question-signs.json');
+    if (name === '../../assets/data/question-explanations.json') return require('../assets/data/question-explanations.json');
     if (name === '@/assets/data/question-translations.json') return require('../assets/data/question-translations.json');
     if (name.startsWith('@/')) return loadSource(`src/${name.slice(2)}.ts`);
     throw new Error(`Unexpected runtime dependency ${name}`);

@@ -1,12 +1,11 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useSQLiteContext } from "expo-sqlite";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
-  questionExplanation,
   recordPracticeAnswer,
   topicProgress,
   toggleFlag,
@@ -14,7 +13,12 @@ import {
 } from "@/database/repository";
 import { playAnswerSound } from "@/services/answer-feedback";
 import { QuestionMedia } from "@/components/question-media";
+import { BasicAnswerButtons, basicAnswerText } from "@/components/basic-answer-buttons";
 import { questionContent, selectedQuestionLanguage, type QuestionLanguage } from "@/database/translations";
+import { getQuestionExplanation, type QuestionExplanation } from "@/database/explanations";
+import { isStudyFilter, studyFilterSql, type StudyFilter } from "@/database/study-filters";
+import { ExplanationCard } from "@/components/explanation-card";
+import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 
 type StudyQuestion = {
   id: number;
@@ -26,12 +30,6 @@ type StudyQuestion = {
   contentLanguage: QuestionLanguage;
 };
 type Answer = { label: string; answer: string };
-type StudyFilter = "all" | "three" | "basic" | "specialist" | "mistakes" | "flags";
-
-function isStudyFilter(value: string | undefined): value is StudyFilter {
-  return ["all", "three", "basic", "specialist", "mistakes", "flags"].includes(value ?? "");
-}
-
 export default function StudyScreen() {
   const { colors } = useAppTheme();
   const s = createStyles(colors);
@@ -48,37 +46,34 @@ export default function StudyScreen() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [flagged, setFlagged] = useState(false);
-  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<QuestionExplanation | null>(null);
+  const [explanationLoading, setExplanationLoading] = useState(false);
+  const [explanationFailed, setExplanationFailed] = useState(false);
+  const openRequest = useRef(0);
   const [filter, setFilter] = useState<StudyFilter>("all");
   const [search, setSearch] = useState("");
   const [topics, setTopics] = useState<TopicProgress[]>([]);
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
+  const [failedQuery, setFailedQuery] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [languageReady, setLanguageReady] = useState(false);
   const [language, setLanguage] = useState<QuestionLanguage>('pl');
   useFocusEffect(useCallback(() => {
     let current = true;
     void selectedQuestionLanguage(db).then((value) => {
-      if (current) { setLanguage(value); setActive(null); }
-    });
+      if (current) { setLanguage(value); setActive(null); setLanguageReady(true); }
+    }).catch(() => { if (current) setFailedQuery(`language:${reload}`); });
     return () => { current = false; };
-  }, [db, setActive]));
+  }, [db, reload, setActive]));
   const activeFilter = isStudyFilter(requestedFilter) ? requestedFilter : filter;
   const sessionLimit = requestedCount === "5" ? 5 : 12;
+  const queryKey = JSON.stringify([activeFilter, language, reload, requestedSign, requestedTopic, search, sessionLimit]);
+  const loading = !languageReady || loadedQuery !== queryKey;
+  const readError = failedQuery === queryKey || failedQuery === `language:${reload}`;
   useEffect(() => {
+    if (!languageReady) return;
     let current = true;
-    let joins = "";
-    let where = "1 = 1";
-    let order = "RANDOM()";
-
-    if (activeFilter === "three") where = "q.points = 3";
-    if (activeFilter === "basic") where = "q.scope = 'PODSTAWOWY'";
-    if (activeFilter === "specialist") where = "q.scope = 'SPECJALISTYCZNY'";
-    if (activeFilter === "mistakes") {
-      where = "EXISTS (SELECT 1 FROM practice_attempts p WHERE p.question_id = q.id AND p.is_correct = 0) OR EXISTS (SELECT 1 FROM exam_answers e WHERE e.question_id = q.id AND e.is_correct = 0)";
-      order = "q.id DESC";
-    }
-    if (activeFilter === "flags") {
-      joins = "JOIN flags f ON f.question_id = q.id";
-      order = "f.created_at DESC";
-    }
+    const { joins, where, order } = studyFilterSql(activeFilter);
 
     const trimmedSearch = search.trim();
     const topicClause = requestedTopic ? " AND EXISTS (SELECT 1 FROM question_topics t WHERE t.question_id = q.id AND t.topic = ?)" : "";
@@ -86,26 +81,34 @@ export default function StudyScreen() {
     const searchClause = trimmedSearch ? " AND COALESCE(tr.question, q.question) LIKE ?" : "";
     const query = `SELECT DISTINCT q.id, COALESCE(tr.question, q.question) AS question, CASE WHEN tr.question IS NULL THEN 'pl' ELSE tr.language END AS contentLanguage, q.points, q.scope, q.correct_answer, q.media_filename FROM questions q LEFT JOIN question_translations tr ON tr.question_id = q.id AND tr.language = ? ${joins} WHERE (${where})${topicClause}${signClause}${searchClause} ORDER BY ${order} LIMIT ${sessionLimit}`;
     const params = [language, ...(requestedTopic ? [requestedTopic] : []), ...(requestedSign ? [requestedSign] : []), ...(trimmedSearch ? [`%${trimmedSearch}%`] : [])];
-    db.getAllAsync<StudyQuestion>(query, params).then((rows) => { if (current) setItems(rows); });
-    void topicProgress(db).then(setTopics);
+    void Promise.all([db.getAllAsync<StudyQuestion>(query, params), topicProgress(db)]).then(([rows, nextTopics]) => {
+      if (current) { setItems(rows); setTopics(nextTopics); setFailedQuery(null); }
+    }).catch(() => { if (current) setFailedQuery(queryKey); })
+      .finally(() => { if (current) setLoadedQuery(queryKey); });
     return () => { current = false; };
-  }, [activeFilter, db, language, requestedSign, requestedTopic, search, sessionLimit]);
+  }, [activeFilter, db, language, languageReady, queryKey, requestedSign, requestedTopic, search, sessionLimit]);
   const open = async (item: StudyQuestion, itemIndex = items.findIndex((value) => value.id === item.id)) => {
+    const request = ++openRequest.current;
     const content = await questionContent(db, item.id, language);
+    if (request !== openRequest.current) return;
     setActiveIndex(itemIndex);
     setActive({ ...item, question: content.question, contentLanguage: content.contentLanguage });
     setExplanation(null);
+    setExplanationLoading(true);
+    setExplanationFailed(false);
     setAnswers(content.answers);
     setSelected(null);
-    setFlagged(
-      Boolean(
-        await db.getFirstAsync(
-          "SELECT question_id FROM flags WHERE question_id = ?",
-          item.id,
-        ),
-      ),
-    );
-    setExplanation(await questionExplanation(db, item.id));
+    const flag = await db.getFirstAsync("SELECT question_id FROM flags WHERE question_id = ?", item.id);
+    if (request !== openRequest.current) return;
+    setFlagged(Boolean(flag));
+    try {
+      const details = await getQuestionExplanation(db, item.id);
+      if (request === openRequest.current) setExplanation(details);
+    } catch {
+      if (request === openRequest.current) setExplanationFailed(true);
+    } finally {
+      if (request === openRequest.current) setExplanationLoading(false);
+    }
   };
   const move = (direction: -1 | 1) => {
     const nextIndex = activeIndex + direction;
@@ -142,7 +145,7 @@ export default function StudyScreen() {
           <QuestionMedia filename={active.media_filename} />
           <Text style={s.question}>{active.question}</Text>
           {active.contentLanguage !== language ? <Text style={s.sub}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
-          {answers.map((item) => (
+          {active.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={answers} disabled={Boolean(selected)} selectedAnswer={selected} correctAnswer={selected ? active.correct_answer : undefined} onAnswer={(key) => void answer(key)} /> : answers.map((item) => (
             <Pressable
               key={item.label}
               disabled={Boolean(selected)}
@@ -168,11 +171,9 @@ export default function StudyScreen() {
                   : "Sprawdź tę zasadę ponownie."}
               </Text>
               <Text style={s.sub}>
-                Poprawna odpowiedź: {active.correct_answer}
+                Poprawna odpowiedź: {active.scope === "PODSTAWOWY" ? basicAnswerText(answers, active.correct_answer) : active.correct_answer}
               </Text>
-              {explanation ? (
-                <Text style={s.explanation}>{explanation}</Text>
-              ) : null}
+              <ExplanationCard explanation={explanation} loading={explanationLoading} failed={explanationFailed} />
             </View>
           )}
           <View style={s.navigator}>
@@ -196,7 +197,7 @@ export default function StudyScreen() {
             ? "Krótka sesja: 5 pytań o największej wadze."
             : "Wybierz pytanie z oficjalnej bazy."}
         </Text>
-        {!requestedTopic && !requestedSign ? (
+        {!loading && !readError && !requestedTopic && !requestedSign ? (
           <View style={s.topicSection}>
             <Text style={s.topicTitle}>Ucz się według działów</Text>
             {topics.map((topic) => (
@@ -222,6 +223,7 @@ export default function StudyScreen() {
             [
               ["all", "Wszystkie"],
               ["three", "3 punkty"],
+              ["hardest", "Najtrudniejsze"],
               ["basic", "Podstawowe"],
               ["specialist", "Specjalistyczne"],
               ["mistakes", "Błędy"],
@@ -241,7 +243,8 @@ export default function StudyScreen() {
             </Pressable>
           ))}
         </View>
-        {items.length ? (
+        {activeFilter === "hardest" ? <Text style={s.sub}>Najpierw pytania z największą liczbą pomyłek w nauce (co najmniej 2), następnie pozostałe pytania za 3 punkty.</Text> : null}
+        {readError ? <LoadingError onRetry={() => setReload((value) => value + 1)} /> : loading ? <LoadingSkeleton variant="study" label="Wczytywanie działów i pytań" /> : items.length ? (
           items.map((item) => (
             <Pressable key={item.id} onPress={() => open(item)} style={s.card}>
               <View style={s.row}>

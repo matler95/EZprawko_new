@@ -1,10 +1,12 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { router, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReadinessRing } from "@/components/readiness-ring";
+import { ExamBriefing } from "@/components/exam-briefing";
+import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 
 import {
   challengeStatus,
@@ -26,8 +28,14 @@ export default function DashboardScreen() {
   const db = useSQLiteContext();
   const [category, setCategory] = useState("B");
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [failedRevision, setFailedRevision] = useState<number | null>(null);
+  const [reload, setReload] = useState(0);
+  const readError = failedRevision === reload;
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const startLock = useRef(false);
+  const [briefing, setBriefing] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<ExamReadiness | null>(null);
   const [challenge, setChallenge] = useState({
@@ -38,6 +46,7 @@ export default function DashboardScreen() {
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
+    setFailedRevision(null);
     void Promise.all([
       selectedCategory(db),
       hasCompletedOnboarding(db),
@@ -53,24 +62,34 @@ export default function DashboardScreen() {
       setReadiness(nextReadiness);
       setActiveExamId(active?.id ?? null);
       setOnboardingChecked(true);
-    });
+    }).catch(() => { if (mounted) setFailedRevision(reload); });
     return () => { mounted = false; };
-  }, [db]));
+  }, [db, reload]));
 
   const startExam = async () => {
-    if (isStarting) return;
+    if (startLock.current) return;
+    startLock.current = true;
     setIsStarting(true);
-    const active = await startActiveExam(db, category);
-    setActiveExamId(active.id);
-    router.push({ pathname: "/exam/[id]", params: { id: active.id } });
+    setStartError(null);
+    try {
+      const active = await startActiveExam(db, category);
+      setActiveExamId(active.id);
+      setBriefing(false);
+      router.push({ pathname: "/exam/[id]", params: { id: active.id } });
+    } catch {
+      setStartError("Nie udało się rozpocząć egzaminu. Spróbuj ponownie.");
+    } finally {
+      startLock.current = false;
+      setIsStarting(false);
+    }
   };
 
-  if (!onboardingChecked) {
+  if (readError || !onboardingChecked) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.loading}>
-          <Text style={styles.muted}>Przygotowujemy Twoją naukę…</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+          {readError ? <LoadingError onRetry={() => setReload((value) => value + 1)} /> : <LoadingSkeleton variant="dashboard" label="Wczytywanie panelu kursanta" />}
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -142,7 +161,7 @@ export default function DashboardScreen() {
           <Text style={styles.heroText}>
             20 pytań podstawowych i 12 specjalistycznych. Próg zdania: 68 punktów.
           </Text>
-          <Pressable disabled={isStarting} onPress={() => void startExam()} style={[styles.gold, isStarting && styles.disabled]}>
+          <Pressable disabled={isStarting} onPress={() => { setStartError(null); setBriefing(true); }} style={[styles.gold, isStarting && styles.disabled]}>
             <Text style={styles.goldText}>{isStarting ? "Przygotowujemy…" : "Rozpocznij egzamin próbny →"}</Text>
           </Pressable>
         </View>
@@ -185,6 +204,7 @@ export default function DashboardScreen() {
           <Text style={styles.chevron}>›</Text>
         </Pressable>
       </ScrollView>
+      <ExamBriefing visible={briefing} category={category} hasActiveExam={Boolean(activeExamId)} starting={isStarting} error={startError} onCancel={() => setBriefing(false)} onStart={() => void startExam()} />
     </SafeAreaView>
   );
 }

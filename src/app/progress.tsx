@@ -1,8 +1,10 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 import {
   recentExams,
   weakCategories,
@@ -20,11 +22,25 @@ export default function ProgressScreen() {
     { scope: string; attempted: number; correct: number }[]
   >([]);
   const [weakByCategory, setWeakByCategory] = useState<WeakCategory[]>([]);
-  useEffect(() => {
-    recentExams(db).then(setHistory);
-    weakAreas(db).then(setWeak);
-    weakCategories(db).then(setWeakByCategory);
-  }, [db]);
+  const [loading, setLoading] = useState(true);
+  const [failedRevision, setFailedRevision] = useState<number | null>(null);
+  const [reload, setReload] = useState(0);
+  const readError = failedRevision === reload;
+  useFocusEffect(useCallback(() => {
+    let current = true;
+    setLoading(true);
+    setFailedRevision(null);
+    void Promise.all([recentExams(db), weakAreas(db), weakCategories(db)]).then(([nextHistory, nextWeak, nextCategories]) => {
+      if (!current) return;
+      setHistory(nextHistory); setWeak(nextWeak); setWeakByCategory(nextCategories);
+    }).catch(() => { if (current) setFailedRevision(reload); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
+  }, [db, reload]));
+  if (loading || readError) return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
+    <Text style={s.title}>Postęp</Text>
+    {loading ? <LoadingSkeleton variant="progress" label="Wczytywanie wyników i historii" /> : <LoadingError onRetry={() => setReload((value) => value + 1)} />}
+  </ScrollView></SafeAreaView>;
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>

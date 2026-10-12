@@ -1,35 +1,50 @@
-import { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, AppState, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { useIsFocused } from 'expo-router';
 
 import { useAppTheme } from '@/context/app-theme-context';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { timerLevel } from '@/domain/timer-presentation';
 
 export function ExamTimer({ seconds, question = false, active = true }: { seconds: number; question?: boolean; active?: boolean }) {
   const { colors } = useAppTheme();
   const reducedMotion = useReducedMotion();
+  const focused = useIsFocused();
+  const warned = useRef(false);
   const [pulse] = useState(() => new Animated.Value(1));
-  const critical = seconds > 0 && seconds <= (question ? 5 : 30);
-  const warning = seconds <= (question ? 10 : 60);
+  const level = timerLevel(seconds, question, active);
+  const critical = level === 'critical';
+  const warning = level === 'warning';
+  const danger = critical || level === 'expired';
 
   useEffect(() => {
-    if (!critical || !active || reducedMotion) { pulse.setValue(1); return; }
+    if (!question || !critical || !active || !focused || reducedMotion || warned.current || AppState.currentState !== 'active') return;
+    warned.current = true;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+  }, [active, critical, focused, question, reducedMotion, seconds]);
+
+  useEffect(() => {
+    if (!critical || !active || !focused || reducedMotion) { pulse.setValue(1); return; }
     const animation = Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 0.65, duration: 450, useNativeDriver: true, isInteraction: false }),
+      Animated.timing(pulse, { toValue: 0.8, duration: 450, useNativeDriver: true, isInteraction: false }),
       Animated.timing(pulse, { toValue: 1, duration: 450, useNativeDriver: true, isInteraction: false }),
     ]));
     animation.start();
     return () => { animation.stop(); pulse.setValue(1); };
-  }, [active, critical, pulse, reducedMotion]);
+  }, [active, critical, focused, pulse, reducedMotion]);
 
   const text = question ? `${seconds}s` : `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
   return (
-    <Animated.View style={[styles.badge, { opacity: pulse, backgroundColor: critical ? colors.errorSurface : warning ? colors.warningSurface : colors.primarySurface }]}>
-      <Text accessibilityLabel={`${question ? 'Czas pytania' : 'Czas egzaminu'}: ${text}`} style={[styles.text, { color: critical ? colors.error : warning ? colors.warning : colors.primaryText }]}>{text}</Text>
-    </Animated.View>
+    <View style={[styles.badge, { backgroundColor: danger ? colors.errorSurface : warning ? colors.warningSurface : colors.primarySurface }]}>
+      {danger ? <Animated.View accessible={false} pointerEvents="none" style={[StyleSheet.absoluteFill, styles.outline, { opacity: pulse, borderColor: colors.error }]} /> : null}
+      <Text accessibilityLabel={`${question ? 'Czas pytania' : 'Czas egzaminu'}: ${text}${level === 'expired' ? ', czas upłynął' : danger ? ', czas na ukończeniu' : warning ? ', kończy się czas' : ''}`} style={[styles.text, { color: danger ? colors.error : warning ? colors.warning : colors.primaryText }]}>{text}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   badge: { alignItems: 'center', borderRadius: 12, justifyContent: 'center', minHeight: 44, minWidth: 48, paddingHorizontal: 12 },
   text: { fontVariant: ['tabular-nums'], fontWeight: '700' },
+  outline: { borderRadius: 12, borderWidth: 2 },
 });
