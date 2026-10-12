@@ -2,6 +2,39 @@
 
 Run this checklist on a physical Android device and, before public release, an iPhone. Record the app version, device model, OS version, and outcome for every failed item.
 
+## PLAN_UX_IMPLEMENTACJI.md — UX-3 local account UI
+
+- [ ] Use only an existing authorized test account. Empty/bad-format e-mail or empty password shows field feedback without a request. Entered password bytes, including intentional spaces, are not trimmed. Invalid credentials/unconfirmed e-mail/rate-limit/network failure have safe actionable messages, no backend/token/password dump.
+- [ ] Show/Hide defaults masked and remasks after success/blur; check actual iOS/Android autofill, e-mail Next focus, password Go submit, keyboard avoidance, small screens, large text and screen reader. Repeated submit/logout taps produce one action; login read failures can be retried.
+- [ ] Reopen Settings and background/foreground the app: local session snapshot is refreshed. A late old read cannot overwrite a new auth event; stored-session wording does not promise server-verified permissions. Expired/rejected sessions remain recoverable.
+- [ ] In Study/review, trigger a genuinely missing-login material error and use the inline modal. Login or explicit return/retry reloads the same material/question, preserving selected answer and round position and adding no practice attempt. Closing does not claim cancellation of a server request already sent; it may finish without late UI navigation.
+- [ ] During an active exam, no inline login modal/pause/restart is offered. Prepared materials, no native controls and all original global/question timing rules remain. Missing-media recovery does not silently reset exam time.
+- [ ] Local logout preserves SQLite progress/cache and does not delete the server account/sign out other devices. If logout/confirmation fails, UI must not claim verified completion. Account switching does not imply a cloud-synced or account-isolated progress database.
+- [ ] Full local removal while login is pending waits for the serialized auth work, then confirms local session absence; old callbacks cannot restore it afterward. Ordinary progress reset preserves account semantics. Check errors/foreground/unmount races without production credentials.
+- [ ] Registration, confirmation/recovery email links, password changes and server account deletion remain unimplemented/unconfigured in this local stage; do not mark them validated from form tests. Existing AsyncStorage/session security and production access policies need release review.
+
+## PLAN_UX_IMPLEMENTACJI.md — UX-2 resumable onboarding
+
+- [ ] Fresh test installation/copy (do not erase the owner's existing progress just to test): no category silently selected, Next blocked until choice; all 12 target categories and PL/EN/DE/UK question options available. Interface remains Polish; missing translations explicitly fall back.
+- [ ] Next/Back saves the confirmed step/category/language. Close/reopen after a confirmed transition and resume that step; an unconfirmed radio change is not promised to survive. Invalid draft safely recovers without modifying the official bank.
+- [ ] Completion commits category, language and flag together; synthetic write failure permits retry without partially updating preferences. Double taps create one transition/completion; reset while a write is queued cannot resurrect the old setup.
+- [ ] Existing completed onboarding preserves the selected category/language and does not show the new wizard automatically. Ordinary progress reset keeps setup; full local removal restarts it. JSON export contains the draft when unfinished, without auth credentials.
+- [ ] Test direct navigation/deep links to Study/Progress/Signs/Exam before completion: return to setup with hidden tabs. Settings/legal remain inspectable. Complete setup and confirm normal tab navigation is restored, including foreground/blur/read failures and a late offscreen completion.
+- [ ] First-study action opens the first question of a category/language-correct five-question three-point batch, not only the bank list. No practice row until an answer is saved. Next does not re-trigger autostart; failed/empty query shows recoverable state.
+- [ ] Optional Dashboard and Account/Reminder destinations work; onboarding never requests notification permission. Media login requirement, cache limitations and local-only progress explanation match actual behavior. Choosing reminders opens Settings for an explicit later decision.
+- [ ] Android/iPhone compact screens + large system fonts + screen reader: all four steps scroll, category/language radio states are announced, headings/errors readable, no hidden CTA under keyboard/safe areas or color-only selection. Check Back navigation and focus after transitions.
+
+## PLAN_UX_IMPLEMENTACJI.md — UX-1 exam-media readiness and download recovery
+
+- [ ] On a slow connection, start a new exam: Briefing shows exact media preparation counts before a new active attempt/deadline exists. After preparation it starts at approximately 25:00, then normal 20+15/50 question timers; no network fetch is needed for those prepared files.
+- [ ] Repeat with all selected media already cached in airplane mode: no network grant needed for a cache hit. Missing cache file while offline blocks preparation rather than starting a timed unusable question.
+- [ ] Missing login/CDN object/configuration, HTTP failure or zero-byte/oversized file shows preparation failure with retry/settings access. Previously active exam/questions/answers remain; its original deadline continues independently and is not extended.
+- [ ] Cancel during drawing/serial media preparation, change category or leave Dashboard: no late new exam/navigation. Current HTTP download may finish; cancellation does not abort the socket mid-file. Briefing's short committing stage locks cancellation, then either starts or rolls back on write failure.
+- [ ] Partially fail a 250-file Settings download: busy indicator stops and retry is enabled; already cached files are reused. Rapid duplicate taps do not launch a second batch. Cancellation between files, tab blur and category switch do not attribute old progress to a new category.
+- [ ] Test storage quota/system cache purge. All files must exist at final pre-start verification; evicted files block readiness. Do not infer a full category offline pack or permanent availability from a bounded cache batch.
+- [ ] Decode/display each prepared image/video correctly on Android and iPhone: file size checks alone cannot prove codec/content validity. Check large video, local-player startup delay, background/foreground and audio/control rules without modifying the engine's time limits.
+- [ ] Reset local data during preparation and immediately start another download: old callback/temp cleanup must not recreate progress/session or interfere with the new generation. Verify no stray temporary files after errors.
+
 ## New plan — point 6.2 EAS linkage, signing and OTA
 
 - [ ] Owner explicitly chooses personal/team project and records the real UUID in app.json. Read-only account check found a logged-in owner with two available accounts; no project was selected or created during implementation.

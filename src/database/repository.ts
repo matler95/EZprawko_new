@@ -527,7 +527,10 @@ async function hydrateQuestions(
   );
 }
 
-export async function startActiveExam(db: SQLiteDatabase, category: string) {
+export async function startActiveExam(db: SQLiteDatabase, category: string,
+  prepare?: (questions: readonly Question[]) => Promise<void>,
+  canStart: () => boolean = () => true,
+) {
   const revision = userDataRevision();
   if (!isDrivingCategory(category)) throw new Error("Unsupported theory exam category");
   const language = await selectedQuestionLanguage(db);
@@ -547,9 +550,12 @@ export async function startActiveExam(db: SQLiteDatabase, category: string) {
   // Hydrate before replacement: a read/translation failure cannot strand a new
   // partial session or destroy the previous resumable attempt.
   const questions = await hydrateQuestions(db, base.questions, language);
-  const expiresAt = Date.now() + base.durationSeconds * 1000;
+  await prepare?.(questions);
+  let expiresAt = 0;
   await db.withExclusiveTransactionAsync(async (transaction) => {
     if (!userDataWritable(revision)) throw new Error("Data reset interrupted exam creation");
+    if (!canStart()) throw new Error("Exam preparation cancelled");
+    expiresAt = Date.now() + base.durationSeconds * 1000;
     await transaction.execAsync(
       "DELETE FROM active_exam_questions; DELETE FROM active_exam;",
     );
@@ -568,6 +574,7 @@ export async function startActiveExam(db: SQLiteDatabase, category: string) {
         question.id,
       );
     await transaction.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-language:${id}`, language);
+    if (!canStart() || !userDataWritable(revision)) throw new Error('Exam preparation cancelled before commit');
   });
   return {
     id,

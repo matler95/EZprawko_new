@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, router, useRootNavigationState, useNavigationContainerRef } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, router, useRootNavigationState, useNavigationContainerRef, usePathname } from 'expo-router';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -10,7 +10,7 @@ import { withDataMaintenance } from '@/domain/data-maintenance';
 import AppTabs from '@/components/app-tabs';
 import { TabBarContext } from '@/context/tab-bar-context';
 import { AppThemeContext } from '@/context/app-theme-context';
-import { initializeDatabase, selectedCategory, setSelectedCategory, setThemePreference, themePreference, type ThemePreference } from '@/database/repository';
+import { initializeDatabase, selectedCategory, setSelectedCategory, setThemePreference, themePreference, hasCompletedOnboarding, type ThemePreference } from '@/database/repository';
 import { TargetCategoryContext } from '@/context/target-category-context';
 import type { DrivingCategory } from '@/domain/driving-categories';
 import { Colors } from '@/constants/theme';
@@ -59,12 +59,26 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
   const [initialReadFailed, setInitialReadFailed] = useState(false);
   const [category, setCategory] = useState<DrivingCategory>('B');
   const [categoryChanging, setCategoryChanging] = useState(false);
+  const [onboardingRequired, setOnboardingRequired] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const categoryLock = useRef(false);
   const [isTabBarHidden, setIsTabBarHidden] = useState(false);
   const navigation = useNavigationContainerRef();
   const rootState = useRootNavigationState();
+  const pathname = usePathname();
   const recoveryHandled = useRef(false);
+  useEffect(() => {
+    let active = true;
+    const guarded = pathname === '/study' || pathname === '/progress' || pathname === '/signs' || pathname.startsWith('/exam/');
+    if (onboardingRequired && rootState?.key && navigation.isReady()) {
+      void Promise.all([hasCompletedOnboarding(db), selectedCategory(db)]).then(([completed, persisted]) => {
+        if (!active) return;
+        if (completed) { setCategory(persisted); setOnboardingRequired(false); }
+        else if (guarded) router.replace('/');
+      }).catch(() => { if (active) setInitialReadFailed(true); });
+    }
+    return () => { active = false; };
+  }, [db, navigation, onboardingRequired, pathname, rootState?.key]);
   useEffect(() => {
     if (recoverHome && !recoveryHandled.current && appearanceLoaded && rootState?.key && navigation.isReady()) {
       recoveryHandled.current = true;
@@ -73,7 +87,7 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
   }, [appearanceLoaded, navigation, recoverHome, rootState?.key]);
   useEffect(() => {
     let active = true;
-    void Promise.all([themePreference(db), selectedCategory(db)]).then(([value, target]) => { if (active) { setPreference(value); setCategory(target); } })
+    void Promise.all([themePreference(db), selectedCategory(db), hasCompletedOnboarding(db)]).then(([value, target, completed]) => { if (active) { setPreference(value); setCategory(target); setOnboardingRequired(!completed); } })
       .catch(() => { if (active) setInitialReadFailed(true); })
       .finally(() => { if (active) setAppearanceLoaded(true); });
     return () => { active = false; };
@@ -92,8 +106,8 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
           try { await setSelectedCategory(db, value); setCategory(value); return true; }
           catch { setCategoryError('Nie udało się zapisać kategorii. Spróbuj ponownie.'); return false; }
           finally { categoryLock.current = false; setCategoryChanging(false); }
-        } }}>
-        <TabBarContext value={{ isTabBarHidden, setIsTabBarHidden }}>
+        }, acceptPersistedCategory: (value) => { setCategory(value); setCategoryError(null); setOnboardingRequired(false); } }}>
+        <TabBarContext value={{ isTabBarHidden: isTabBarHidden || onboardingRequired, setIsTabBarHidden }}>
           <StatusBar style={dark ? 'light' : 'dark'} />
           <AppTabs />
         </TabBarContext>

@@ -6,15 +6,16 @@ import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from "
 import { LearningRewards } from "@/components/learning-rewards";
 import { learningProgress, type LearningProgress } from "@/database/learning-progress";
 import { useTargetCategory } from "@/context/target-category-context";
-import { categoryLabel, drivingCategories } from "@/domain/driving-categories";
+import { categoryLabel } from "@/domain/driving-categories";
+import { OnboardingFlow } from '@/components/onboarding-flow';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReadinessRing } from "@/components/readiness-ring";
 import { ExamBriefing } from "@/components/exam-briefing";
 import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
+import { prepareExamMedia, type MediaPreloadProgress } from '@/services/media-preload';
 
 import {
   clearActiveExam,
-  completeOnboarding,
   examReadiness,
   hasCompletedOnboarding,
   resumeActiveExam,
@@ -22,13 +23,11 @@ import {
   type ExamReadiness,
 } from "@/database/repository";
 
-const categories = drivingCategories;
-
 export default function DashboardScreen() {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
-  const { category, setCategory, changing, error: categoryError } = useTargetCategory();
+  const { category, acceptPersistedCategory, error: categoryError } = useTargetCategory();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [failedRevision, setFailedRevision] = useState<number | null>(null);
   const [reload, setReload] = useState(0);
@@ -36,6 +35,10 @@ export default function DashboardScreen() {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const startLock = useRef(false);
+  const prepareCancelled = useRef(false);
+  const commitLock = useRef(false);
+  const [isCommitting, setIsCommitting] = useState(false);
+  const [mediaProgress, setMediaProgress] = useState<MediaPreloadProgress | null>(null);
   const [briefing, setBriefing] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
@@ -61,23 +64,36 @@ export default function DashboardScreen() {
     refresh();
     const timer = setInterval(() => { if (AppState.currentState === 'active') refresh(); }, 60_000);
     const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
-    return () => { mounted = false; clearInterval(timer); subscription.remove(); };
+    return () => { mounted = false; prepareCancelled.current = true; clearInterval(timer); subscription.remove(); };
   }, [category, db, reload]));
 
   const startExam = async () => {
     if (startLock.current) return;
     startLock.current = true;
+    prepareCancelled.current = false;
+    commitLock.current = false;
+    setIsCommitting(false);
     setIsStarting(true);
+    setMediaProgress(null);
     setStartError(null);
     try {
-      const active = await startActiveExam(db, category);
+      const active = await startActiveExam(db, category,
+        async (questions) => { await prepareExamMedia(questions, (progress) => {
+          if (!prepareCancelled.current) setMediaProgress(progress);
+        }, () => !prepareCancelled.current);
+          if (prepareCancelled.current) throw new Error('Przygotowanie przerwane.');
+          commitLock.current = true; setIsCommitting(true);
+        },
+        () => !prepareCancelled.current,
+      );
       setActiveExamId(active.id);
       setBriefing(false);
       router.push({ pathname: "/exam/[id]", params: { id: active.id } });
-    } catch {
-      setStartError("Nie udało się rozpocząć egzaminu. Spróbuj ponownie.");
+    } catch (reason) {
+      if (!prepareCancelled.current) setStartError(reason instanceof Error ? reason.message : "Nie udało się przygotować egzaminu. Sprawdź dostęp do multimediów i spróbuj ponownie.");
     } finally {
       startLock.current = false;
+      commitLock.current = false; setIsCommitting(false);
       setIsStarting(false);
     }
   };
@@ -93,48 +109,14 @@ export default function DashboardScreen() {
   }
 
   if (!onboardingComplete) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.onboarding}>
-          <Text style={styles.hello}>Zaczynamy</Text>
-          <Text style={styles.onboardingTitle}>Jaką kategorię zdajesz?</Text>
-          <Text style={styles.muted}>
-            Dopasujemy pytania specjalistyczne i egzamin próbny.
-          </Text>
-          <Text style={styles.muted}>Wybierz jedną kategorię dla Nauki i egzaminu. PT — pozwolenie na kierowanie tramwajem.</Text>
-          <View style={styles.categoryGrid}>
-            {categories.map((item) => (
-              <Pressable
-                key={item}
-                disabled={changing}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: category === item, disabled: changing }}
-                accessibilityLabel={categoryLabel(item)}
-                onPress={() => void setCategory(item)}
-                style={[styles.categoryChoice, category === item && styles.categoryChoiceSelected]}
-              >
-                <Text style={category === item ? styles.categoryChoiceSelectedText : styles.categoryChoiceText}>
-                  {item}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Pressable
-            disabled={changing}
-            onPress={() => {
-              void (async () => {
-                await completeOnboarding(db);
-                setOnboardingComplete(true);
-              })();
-            }}
-            style={styles.onboardingButton}
-          >
-            <Text style={styles.buttonText}>Ustaw kategorię i kontynuuj</Text>
-          </Pressable>
-          {categoryError && <Text accessibilityRole="alert" style={styles.muted}>{categoryError}</Text>}
-        </ScrollView>
-      </SafeAreaView>
-    );
+    return <OnboardingFlow onComplete={(selected, destination) => {
+      acceptPersistedCategory(selected);
+      setOnboardingComplete(true);
+      try {
+        if (destination === 'study') router.navigate('/study?filter=three&count=5&start=1');
+        else if (destination === 'settings') router.navigate('/settings');
+      } catch { setStartError('Konfiguracja została zapisana. Wybierz Naukę lub Ustawienia z panelu.'); }
+    }} />;
   }
 
   return (
@@ -213,7 +195,10 @@ export default function DashboardScreen() {
         </Pressable>
         {learning && <LearningRewards progress={learning} category={category} part="achievements" />}
       </ScrollView>
-      <ExamBriefing visible={briefing} category={category} hasActiveExam={Boolean(activeExamId)} starting={isStarting} error={startError} onCancel={() => setBriefing(false)} onStart={() => void startExam()} />
+      <ExamBriefing visible={briefing} category={category} hasActiveExam={Boolean(activeExamId)} starting={isStarting} committing={isCommitting} progress={mediaProgress} error={startError}
+        onCancel={() => { if (!commitLock.current) { prepareCancelled.current = true; setBriefing(false); } }}
+        onSettings={() => { prepareCancelled.current = true; setBriefing(false); router.navigate('/settings'); }}
+        onStart={() => void startExam()} />
     </SafeAreaView>
   );
 }
@@ -221,14 +206,6 @@ export default function DashboardScreen() {
 const createStyles = (colors: AppTheme) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   loading: { alignItems: "center", flex: 1, justifyContent: "center", padding: 24 },
-  onboarding: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  onboardingTitle: { color: colors.textPrimary, fontSize: 30, fontWeight: "700", lineHeight: 36, marginTop: 12 },
-  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 32 },
-  categoryChoice: { alignItems: "center", backgroundColor: colors.primarySurface, borderRadius: 16, justifyContent: "center", minHeight: 72, minWidth: 72 },
-  categoryChoiceSelected: { backgroundColor: colors.primary },
-  categoryChoiceText: { color: colors.primaryText, fontSize: 18, fontWeight: "800" },
-  categoryChoiceSelectedText: { color: colors.onPrimary, fontSize: 18, fontWeight: "800" },
-  onboardingButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 18, justifyContent: "center", marginTop: 32, minHeight: 56 },
   content: { padding: 24, paddingBottom: 48 },
   hello: { color: colors.textPrimary, fontSize: 24, fontWeight: "700" },
   muted: { color: colors.textSecondary, fontSize: 14, marginTop: 6 },

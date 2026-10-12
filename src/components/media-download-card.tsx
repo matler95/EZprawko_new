@@ -1,5 +1,6 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 
@@ -7,26 +8,54 @@ import { mediaConfig } from '@/config/media';
 import { mediaFilenamesForCategory } from '@/database/repository';
 import { useTargetCategory } from '@/context/target-category-context';
 import { preloadMedia } from '@/services/media-preload';
+import type { DrivingCategory } from '@/domain/driving-categories';
 
 export function MediaDownloadCard() {
+  const { category } = useTargetCategory();
+  return <CategoryMediaDownloadCard key={category} category={category} />;
+}
+
+function CategoryMediaDownloadCard({ category }: { category: DrivingCategory }) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
-  const { category } = useTargetCategory();
   const [progress, setProgress] = useState<{ completed: number; total: number }>();
   const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const cancelled = useRef(false);
+  const running = useRef(false);
+  const generation = useRef(0);
+  const focused = useRef(false);
+  useFocusEffect(useCallback(() => {
+    focused.current = true;
+    setProgress(undefined); setError(undefined); setBusy(running.current);
+    return () => { focused.current = false; cancelled.current = true; generation.current++; };
+  }, []));
 
   const preload = async () => {
-    if (!mediaConfig.enabled) return;
+    if (!mediaConfig.enabled || running.current) return;
+    running.current = true;
+    cancelled.current = false;
+    const request = ++generation.current;
+    setBusy(true);
     setError(undefined);
     setProgress({ completed: 0, total: 0 });
 
     try {
       const filenames = await mediaFilenamesForCategory(db, category);
-      const result = await preloadMedia(filenames, setProgress);
-      setProgress(result);
+      if (request !== generation.current || cancelled.current) return;
+      const result = await preloadMedia(filenames, (value) => {
+        if (request === generation.current) setProgress(value);
+      }, () => request === generation.current && !cancelled.current);
+      if (request === generation.current) {
+        setProgress(result);
+        if (result.completed < result.total) setError('Pobieranie przerwane. Możesz je ponowić; zapisane pliki zostaną wykorzystane.');
+      }
     } catch {
-      setError('Nie udało się pobrać wszystkich materiałów. Sprawdź połączenie i spróbuj ponownie.');
+      if (request === generation.current) setError('Nie udało się pobrać wszystkich materiałów. Sprawdź połączenie i spróbuj ponownie.');
+    } finally {
+      running.current = false;
+      if (focused.current) setBusy(false);
     }
   };
 
@@ -41,19 +70,21 @@ export function MediaDownloadCard() {
       <View style={styles.copy}>
         <Text style={styles.title}>Materiały offline</Text>
         <Text style={styles.detail}>{detail}</Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <Text style={styles.detail}>To ograniczona partia, nie pełny pakiet kategorii. Cache może być usunięty przez system lub limit 1 GB.</Text>
+        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </View>
       <Pressable
         accessibilityRole="button"
-        disabled={!mediaConfig.enabled || Boolean(progress && progress.completed < progress.total)}
+        disabled={!mediaConfig.enabled || busy}
         onPress={preload}
         style={({ pressed }) => [
           styles.button,
-          (!mediaConfig.enabled || Boolean(progress && progress.completed < progress.total)) && styles.buttonDisabled,
+          (!mediaConfig.enabled || busy) && styles.buttonDisabled,
           pressed && styles.buttonPressed,
         ]}>
-        {progress && progress.completed < progress.total ? <ActivityIndicator color={colors.onGold} /> : <Text style={styles.buttonText}>Pobierz</Text>}
+        {busy ? <ActivityIndicator color={colors.onGold} /> : <Text style={styles.buttonText}>{error ? 'Spróbuj ponownie' : 'Pobierz'}</Text>}
       </Pressable>
+      {busy ? <Pressable accessibilityRole="button" onPress={() => { cancelled.current = true; }} style={styles.button}><Text style={styles.buttonText}>Przerwij po bieżącym pliku</Text></Pressable> : null}
     </View>
   );
 }

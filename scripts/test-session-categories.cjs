@@ -53,6 +53,26 @@ const db={execAsync:async sql=>native.exec(sql),runAsync:async(sql,...values)=>n
   const broken={...db,getFirstAsync:async(sql,...values)=>{if(sql.startsWith('SELECT id, scope'))throw Error('synthetic read failure');return db.getFirstAsync(sql,...values);}};
   await assert.rejects(()=>r.startActiveExam(broken,'B'),/synthetic/);
   assert.equal((await r.resumeActiveExam(db)).id,exam.id);
+  // Preparation is outside the write transaction and cannot destroy the old attempt.
+  const oldId=exam.id;
+  await assert.rejects(()=>r.startActiveExam(db,'B',async questions=>{
+    assert.equal(questions.length,32);assert.equal((await r.resumeActiveExam(db)).id,oldId);
+    throw Error('synthetic media failure');
+  }),/synthetic media/);
+  assert.equal((await r.resumeActiveExam(db)).id,oldId);
+  await assert.rejects(()=>r.startActiveExam(db,'B',async()=>{},()=>false),/cancelled/);
+  assert.equal((await r.resumeActiveExam(db)).id,oldId);
+  let cancelled=false;
+  const cancelDb={...db,withExclusiveTransactionAsync:async fn=>db.withExclusiveTransactionAsync(async tx=>fn({...tx,runAsync:async(sql,...v)=>{
+    const result=await tx.runAsync(sql,...v);if(sql.startsWith('INSERT INTO active_exam_questions'))cancelled=true;return result;
+  }}))};
+  await assert.rejects(()=>r.startActiveExam(cancelDb,'B',async()=>{},()=>!cancelled),/cancelled/);
+  assert.equal((await r.resumeActiveExam(db)).id,oldId,'late cancellation rolls back replacement');
+  const realNow=Date.now;let wall=realNow();Date.now=()=>wall;
+  try {
+    const delayedExam=await r.startActiveExam(db,'B',async()=>{wall+=120000;});
+    assert.equal(delayedExam.expiresAt,wall+25*60*1000,'preparation time is not exam time');
+  } finally {Date.now=realNow;}
   native.prepare('UPDATE active_exam SET current_index=-1').run();assert.equal(await r.resumeActiveExam(db),null);
   native.prepare('UPDATE active_exam SET current_index=0,expires_at=1').run();assert.equal(await r.resumeActiveExam(db),null);
   exam=await r.startActiveExam(db,'B');

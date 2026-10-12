@@ -45,11 +45,12 @@ function StudySession() {
   const s = createStyles(colors);
   const db = useSQLiteContext();
   const { category } = useTargetCategory();
-  const { filter: requestedFilter, count: requestedCount, topic: requestedTopic, sign: requestedSign } = useLocalSearchParams<{
+  const { filter: requestedFilter, count: requestedCount, topic: requestedTopic, sign: requestedSign, start: requestedStart } = useLocalSearchParams<{
     filter?: string;
     count?: string;
     topic?: string;
     sign?: string;
+    start?: string;
   }>();
   const [items, setItems] = useState<StudyQuestion[]>([]);
   const [active, setActive] = useState<StudyQuestion | null>(null);
@@ -61,6 +62,7 @@ function StudySession() {
   const [explanationLoading, setExplanationLoading] = useState(false);
   const [explanationFailed, setExplanationFailed] = useState(false);
   const openRequest = useRef(0);
+  const autoOpened = useRef<string | null>(null);
   const ledger = useRef<StudyAnswers>({});
   const writing = useRef(false);
   const baseline = useRef<MasterySnapshot | null>(null);
@@ -109,7 +111,7 @@ function StudySession() {
     return () => { current = false; };
   }, [activeFilter, category, db, language, languageReady, queryKey, requestedSign, requestedTopic, search, sessionLimit]);
   const batch = roundItems ?? items;
-  const open = async (item: StudyQuestion, itemIndex = batch.findIndex((value) => value.id === item.id)) => {
+  const open = useCallback(async (item: StudyQuestion, itemIndex = batch.findIndex((value) => value.id === item.id)) => {
     if (writing.current) return;
     const request = ++openRequest.current;
     setBusy(true);
@@ -146,7 +148,13 @@ function StudySession() {
     } finally {
       if (request === openRequest.current) setExplanationLoading(false);
     }
-  };
+  }, [batch, category, db, language, setActive]);
+  useEffect(() => {
+    if (requestedStart !== '1' || loading || readError || !items.length || autoOpened.current === queryKey) return;
+    autoOpened.current = queryKey;
+    void open(items[0], 0);
+    router.setParams({ start: undefined });
+  }, [items, loading, open, queryKey, readError, requestedStart]);
   const move = (direction: -1 | 1) => {
     const nextIndex = activeIndex + direction;
     if (nextIndex >= 0 && nextIndex < batch.length) void open(batch[nextIndex], nextIndex);

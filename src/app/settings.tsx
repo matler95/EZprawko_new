@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSQLiteContext } from "expo-sqlite";
 import { cacheSizeBytes, clearMediaCache } from "@/services/media-cache";
@@ -27,7 +27,8 @@ export default function SettingsScreen() {
   }, [db]);
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <Text style={s.title}>Ustawienia</Text>
         <MediaAccountCard />
         <Text style={s.heading}>Język pytań</Text>
@@ -99,6 +100,7 @@ export default function SettingsScreen() {
         <UserDataCard />
         <AppAboutCard />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

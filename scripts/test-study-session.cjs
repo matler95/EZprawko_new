@@ -3,6 +3,7 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 const { DatabaseSync } = require('node:sqlite');
 const root = path.resolve(__dirname, '..'), cache = new Map();
 let states=[], refs=[], effects=[], pending=[], si=0, ri=0, ei=0, focus, writes=0, failWrite=false, failMastery=false, mastered=0, theme='light';
+let routeParams={};
 const items=[1,2,3].map(id=>({id,question:`Pytanie ${id}`,points:3,scope:'SPECJALISTYCZNY',correct_answer:'A',media_filename:null,contentLanguage:'pl'}));
 const db={getAllAsync:async()=>items,getFirstAsync:async()=>null};
 function load(file){if(cache.has(file))return cache.get(file);const exports={};
@@ -11,7 +12,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name==='react/jsx-runtime')return require(name);
     if(name==='react-native')return {Pressable:'Pressable',ScrollView:'ScrollView',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s},Platform:{select:s=>s.default}};
     if(name==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
-    if(name==='expo-router')return {router:{setParams:()=>{}},useFocusEffect:f=>focus=f,useLocalSearchParams:()=>({})};
+    if(name==='expo-router')return {router:{setParams:value=>Object.assign(routeParams,value)},useFocusEffect:f=>focus=f,useLocalSearchParams:()=>routeParams};
     if(name==='expo-sqlite')return {useSQLiteContext:()=>db};
     if(name==='expo-haptics')return {NotificationFeedbackType:{Success:1,Error:2},notificationAsync:async()=>{throw Error('no haptics');}};
     if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors[theme]})};
@@ -61,6 +62,10 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
   const basic=nodes(basicTree).find(n=>n.type==='BasicAnswerButtons');assert(basic);assert.equal(basic.props.disabled,false);
   basic.props.onAnswer('T');await tick();basicTree=render();const answeredBasic=nodes(basicTree).find(n=>n.type==='BasicAnswerButtons');
   assert(answeredBasic.props.disabled);assert.equal(answeredBasic.props.selectedAnswer,'T');assert.equal(writes,1);cleanup();
+  states=[];refs=[];effects=[];pending=[];writes=mastered=0;routeParams={filter:'three',count:'5',start:'1'};
+  render();const autoCleanup=focus();await tick();render();await tick();render();await tick();let autoTree=render();
+  assert.match(text(autoTree),/Pytanie 1/);assert.match(text(autoTree),/1 z 3/);assert.equal(writes,0,'auto-open must not record an answer');assert.equal(routeParams.start,undefined);
+  button(autoTree,'Następne →').props.onPress();await tick();autoTree=render();assert.match(text(autoTree),/Pytanie 2/,'consumed start cannot reopen question 1');autoCleanup();routeParams={};
   // Load the real SQL helper, not the UI's stub.
   const native=new DatabaseSync(':memory:');native.exec(`CREATE TABLE questions(id INTEGER,categories TEXT);CREATE TABLE practice_mastery(question_id INTEGER,correct_streak INTEGER);INSERT INTO questions VALUES(1,'["B","B1"]'),(2,'["A"]'),(3,'["B"]');INSERT INTO practice_mastery VALUES(1,3),(2,3),(3,2);`);
   const exports={};new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,'src/database/study-session.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(()=>load('src/domain/driving-categories.ts'),exports);

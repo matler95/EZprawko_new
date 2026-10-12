@@ -5,6 +5,7 @@ export const TargetCategoryContext = createContext<{
   changing: boolean;
   error: string | null;
   setCategory: (value: DrivingCategory) => Promise<boolean>;
+  acceptPersistedCategory: (value: DrivingCategory) => void;
 } | null>(null);
 export function useTargetCategory() {
   const context = useContext(TargetCategoryContext);

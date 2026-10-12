@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 
 export const userProgressTables = ["exam_answers", "exam_sessions", "active_exam_questions", "active_exam", "practice_attempts", "practice_mastery", "flags", "challenge_days", "user_achievements"] as const;
 const catalogKeys = ["translations-version", "question-signs-version", "explanations-version"];
-const preferenceKeys = ["target-category", "question-language", "theme-preference", "onboarding-complete", "daily-reminder-id", "daily-reminder-minutes"];
+const preferenceKeys = ["target-category", "question-language", "theme-preference", "onboarding-complete", "onboarding-draft", "daily-reminder-id", "daily-reminder-minutes"];
 
 export async function resetUserProgress(db: SQLiteDatabase, allSettings = false) {
   await db.withExclusiveTransactionAsync(async (tx) => {

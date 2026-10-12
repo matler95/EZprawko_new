@@ -1,11 +1,14 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useEventListener } from 'expo';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import { deliveredMediaFilename, mediaConfig } from '@/config/media';
 import { cachedMediaUri } from '@/services/media-cache';
+import { MediaAccountRequiredError } from '@/domain/account';
+import { MediaAccountCard } from '@/components/media-account-card';
 
 type QuestionMediaProps = {
   filename?: string | null;
@@ -51,10 +54,12 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const [retry, setRetry] = useState(0);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [media, setMedia] = useState<{
     filename: string;
     uri?: string;
     error?: string;
+    requiresAccount?: boolean;
   }>();
 
   useEffect(() => {
@@ -71,6 +76,7 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
           setMedia({
             filename,
             error: reason instanceof Error ? reason.message : 'Nie udało się pobrać materiału. Spróbuj ponownie później.',
+            requiresAccount: reason instanceof MediaAccountRequiredError,
           });
         }
       });
@@ -103,6 +109,19 @@ export function QuestionMedia({ filename, examMode, onVideoEnd }: QuestionMediaP
       <View style={styles.statusCard}>
         <Text style={styles.statusTitle}>Materiał niedostępny</Text>
         <Text style={styles.statusCopy}>{error}</Text>
+        {!examMode && media?.requiresAccount ? <>
+          <Pressable accessibilityRole="button" onPress={() => setAccountOpen(true)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={styles.statusTitle}>Zaloguj się do materiałów</Text></Pressable>
+          <Modal visible={accountOpen} animationType="slide" onRequestClose={() => setAccountOpen(false)}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+              <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ padding: 24, gap: 16 }}>
+                  <Pressable accessibilityRole="button" onPress={() => setAccountOpen(false)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={styles.statusTitle}>Wróć do pytania</Text></Pressable>
+                  <MediaAccountCard onAuthenticated={() => { setAccountOpen(false); setMedia(undefined); setRetry(value => value + 1); }} />
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
+          </Modal>
+        </> : null}
         <Pressable onPress={() => { setMedia(undefined); setRetry((value) => value + 1); }} style={{ minHeight: 44, justifyContent: 'center' }}>
           <Text style={styles.statusTitle}>Spróbuj ponownie</Text>
         </Pressable>

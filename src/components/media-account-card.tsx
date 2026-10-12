@@ -1,118 +1,112 @@
-import type { Session } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import type { Session } from '@supabase/supabase-js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useAppTheme } from '@/context/app-theme-context';
+import { supabase, supabaseConfigured } from '@/services/supabase';
+import { signInExistingAccount, signOutLocalAccount } from '@/services/account';
+import { validLoginEmail, accountErrorMessage } from '@/domain/account';
+import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
 
-import { useAppTheme } from "@/context/app-theme-context";
-import { supabase, supabaseConfigured } from "@/services/supabase";
-
-export function MediaAccountCard() {
+export function MediaAccountCard({ onAuthenticated }: { onAuthenticated?: () => void } = {}) {
   const { colors } = useAppTheme();
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [readFailed, setReadFailed] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [visiblePassword, setVisiblePassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next);
-      setReady(true);
-    });
-    return () => subscription.unsubscribe();
+  const [submitted, setSubmitted] = useState(false);
+  const mounted = useRef(false);
+  const lock = useRef(false);
+  const revision = useRef(0);
+  const passwordInput = useRef<TextInput>(null);
+  const refresh = useCallback(async () => {
+    const request = ++revision.current;
+    try {
+      const { data, error: readError } = await supabase.auth.getSession();
+      if (readError) throw readError;
+      if (mounted.current && request === revision.current) { setSession(data.session); setReady(true); setReadFailed(false); }
+    } catch { if (mounted.current && request === revision.current) { setReady(true); setReadFailed(true); } }
   }, []);
-
+  useEffect(() => {
+    mounted.current = true;
+    if (!supabaseConfigured) return () => { mounted.current = false; };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (!mounted.current) return;
+      revision.current++;
+      setSession(next); setReady(true); setReadFailed(false);
+      if (next) { setPassword(''); setVisiblePassword(false); }
+    });
+    void Promise.resolve().then(refresh);
+    const foreground = AppState.addEventListener('change', state => { if (state === 'active') void refresh(); });
+    return () => { mounted.current = false; subscription.unsubscribe(); foreground.remove(); };
+  }, [refresh]);
+  useFocusEffect(useCallback(() => {
+    if (supabaseConfigured) void refresh();
+    return () => { setPassword(''); setVisiblePassword(false); };
+  }, [refresh]));
   const signIn = async () => {
-    if (busy || !email.trim() || !password) return;
-    setBusy(true);
-    setError(null);
+    if (lock.current || !supabaseConfigured || readFailed) return;
+    setSubmitted(true);
+    if (!validLoginEmail(email) || !password) return;
+    lock.current = true; setBusy(true); setError(null);
+    const generation = userDataRevision();
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (authError) {
-        setError("Nie udało się zalogować. Sprawdź e-mail i hasło oraz połączenie z internetem.");
-      } else {
-        setPassword("");
-      }
-    } catch {
-      setError("Nie udało się połączyć. Spróbuj ponownie.");
-    } finally {
-      setBusy(false);
-    }
+      const result = await signInExistingAccount(email, password);
+      if (!mounted.current || !userDataWritable(generation)) return;
+      if (result.error) { setError(accountErrorMessage(result.error)); return; }
+      if (!result.data.session) { setError('Nie potwierdzono logowania. Spróbuj ponownie.'); return; }
+      revision.current++;
+      setSession(result.data.session); setReady(true); setReadFailed(false);
+      setPassword(''); setVisiblePassword(false); Keyboard.dismiss();
+      onAuthenticated?.();
+    } catch (failure) { if (mounted.current && userDataWritable(generation)) setError(accountErrorMessage(failure)); }
+    finally { lock.current = false; if (mounted.current) setBusy(false); }
   };
-
   const signOut = async () => {
-    setBusy(true);
-    setError(null);
+    if (lock.current) return;
+    lock.current = true; setBusy(true); setError(null);
     try {
-      const { error: authError } = await supabase.auth.signOut({ scope: "local" });
-      if (authError) setError("Nie udało się wylogować. Spróbuj ponownie.");
-    } catch {
-      setError("Nie udało się wylogować. Spróbuj ponownie.");
-    } finally {
-      setBusy(false);
-    }
+      const { error: signOutError } = await signOutLocalAccount();
+      if (signOutError) throw signOutError;
+      const { data, error: readError } = await supabase.auth.getSession();
+      if (readError || data.session) throw new Error('Sign-out not confirmed');
+      if (mounted.current) { revision.current++; setSession(null); setPassword(''); setVisiblePassword(false); setReadFailed(false); }
+    } catch (failure) { if (mounted.current) setError(accountErrorMessage(failure)); }
+    finally { lock.current = false; if (mounted.current) setBusy(false); }
   };
-
-  return (
-    <View style={[styles.card, { backgroundColor: colors.surface }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Konto</Text>
-      {!supabaseConfigured ? (
-        <Text style={{ color: colors.textSecondary }}>Logowanie nie jest jeszcze dostępne.</Text>
-      ) : !ready ? (
-        <Text style={{ color: colors.textSecondary }}>Sprawdzamy konto…</Text>
-      ) : session ? (
-        <>
-          <Text style={{ color: colors.textPrimary }}>{session.user.email}</Text>
-          <Text style={{ color: colors.textSecondary }}>Możesz pobierać multimedia do pytań.</Text>
-          <Pressable disabled={busy} onPress={() => void signOut()} style={styles.secondary}>
-            <Text style={{ color: colors.primaryText }}>{busy ? "Proszę czekać…" : "Wyloguj się"}</Text>
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <Text style={{ color: colors.textSecondary }}>Zaloguj się, aby pobierać zdjęcia i filmy do pytań.</Text>
-          <TextInput
-            accessibilityLabel="E-mail"
-            autoCapitalize="none"
-            autoComplete="email"
-            autoCorrect={false}
-            editable={!busy}
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            placeholder="E-mail"
-            placeholderTextColor={colors.textSecondary}
-            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
-            value={email}
-          />
-          <TextInput
-            accessibilityLabel="Hasło"
-            autoCapitalize="none"
-            autoComplete="current-password"
-            autoCorrect={false}
-            editable={!busy}
-            onChangeText={setPassword}
-            onSubmitEditing={() => void signIn()}
-            placeholder="Hasło"
-            placeholderTextColor={colors.textSecondary}
-            secureTextEntry
-            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
-            value={password}
-          />
-          <Pressable disabled={busy || !email.trim() || !password} onPress={() => void signIn()} style={[styles.button, { backgroundColor: colors.primary, opacity: busy || !email.trim() || !password ? 0.5 : 1 }]}>
-            <Text style={[styles.buttonText, { color: colors.onPrimary }]}>{busy ? "Logowanie…" : "Zaloguj się"}</Text>
-          </Pressable>
-        </>
-      )}
-      {error ? <Text accessibilityRole="alert" style={{ color: colors.error }}>{error}</Text> : null}
-    </View>
-  );
+  const s = StyleSheet.create({
+    card: { borderRadius: 20, gap: 16, padding: 24, backgroundColor: colors.surface },
+    title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary }, copy: { fontSize: 16, lineHeight: 24, color: colors.textSecondary },
+    input: { borderRadius: 12, borderWidth: 1, borderColor: colors.border, color: colors.textPrimary, minHeight: 52, padding: 16, fontSize: 16 },
+    button: { alignItems: 'center', borderRadius: 12, justifyContent: 'center', minHeight: 52, padding: 12, backgroundColor: colors.primary },
+    buttonText: { fontWeight: '700', color: colors.onPrimary, textAlign: 'center' }, secondary: { justifyContent: 'center', minHeight: 48 },
+    link: { color: colors.primaryText, fontWeight: '700' }, error: { color: colors.error, lineHeight: 24 }, disabled: { opacity: 0.5 },
+  });
+  return <View style={s.card}>
+    <Text accessibilityRole="header" style={s.title}>Konto i dostęp do materiałów</Text>
+    <Text style={s.copy}>Postępy są lokalne. Konto nie synchronizuje ich ani nie tworzy kopii w chmurze.</Text>
+    {!supabaseConfigured ? <Text style={s.copy}>Logowanie nie jest dostępne w tej konfiguracji aplikacji.</Text>
+      : !ready ? <Text accessibilityLiveRegion="polite" style={s.copy}>Sprawdzamy zapisaną sesję…</Text>
+      : readFailed ? <><Text accessibilityRole="alert" style={s.error}>Nie udało się odczytać stanu konta.</Text><Pressable accessibilityRole="button" onPress={() => void refresh()} style={s.secondary}><Text style={s.link}>Sprawdź ponownie</Text></Pressable></>
+      : session ? <>
+        <Text style={s.title}>{session.user.email ?? 'Zalogowane konto'}</Text>
+        <Text style={s.copy}>Sesja jest zapisana na urządzeniu. Serwer sprawdza dostęp przy pobieraniu każdego materiału.</Text>
+        {onAuthenticated ? <Pressable accessibilityRole="button" disabled={busy} onPress={onAuthenticated} style={s.button}><Text style={s.buttonText}>Wróć i ponów pobranie</Text></Pressable> : null}
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void signOut()} style={s.secondary}><Text style={s.link}>{busy ? 'Proszę czekać…' : 'Wyloguj z tego urządzenia'}</Text></Pressable>
+        <Text style={s.copy}>Wylogowanie nie usuwa postępów, cache ani konta na serwerze.</Text>
+      </> : <>
+        <Text style={s.copy}>Zaloguj się istniejącym kontem, aby pobierać zdjęcia i filmy. Rejestracja i odzyskiwanie hasła nie są jeszcze dostępne w aplikacji.</Text>
+        <TextInput accessibilityLabel="E-mail" autoCapitalize="none" autoComplete="email" autoCorrect={false} editable={!busy} keyboardType="email-address" returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => passwordInput.current?.focus()} onChangeText={setEmail} placeholder="E-mail" placeholderTextColor={colors.textSecondary} style={s.input} value={email} />
+        {submitted && !validLoginEmail(email) ? <Text accessibilityRole="alert" style={s.error}>Wpisz poprawny adres e-mail.</Text> : null}
+        <TextInput ref={passwordInput} accessibilityLabel="Hasło" autoCapitalize="none" autoComplete="current-password" autoCorrect={false} editable={!busy} onChangeText={setPassword} onSubmitEditing={() => void signIn()} returnKeyType="go" placeholder="Hasło" placeholderTextColor={colors.textSecondary} secureTextEntry={!visiblePassword} style={s.input} value={password} />
+        {submitted && !password ? <Text accessibilityRole="alert" style={s.error}>Wpisz hasło.</Text> : null}
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: visiblePassword, disabled: busy }} disabled={busy} onPress={() => setVisiblePassword(value => !value)} style={s.secondary}><Text style={s.link}>{visiblePassword ? 'Ukryj hasło' : 'Pokaż hasło'}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void signIn()} style={[s.button, busy && s.disabled]}><Text style={s.buttonText}>{busy ? 'Logowanie…' : 'Zaloguj się'}</Text></Pressable>
+      </>}
+    {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
+  </View>;
 }
-
-const styles = StyleSheet.create({
-  card: { borderRadius: 16, gap: 12, padding: 24 },
-  title: { fontSize: 18, fontWeight: "700" },
-  input: { borderRadius: 12, borderWidth: 1, minHeight: 48, paddingHorizontal: 16 },
-  button: { alignItems: "center", borderRadius: 12, justifyContent: "center", minHeight: 52 },
-  buttonText: { fontWeight: "700" },
-  secondary: { justifyContent: "center", minHeight: 44 },
-});

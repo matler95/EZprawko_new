@@ -5,6 +5,7 @@ import { exportUserData, resetUserProgress } from "@/database/user-data";
 import { clearMediaCache } from "@/services/media-cache";
 import { disableDailyReminder } from "@/services/reminders";
 import { supabase } from "@/services/supabase";
+import { signOutLocalAccount } from '@/services/account';
 
 export async function shareUserData(db: SQLiteDatabase) {
   if (!await Sharing.isAvailableAsync()) throw new Error("Udostępnianie plików nie jest dostępne na tym urządzeniu.");
@@ -25,7 +26,7 @@ export async function deleteLocalUserData(db: SQLiteDatabase) {
   // Cross-system work is not an atomic transaction. If a step fails, report it
   // and keep the operation retryable; never announce complete erasure on failure.
   await disableDailyReminder();
-  const { error } = await supabase.auth.signOut({ scope: "local" });
+  const { error } = await signOutLocalAccount();
   const { data, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || data.session) throw new Error("Nie udało się usunąć lokalnej sesji. Spróbuj ponownie po sprawdzeniu połączenia.");
   await clearMediaCache();
