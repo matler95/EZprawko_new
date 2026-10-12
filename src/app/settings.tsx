@@ -14,9 +14,11 @@ import {
   disableDailyReminder,
   enableDailyReminder,
 } from "@/services/reminders";
+import { useAppTheme } from "@/context/app-theme-context";
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
+  const { preference, setPreference } = useAppTheme();
   const [cache, setCache] = useState(0);
   const [reminder, setReminder] = useState<string | false>(false);
   const [category, setCategory] = useState("B");
@@ -30,6 +32,14 @@ export default function SettingsScreen() {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
         <Text style={s.title}>Ustawienia</Text>
+        <Text style={s.heading}>Wygląd</Text>
+        <View style={s.categories}>
+          {(["system", "light", "dark"] as const).map((item) => (
+            <Pressable key={item} onPress={() => setPreference(item)} style={[s.category, preference === item && s.categoryActive]}>
+              <Text style={preference === item ? s.categoryTextActive : s.categoryText}>{item === "system" ? "System" : item === "light" ? "Jasny" : "Ciemny"}</Text>
+            </Pressable>
+          ))}
+        </View>
         <Text style={s.heading}>Kategoria egzaminu</Text>
         <View style={s.categories}>
           {["AM", "A", "B", "C", "D"].map((item) => (

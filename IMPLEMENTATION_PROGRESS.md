@@ -53,6 +53,20 @@
 - Added the question's cached image or compatible video to the study card, along with a clear session position indicator and thumb-reachable previous/next controls.
 - Answer feedback, flagging, and reviewed explanations remain intact when moving between cards.
 - Validation passed: `npx tsc --noEmit` and `npx expo lint`.
+
+## Checkpoint — Phase 4: semantic theme foundation (2026-10-12)
+
+- Replaced the minimal color palette with semantic light and dark tokens for backgrounds, surfaces, borders, primary action, text, success, and error states.
+- Added a persisted appearance preference in SQLite (System, Light, or Dark) and exposed it in Settings. The selected preference now also controls the navigator's native theme and tab-bar colors.
+- Validation passed: `npx tsc --noEmit` and `npx expo lint`.
+- Remaining in Phase 4: replace remaining screen-local hardcoded colors with the semantic tokens, update tab icons, and add the timer/progress motion polish.
+
+## Checkpoint — Phase 5: road-sign lexicon (2026-10-12)
+
+- Added a new native-tab Road Signs lexicon with search, group filters, and compact sign-code cards for fast revision.
+- Replaced repeated template tab artwork with distinct system-native icons for Home, Study, Progress, Settings, and Road Signs.
+- Translation storage and official EN/UA/DE import remain pending the official multilingual source workbook.
+- Validation passed: `npx tsc --noEmit` and `npx expo lint`.
 # Checkpoint — media foundation (2026-10-12)
 
 - Installed SDK-compatible `expo-video`.

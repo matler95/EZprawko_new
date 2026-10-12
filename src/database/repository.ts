@@ -422,6 +422,24 @@ export async function setSelectedCategory(
   );
 }
 
+export type ThemePreference = "system" | "light" | "dark";
+
+export async function themePreference(db: SQLiteDatabase): Promise<ThemePreference> {
+  const setting = await db.getFirstAsync<{ value: ThemePreference }>(
+    "SELECT value FROM settings WHERE key = ?",
+    "theme-preference",
+  );
+  return setting?.value === "light" || setting?.value === "dark" ? setting.value : "system";
+}
+
+export async function setThemePreference(db: SQLiteDatabase, preference: ThemePreference) {
+  await db.runAsync(
+    "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+    "theme-preference",
+    preference,
+  );
+}
+
 export async function hasCompletedOnboarding(db: SQLiteDatabase) {
   const setting = await db.getFirstAsync<{ value: string }>(
     "SELECT value FROM settings WHERE key = ?",
