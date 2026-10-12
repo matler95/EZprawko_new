@@ -1,5 +1,16 @@
 # Implementation progress
 
+## Checkpoint — PLAN_IMPLEMENTACJI.md, point 3.4: score trend and full-bank coverage (2026-10-12)
+
+- Implemented only the approved point 3.4. Progress now shows the latest seven completed exams in chronological order, an exact 68/74 reference line, a truthful 0–74 scale (zero scores have zero-height bars), score labels and explicit pass/fail text.
+- Each chart column includes local completion date, year, time and category. Horizontal scrolling keeps labels readable on compact screens; screen readers receive the full date, score and result. History rows also show completion timestamps; the average card explicitly names its recent-exam sample.
+- Added a full-bank coverage card and accessible progress bar. One read-only SQLite aggregate counts distinct question IDs across practice and completed exams, excludes skipped answers, incomplete/orphan sessions and stale IDs, and reads the actual bank size rather than hardcoding 3,518. Repeated answers and overlap between modes never double-count. Coverage is not presented as mastery; all-category scope is explicit. Percentages use floor so 100% means every question was answered.
+- The new aggregate participates in the existing focus refresh, loading/error/retry and obsolete-read guard. No migrations, writes, new dependencies, native changes, exam-engine changes, translation or sign-lexicon changes were required.
+- Mobile UI guidance informed a restrained themed card, a horizontally scrollable chart instead of compressed labels, textual outcomes independent of color and accessible statistics. Native-stub chart contracts and real in-memory SQLite tests cover deduplication, empty/reset states, skips/incomplete/stale IDs, date labels, coverage bounds and 68-point geometry in both themes.
+- TypeScript and Expo lint passed. Skeleton tests, 5,000 exam-engine trials, translation regressions and 24 semantic contrast checks passed. Physical-device layout, large text, screen-reader and offline QA remain listed in QA_CHECKLIST.md; no native visual QA is claimed.
+- Final Android export passed (1,719 modules, 6.5 MB bundle), and `git diff --check` passed. No infrastructure deployment or public publication was performed.
+- Point 4.1 (legal/about screens) awaits separate user confirmation. Approved explanation content and publication permissions remain external dependencies.
+
 ## Checkpoint — PLAN_IMPLEMENTACJI.md, point 3.3: question entries and result motion (2026-10-12)
 
 - Implemented only the user-approved point 3.3. Added a short 180ms, 16px native-driver question-entry slide; no animation callback gates answer submission or clock progression.

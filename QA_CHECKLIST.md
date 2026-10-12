@@ -2,6 +2,16 @@
 
 Run this checklist on a physical Android device and, before public release, an iPhone. Record the app version, device model, OS version, and outcome for every failed item.
 
+## New plan — point 3.4 progress chart and coverage
+
+- [ ] In light/dark mode, verify 0, 67, 68 and 74-point bars against the dashed 68/74 threshold. Zero must not be drawn as a nonzero score; dates, years, local times and categories remain visible below columns.
+- [ ] On a compact phone and at large font size, horizontally scroll all seven chart columns; verify labels, history timestamps and coverage text do not clip or overlap.
+- [ ] With VoiceOver/TalkBack, verify chart columns announce date/year/time, category, true score and pass/fail; verify the coverage bar announces its current count/percentage.
+- [ ] Repeat one question several times in Study and then answer it in a completed exam: full-bank coverage increases only once. Incorrect answers count as answered, not mastered; skipped exam questions and incomplete exams do not increase this coverage.
+- [ ] Return to Progress after practice/exam completion, then restart offline: values refresh/persist correctly. Reset progress through the existing flow and verify coverage returns to zero without deleting the question bank.
+- [ ] Check an empty history: no fake chart/results appear; bank coverage may still reflect practice. Inject a temporary read failure: skeleton ends in retry, and retry recovers. Remove injection afterwards.
+- [ ] Run `node scripts/test-bank-progress.cjs` (real in-memory SQLite and stubbed native chart contracts, not device visual QA).
+
 ## New plan — Phase 1 UI and recovery
 
 - [ ] Open the briefing, wait, then cancel: no new active session is created and no timer is started. An existing exam remains available to resume.
