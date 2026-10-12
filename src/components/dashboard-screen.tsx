@@ -1,9 +1,10 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ReadinessRing } from "@/components/readiness-ring";
 
 import {
   challengeStatus,
@@ -35,7 +36,8 @@ export default function DashboardScreen() {
     complete: false,
   });
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    let mounted = true;
     void Promise.all([
       selectedCategory(db),
       hasCompletedOnboarding(db),
@@ -43,6 +45,8 @@ export default function DashboardScreen() {
       examReadiness(db),
       resumeActiveExam(db),
     ]).then(([storedCategory, completed, nextChallenge, nextReadiness, active]) => {
+      if (!mounted) return;
+      setIsStarting(false);
       setCategory(storedCategory);
       setOnboardingComplete(completed);
       setChallenge(nextChallenge);
@@ -50,7 +54,8 @@ export default function DashboardScreen() {
       setActiveExamId(active?.id ?? null);
       setOnboardingChecked(true);
     });
-  }, [db]);
+    return () => { mounted = false; };
+  }, [db]));
 
   const startExam = async () => {
     if (isStarting) return;
@@ -112,7 +117,7 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.hello}>Prawo Jazdy</Text>
+        <Text style={styles.hello}>EZprawko</Text>
         <Text style={styles.muted}>Oficjalna teoria · kategoria {category}</Text>
         <Pressable onPress={() => router.navigate("/settings")}>
           <Text style={styles.categoryLink}>Zmień kategorię</Text>
@@ -143,7 +148,7 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.readinessCard}>
-          <View>
+          <View style={styles.readinessCopyColumn}>
             <Text style={styles.readinessTitle}>Gotowość egzaminacyjna</Text>
             <Text style={styles.readinessCopy}>
               {readiness
@@ -153,7 +158,7 @@ export default function DashboardScreen() {
                 : "Ukończ pierwszy egzamin, aby ocenić gotowość."}
             </Text>
           </View>
-          <Text style={styles.readinessValue}>{readiness ? `${readiness.passRate}%` : "—"}</Text>
+          <ReadinessRing value={readiness?.passRate ?? null} />
         </View>
 
         <View style={styles.card}>
@@ -206,9 +211,10 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   gold: { alignSelf: "flex-start", backgroundColor: colors.accentGold, borderRadius: 16, marginTop: 24, padding: 16 },
   goldText: { color: colors.onGold, fontWeight: "700" },
   disabled: { opacity: 0.65 },
-  readinessCard: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 18, flexDirection: "row", justifyContent: "space-between", marginTop: 16, padding: 20 },
+  readinessCard: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 18, flexDirection: "row", gap: 12, justifyContent: "space-between", marginTop: 16, padding: 20 },
+  readinessCopyColumn: { flex: 1 },
   readinessTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: "700" },
-  readinessCopy: { color: colors.textSecondary, lineHeight: 19, marginTop: 4, maxWidth: 230 },
+  readinessCopy: { color: colors.textSecondary, lineHeight: 19, marginTop: 4 },
   readinessValue: { color: colors.primaryText, fontSize: 24, fontWeight: "800" },
   resumeCard: { alignItems: "center", backgroundColor: colors.warningSurface, borderColor: colors.warningBorder, borderRadius: 18, borderWidth: 1, flexDirection: "row", justifyContent: "space-between", marginTop: 16, padding: 18 },
   resumeTitle: { color: colors.warning, fontSize: 16, fontWeight: "800" },

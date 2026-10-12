@@ -1,27 +1,81 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { BackHandler, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image } from "expo-image";
+import { Link, router, useFocusEffect } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-const signs = [
-  ["A-7", "Ustąp pierwszeństwa", "Ostrzegawczy"], ["A-17", "Dzieci", "Ostrzegawczy"], ["A-30", "Inne niebezpieczeństwo", "Ostrzegawczy"],
-  ["B-20", "STOP", "Zakazu"], ["B-33", "Ograniczenie prędkości", "Zakazu"], ["B-36", "Zakaz zatrzymywania się", "Zakazu"],
-  ["C-12", "Ruch okrężny", "Nakazu"], ["C-2", "Nakaz jazdy w prawo", "Nakazu"],
-  ["D-1", "Droga z pierwszeństwem", "Informacyjny"], ["D-6", "Przejście dla pieszych", "Informacyjny"], ["D-42", "Obszar zabudowany", "Informacyjny"],
-  ["T-1", "Odległość znaku od miejsca niebezpiecznego", "Tabliczka"],
-] as const;
+import { findSigns, roadSigns, signGroups, type RoadSign, type SignGroup } from "@/domain/road-signs";
+import { signImages } from "@/constants/sign-images";
+import { signQuestionCounts } from "@/database/signs";
 
 export default function SignsScreen() {
   const { colors } = useAppTheme();
   const s = createStyles(colors);
   const [search, setSearch] = useState("");
-  const [group, setGroup] = useState<string | null>(null);
-  const items = useMemo(() => signs.filter(([code, name, type]) => (!group || type === group) && `${code} ${name}`.toLowerCase().includes(search.toLowerCase())), [group, search]);
-  return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
-    <Text style={s.title}>Leksykon znaków</Text><Text style={s.sub}>Szybka powtórka kodów i nazw znaków drogowych.</Text>
-    <TextInput value={search} onChangeText={setSearch} placeholder="Szukaj, np. B-20 lub STOP" placeholderTextColor={colors.textSecondary} style={s.search} />
-    <View style={s.filters}>{[null, "Ostrzegawczy", "Zakazu", "Nakazu", "Informacyjny", "Tabliczka"].map((item) => <Pressable key={item ?? "all"} onPress={() => setGroup(item)}><Text style={[s.filter, group === item && s.active]}>{item ?? "Wszystkie"}</Text></Pressable>)}</View>
-    {items.map(([code, name, type]) => <View key={code} style={s.card}><View style={s.symbol}><Text style={s.code}>{code}</Text></View><View><Text style={s.name}>{name}</Text><Text style={s.type}>{type}</Text></View></View>)}
+  const db = useSQLiteContext();
+  const [group, setGroup] = useState<SignGroup | null>(null);
+  const [selected, setSelected] = useState<RoadSign | null>(null);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [error, setError] = useState(false);
+  useFocusEffect(useCallback(() => {
+    if (!selected) return;
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => { setSelected(null); return true; });
+    return () => subscription.remove();
+  }, [selected]));
+  useFocusEffect(useCallback(() => {
+    let current = true;
+    void signQuestionCounts(db).then((value) => { if (current) { setCounts(value); setError(false); } }).catch(() => { if (current) setError(true); });
+    return () => { current = false; };
+  }, [db]));
+  const items = useMemo(() => findSigns(search, group), [group, search]);
+  if (selected) return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
+    <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={s.back}><Text style={s.link}>← Wróć do znaków</Text></Pressable>
+    <Text style={s.title}>{selected.code}</Text>
+    <Text style={s.name}>{selected.name}</Text>
+    <View style={s.artwork}><Image source={signImages[selected.code]} contentFit="contain" style={s.largeImage} accessibilityLabel={`Wzór znaku ${selected.code}`} /></View>
+    <Text style={s.sub}>{signGroups[selected.group]} · urzędowy wzór, strona {selected.sourcePage}</Text>
+    <Link href={selected.source} style={s.back}><Text style={s.link}>Otwórz źródło w Dzienniku Ustaw ↗</Text></Link>
+    {error ? <Text style={s.sub}>Nie udało się odczytać powiązań. Wróć do listy i spróbuj ponownie.</Text> : counts[selected.code] ? <>
+      <Text style={s.sub}>Powiązane pytania: {counts[selected.code]}. Kod wskazany w treści pytania lub nazwie materiału.</Text>
+      <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push({ pathname: "/study", params: { sign: selected.code, filter: "all", topic: undefined, count: "12" } })}><Text style={s.ctaText}>Ćwicz pytania z tym znakiem →</Text></Pressable>
+    </> : <>
+      <Text style={s.sub}>Brak zweryfikowanych powiązań z pytaniami. Nie oznacza to, że znak nie występuje w bazie.</Text>
+      <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push({ pathname: "/study", params: { topic: "Znaki i sygnały drogowe", filter: "all", sign: undefined } })}><Text style={s.ctaText}>Ćwicz dział: znaki i sygnały →</Text></Pressable>
+    </>}
   </ScrollView></SafeAreaView>;
+  return <SafeAreaView style={s.safe}><FlatList
+    data={items} keyExtractor={(item) => item.code} initialNumToRender={12} windowSize={7}
+    keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}
+    ListHeaderComponent={<View style={s.header}>
+      <Text style={s.title}>Leksykon znaków</Text>
+      <Text style={s.sub}>{roadSigns.length} wzorów A/B/C/D/T dostępnych offline. Dotknij znaku, aby go powiększyć i przejść do nauki.</Text>
+      <TextInput accessibilityLabel="Szukaj znaku po kodzie lub nazwie" value={search} onChangeText={setSearch} placeholder="Szukaj, np. B20 lub STOP" placeholderTextColor={colors.textSecondary} style={s.search} />
+      <View style={s.filters}>{([null, "A", "B", "C", "D", "T"] as const).map((item) => <Pressable accessibilityRole="button" accessibilityState={{ selected: group === item }} key={item ?? "all"} onPress={() => setGroup(item)} style={[s.filter, group === item && s.active]}><Text style={[s.filterText, group === item && s.activeText]}>{item ? `${item} · ${signGroups[item]}` : "Wszystkie"}</Text></Pressable>)}</View>
+      <Text style={s.sub}>Wyniki: {items.length}</Text>
+    </View>}
+    ListEmptyComponent={<View style={s.header}><Text style={s.sub}>Nie znaleziono znaku. Spróbuj podać kod lub krótszą nazwę.</Text><Pressable style={s.back} onPress={() => { setSearch(""); setGroup(null); }}><Text style={s.link}>Pokaż wszystkie znaki</Text></Pressable></View>}
+    renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${item.code}, ${item.name}`} onPress={() => setSelected(item)} style={s.card}>
+      <View style={s.thumbnail}><Image source={signImages[item.code]} contentFit="contain" style={s.image} /></View>
+      <View style={s.description}><Text style={s.code}>{item.code}</Text><Text style={s.name}>{item.name}</Text><Text style={s.type}>{signGroups[item.group]}{counts[item.code] ? ` · pytania: ${counts[item.code]}` : ""}</Text></View>
+      <Text style={s.link}>›</Text>
+    </Pressable>}
+  /></SafeAreaView>;
 }
-const createStyles = (colors: AppTheme) => StyleSheet.create({ safe:{flex:1,backgroundColor: colors.background},content:{padding:24,gap:12},title:{fontSize:30,fontWeight:"800",color: colors.textPrimary},sub:{color: colors.textSecondary,lineHeight:20},search:{backgroundColor: colors.surface,borderColor: colors.border,borderRadius:14,borderWidth:1,minHeight:48,paddingHorizontal:16},filters:{flexDirection:"row",flexWrap:"wrap",gap:8},filter:{backgroundColor: colors.primarySurface,borderRadius:12,color: colors.primaryText,paddingHorizontal:12,paddingVertical:8},active:{backgroundColor: colors.primary,color: colors.onPrimary},card:{alignItems:"center",backgroundColor: colors.surface,borderRadius:18,flexDirection:"row",gap:16,padding:16},symbol:{alignItems:"center",borderColor: colors.error,borderRadius:28,borderWidth:4,height:56,justifyContent:"center",width:56},code:{fontSize:11,fontWeight:"800",textAlign:"center"},name:{color: colors.textPrimary,fontWeight:"800"},type:{color: colors.textSecondary,fontSize:12,marginTop:4} });
+const createStyles = (colors: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background }, content: { padding: 24, gap: 12 },
+  header: { gap: 12 }, title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
+  sub: { color: colors.textSecondary, lineHeight: 20 },
+  search: { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border, borderRadius: 16, borderWidth: 1, minHeight: 48, paddingHorizontal: 16 },
+  filters: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  filter: { backgroundColor: colors.primarySurface, borderRadius: 12, minHeight: 44, justifyContent: "center", paddingHorizontal: 12 },
+  filterText: { color: colors.primaryText }, active: { backgroundColor: colors.primary }, activeText: { color: colors.onPrimary },
+  card: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 20, flexDirection: "row", gap: 12, padding: 16 },
+  description: { flex: 1, gap: 4 }, thumbnail: { backgroundColor: "#FFFFFF", borderRadius: 12, overflow: "hidden" },
+  image: { height: 80, width: 80 }, artwork: { backgroundColor: "#FFFFFF", borderRadius: 20, padding: 16 },
+  largeImage: { height: 280, width: "100%" }, code: { color: colors.primaryText, fontWeight: "700" },
+  name: { color: colors.textPrimary, fontWeight: "700", lineHeight: 20 }, type: { color: colors.textSecondary, fontSize: 12 },
+  link: { color: colors.primaryText, fontWeight: "700" }, back: { minHeight: 48, justifyContent: "center", paddingVertical: 12 },
+  cta: { backgroundColor: colors.primary, borderRadius: 16, minHeight: 58, justifyContent: "center", alignItems: "center", padding: 16 },
+  ctaText: { color: colors.onPrimary, fontWeight: "700", textAlign: "center" },
+});

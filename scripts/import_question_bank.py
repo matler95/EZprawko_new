@@ -14,14 +14,52 @@ def text(cell):
     return None if pd.isna(cell) or not str(cell).strip() else str(cell).strip()
 
 
+def export_translations(rows, source, database, destination):
+    """Extract only complete official translations; never replace user/catalog data."""
+    with sqlite3.connect(database) as db:
+        catalog = {qid: correct for qid, correct in db.execute('SELECT id, correct_answer FROM questions')}
+    entries, coverage = [], {}
+    choices = {'en': [('T', 'Yes'), ('N', 'No')], 'de': [('T', 'Ja'), ('N', 'Nein')], 'uk': [('T', 'Так'), ('N', 'Ні')]}
+    for language, suffix in [('en', 'EN'), ('de', 'D'), ('uk', 'UA')]:
+        count = 0
+        for _, row in rows.iterrows():
+            if pd.isna(row['Numer pytania']):
+                continue
+            qid = int(row['Numer pytania'])
+            if qid not in catalog or catalog[qid] != text(row['Poprawna odp']):
+                raise ValueError(f'Source/catalog mismatch for {qid}')
+            question = text(row[f'Pytanie [{suffix}]'])
+            if not question:
+                continue
+            original_labels = [label for label in 'ABC' if text(row[f'Odpowiedź {label}'])]
+            answers = [(label, text(row[f'Odpowiedź {label} [{suffix}]'])) for label in original_labels]
+            if not original_labels:
+                answers = choices[language]
+            if any(not answer for _, answer in answers):
+                continue
+            entries.append({'id': qid, 'language': language, 'question': question,
+                            'answers': [{'label': label, 'answer': answer} for label, answer in answers]})
+            count += 1
+        coverage[language] = count
+    payload = {'version': hashlib.sha256(source.read_bytes()).hexdigest(), 'coverage': coverage, 'entries': entries}
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    print(f'Translation coverage: {coverage}; {len(entries)} records; {destination.stat().st_size} bytes')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--source', type=Path, default=ROOT / 'gov-attachment.xlsx')
     parser.add_argument('--database', type=Path, default=ROOT / 'assets/database/questions.db')
     parser.add_argument('--manifest', type=Path, default=ROOT / 'assets/data/media-manifest.json')
+    parser.add_argument('--translations-only', action='store_true')
+    parser.add_argument('--translations', type=Path, default=ROOT / 'assets/data/question-translations.json')
     args = parser.parse_args()
 
     rows = pd.read_excel(args.source, sheet_name='katalog')
+    if args.translations_only:
+        export_translations(rows, args.source, args.database, args.translations)
+        return
     args.database.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     if args.database.exists():
@@ -69,6 +107,7 @@ def main():
     db.executemany('INSERT INTO metadata VALUES (?, ?)', [('source_file', args.source.name), ('source_sha256', digest), ('question_count', str(len(seen))), ('schema_version', '1')])
     db.commit()
     db.close()
+    export_translations(rows, args.source, args.database, args.translations)
     args.manifest.write_text(json.dumps({'version': '1', 'sourceSha256': digest, 'media': list(media.values())}, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f'Imported {len(seen)} questions and {len(media)} media references')
 

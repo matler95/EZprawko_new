@@ -46,3 +46,24 @@ Cloudflare Access correctly protects the Worker and the R2 binding, but an Expo 
 - Check that an expired signed URL fails gracefully and that retrying obtains a refreshed URL.
 - Verify cache clearing removes both image/video files and native video cache.
 - Validate the final content permissions and license before any external distribution.
+
+# Security regression checkpoint (2026-10-12)
+
+The active Worker (`src/index.js`, selected by `wrangler.jsonc`) now rejects
+missing/non-integer/expired expiry claims, expiries more than five minutes ahead,
+invalid subjects, oversized tokens and malformed URL-encoded object paths.
+The current Supabase issuer's two-minute grants remain compatible; no new secret
+or mobile configuration is needed.
+
+Run `node scripts/test-media-worker.cjs` from the project root. These tests use
+local generated credentials and a mock bucket; they do not verify the deployed
+service. To activate the correction, deploy from the Worker directory:
+
+```powershell
+cd C:\Users\Mateusz\Desktop\EZprawko_new\infrastructure\cloudflare-media-worker
+npx wrangler@latest deploy
+```
+
+Then retest an authenticated image/video on the phone. Supabase does not need
+redeployment for this checkpoint. Entitlement checks, rate limiting and full R2
+inventory/integrity validation remain separate production work.

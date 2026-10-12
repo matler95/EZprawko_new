@@ -1,10 +1,10 @@
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useSQLiteContext } from "expo-sqlite";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   questionExplanation,
   recordPracticeAnswer,
@@ -14,6 +14,7 @@ import {
 } from "@/database/repository";
 import { playAnswerSound } from "@/services/answer-feedback";
 import { QuestionMedia } from "@/components/question-media";
+import { questionContent, selectedQuestionLanguage, type QuestionLanguage } from "@/database/translations";
 
 type StudyQuestion = {
   id: number;
@@ -22,6 +23,7 @@ type StudyQuestion = {
   scope: string;
   correct_answer: string;
   media_filename: string | null;
+  contentLanguage: QuestionLanguage;
 };
 type Answer = { label: string; answer: string };
 type StudyFilter = "all" | "three" | "basic" | "specialist" | "mistakes" | "flags";
@@ -34,10 +36,11 @@ export default function StudyScreen() {
   const { colors } = useAppTheme();
   const s = createStyles(colors);
   const db = useSQLiteContext();
-  const { filter: requestedFilter, count: requestedCount, topic: requestedTopic } = useLocalSearchParams<{
+  const { filter: requestedFilter, count: requestedCount, topic: requestedTopic, sign: requestedSign } = useLocalSearchParams<{
     filter?: string;
     count?: string;
     topic?: string;
+    sign?: string;
   }>();
   const [items, setItems] = useState<StudyQuestion[]>([]);
   const [active, setActive] = useState<StudyQuestion | null>(null);
@@ -49,9 +52,18 @@ export default function StudyScreen() {
   const [filter, setFilter] = useState<StudyFilter>("all");
   const [search, setSearch] = useState("");
   const [topics, setTopics] = useState<TopicProgress[]>([]);
+  const [language, setLanguage] = useState<QuestionLanguage>('pl');
+  useFocusEffect(useCallback(() => {
+    let current = true;
+    void selectedQuestionLanguage(db).then((value) => {
+      if (current) { setLanguage(value); setActive(null); }
+    });
+    return () => { current = false; };
+  }, [db, setActive]));
   const activeFilter = isStudyFilter(requestedFilter) ? requestedFilter : filter;
   const sessionLimit = requestedCount === "5" ? 5 : 12;
   useEffect(() => {
+    let current = true;
     let joins = "";
     let where = "1 = 1";
     let order = "RANDOM()";
@@ -70,22 +82,20 @@ export default function StudyScreen() {
 
     const trimmedSearch = search.trim();
     const topicClause = requestedTopic ? " AND EXISTS (SELECT 1 FROM question_topics t WHERE t.question_id = q.id AND t.topic = ?)" : "";
-    const searchClause = trimmedSearch ? " AND q.question LIKE ?" : "";
-    const query = `SELECT DISTINCT q.id, q.question, q.points, q.scope, q.correct_answer, q.media_filename FROM questions q ${joins} WHERE (${where})${topicClause}${searchClause} ORDER BY ${order} LIMIT ${sessionLimit}`;
-    const params = [...(requestedTopic ? [requestedTopic] : []), ...(trimmedSearch ? [`%${trimmedSearch}%`] : [])];
-    db.getAllAsync<StudyQuestion>(query, params).then(setItems);
+    const signClause = requestedSign ? " AND EXISTS (SELECT 1 FROM question_signs s WHERE s.question_id = q.id AND s.sign_code = ?)" : "";
+    const searchClause = trimmedSearch ? " AND COALESCE(tr.question, q.question) LIKE ?" : "";
+    const query = `SELECT DISTINCT q.id, COALESCE(tr.question, q.question) AS question, CASE WHEN tr.question IS NULL THEN 'pl' ELSE tr.language END AS contentLanguage, q.points, q.scope, q.correct_answer, q.media_filename FROM questions q LEFT JOIN question_translations tr ON tr.question_id = q.id AND tr.language = ? ${joins} WHERE (${where})${topicClause}${signClause}${searchClause} ORDER BY ${order} LIMIT ${sessionLimit}`;
+    const params = [language, ...(requestedTopic ? [requestedTopic] : []), ...(requestedSign ? [requestedSign] : []), ...(trimmedSearch ? [`%${trimmedSearch}%`] : [])];
+    db.getAllAsync<StudyQuestion>(query, params).then((rows) => { if (current) setItems(rows); });
     void topicProgress(db).then(setTopics);
-  }, [activeFilter, db, requestedTopic, search, sessionLimit]);
+    return () => { current = false; };
+  }, [activeFilter, db, language, requestedSign, requestedTopic, search, sessionLimit]);
   const open = async (item: StudyQuestion, itemIndex = items.findIndex((value) => value.id === item.id)) => {
+    const content = await questionContent(db, item.id, language);
     setActiveIndex(itemIndex);
-    setActive(item);
+    setActive({ ...item, question: content.question, contentLanguage: content.contentLanguage });
     setExplanation(null);
-    setAnswers(
-      await db.getAllAsync<Answer>(
-        "SELECT label, answer FROM answers WHERE question_id = ? ORDER BY label",
-        item.id,
-      ),
-    );
+    setAnswers(content.answers);
     setSelected(null);
     setFlagged(
       Boolean(
@@ -131,6 +141,7 @@ export default function StudyScreen() {
           <Text style={s.cardPosition}>{activeIndex + 1} z {items.length}</Text>
           <QuestionMedia filename={active.media_filename} />
           <Text style={s.question}>{active.question}</Text>
+          {active.contentLanguage !== language ? <Text style={s.sub}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
           {answers.map((item) => (
             <Pressable
               key={item.label}
@@ -179,12 +190,13 @@ export default function StudyScreen() {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
         <Text style={s.title}>Nauka</Text>
+        {requestedSign ? <View style={s.row}><Text style={s.badge}>Znak {requestedSign}</Text><Pressable onPress={() => { setActive(null); router.setParams({ sign: undefined }); }}><Text style={s.link}>Usuń filtr znaku</Text></Pressable></View> : null}
         <Text style={s.sub}>
           {sessionLimit === 5
             ? "Krótka sesja: 5 pytań o największej wadze."
             : "Wybierz pytanie z oficjalnej bazy."}
         </Text>
-        {!requestedTopic ? (
+        {!requestedTopic && !requestedSign ? (
           <View style={s.topicSection}>
             <Text style={s.topicTitle}>Ucz się według działów</Text>
             {topics.map((topic) => (
@@ -194,9 +206,9 @@ export default function StudyScreen() {
               </Pressable>
             ))}
           </View>
-        ) : (
+        ) : requestedTopic ? (
           <Pressable onPress={() => router.setParams({ topic: undefined })}><Text style={s.link}>← Wszystkie działy</Text></Pressable>
-        )}
+        ) : null}
         <TextInput
           accessibilityLabel="Szukaj w pytaniach"
           onChangeText={setSearch}
@@ -288,6 +300,8 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   cardPosition: { alignSelf: "center", color: colors.textSecondary, fontSize: 13, fontVariant: ["tabular-nums"], marginTop: 4 },
   link: { color: colors.primaryText, fontWeight: "700" },
   answer: {
+    minHeight: 60,
+    alignItems: "center",
     padding: 16,
     borderRadius: 16,
     backgroundColor: colors.surface,
@@ -306,7 +320,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
     color: colors.primaryText,
     fontWeight: "700",
   },
-  answerText: { flex: 1, lineHeight: 20 },
+  answerText: { flex: 1, lineHeight: 20, color: colors.textPrimary },
   selected: { borderColor: colors.primaryText },
   correct: { backgroundColor: colors.successSurface, borderColor: colors.success },
   wrong: { backgroundColor: colors.errorSurface, borderColor: colors.error },

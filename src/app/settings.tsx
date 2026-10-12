@@ -16,6 +16,7 @@ import {
 } from "@/services/reminders";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { MediaAccountCard } from "@/components/media-account-card";
+import { questionLanguages, selectedQuestionLanguage, setQuestionLanguage, translationCoverage, type QuestionLanguage } from "@/database/translations";
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
@@ -24,17 +25,31 @@ export default function SettingsScreen() {
   const [cache, setCache] = useState(0);
   const [reminder, setReminder] = useState<string | false>(false);
   const [category, setCategory] = useState("B");
+  const [language, setLanguage] = useState<QuestionLanguage>('pl');
   const refresh = () => cacheSizeBytes().then(setCache);
   useEffect(() => {
     refresh();
     selectedCategory(db).then(setCategory);
     dailyReminderIdentifier(db).then(setReminder);
+    selectedQuestionLanguage(db).then(setLanguage);
   }, [db]);
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <Text style={s.title}>Ustawienia</Text>
         <MediaAccountCard />
+        <Text style={s.heading}>Język pytań</Text>
+        <View style={[s.categories, { flexWrap: 'wrap' }]}>
+          {questionLanguages.map((item) => (
+            <Pressable key={item.code} onPress={async () => { await setQuestionLanguage(db, item.code); setLanguage(item.code); }} style={[s.category, language === item.code && s.categoryActive]}>
+              <Text style={language === item.code ? s.categoryTextActive : s.categoryText}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={s.sub}>
+          {language === 'pl' ? 'Pełny oficjalny katalog po polsku.' : `Oficjalne tłumaczenia: ${translationCoverage[language]}/3518 pytań. Brakujące pytania pokażemy po polsku z oznaczeniem.`}
+          {' '}Język rozpoczętego egzaminu pozostaje bez zmian.
+        </Text>
         <Text style={s.heading}>Wygląd</Text>
         <View style={s.categories}>
           {(["system", "light", "dark"] as const).map((item) => (

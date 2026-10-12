@@ -13,6 +13,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { QuestionMedia } from "@/components/question-media";
+import { AnimatedProgress } from "@/components/animated-progress";
+import { ExamTimer } from "@/components/exam-timer";
+import type { QuestionLanguage } from "@/database/translations";
 import { TabBarContext } from "@/context/tab-bar-context";
 import {
   clearActiveExam,
@@ -23,11 +26,6 @@ import {
 } from "@/database/repository";
 
 type ExamPhase = "MEDIA_PLAYING" | "READING" | "ANSWERING";
-
-const formatTime = (seconds: number) =>
-  `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60)
-    .toString()
-    .padStart(2, "0")}`;
 
 const isVideoQuestion = (question: Question) =>
   Boolean(question.mediaFilename?.toLowerCase().match(/\.(wmv|mp4|m4v|mov)$/));
@@ -45,6 +43,7 @@ export default function ExamScreen() {
   const { setIsTabBarHidden } = useContext(TabBarContext);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [category, setCategory] = useState("B");
+  const [language, setLanguage] = useState<QuestionLanguage>('pl');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [index, setIndex] = useState(0);
@@ -80,6 +79,7 @@ export default function ExamScreen() {
       }
       setSessionId(exam.id);
       setCategory(exam.category);
+      setLanguage(exam.language);
       setExpiresAt(exam.expiresAt);
       setIndex(exam.index);
       setQuestions(exam.questions);
@@ -105,12 +105,12 @@ export default function ExamScreen() {
       if (isFinishing || !questions.length) return;
       setIsFinishing(true);
       const startedAt = expiresAt ? expiresAt - 25 * 60 * 1000 : Date.now();
-      const completed = await saveCompletedExam(db, category, questions, answers, startedAt);
+      const completed = await saveCompletedExam(db, category, questions, answers, startedAt, language);
       await clearActiveExam(db);
       setSessionId(null);
       setResult(completed);
     },
-    [category, db, expiresAt, isFinishing, questions],
+    [category, db, expiresAt, isFinishing, language, questions],
   );
 
   const advance = useCallback(
@@ -227,14 +227,12 @@ export default function ExamScreen() {
           <Text style={styles.close}>×</Text>
         </Pressable>
         <View style={styles.timerGroup}>
-          <Text style={styles.globalTimer}>{formatTime(globalSeconds)}</Text>
-          <Text style={styles.questionTimer}>{questionSeconds}s</Text>
+          <ExamTimer seconds={globalSeconds} />
+          <ExamTimer seconds={questionSeconds} question active={phase === "ANSWERING"} />
         </View>
         <Text style={styles.position}>{index + 1}/32</Text>
       </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${((index + 1) / 32) * 100}%` }]} />
-      </View>
+      <AnimatedProgress progress={(index + 1) / 32} />
       <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
         <Text style={styles.kicker}>
           {question.scope === "PODSTAWOWY" ? "WIEDZA PODSTAWOWA" : `KATEGORIA ${category}`} · {question.points} PKT
@@ -250,6 +248,7 @@ export default function ExamScreen() {
           }}
         />
         <Text style={styles.question}>{question.question}</Text>
+        {language !== question.contentLanguage ? <Text style={styles.muted}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
         <View style={styles.answers}>
           {question.answers.map((answer) => (
             <Pressable

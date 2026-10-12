@@ -5,10 +5,14 @@ function objectKey(url) {
   const encoded = url.pathname.startsWith(mediaPath)
     ? url.pathname.slice(mediaPath.length)
     : "";
-  const key = decodeURIComponent(encoded);
-  return !key || key.includes("..") || key.startsWith("/") || key.includes("\\")
-    ? null
-    : key;
+  try {
+    const key = decodeURIComponent(encoded);
+    return !key || key.includes("..") || key.startsWith("/") || key.includes("\\") || /[\u0000-\u001f\u007f]/.test(key)
+      ? null
+      : key;
+  } catch {
+    return null;
+  }
 }
 
 function base64UrlBytes(value) {
@@ -23,13 +27,16 @@ function base64UrlJson(value) {
 async function validMediaGrant(request, key, secret) {
   const header = request.headers.get("Authorization");
   const token = header?.startsWith("Bearer ") ? header.slice(7) : new URL(request.url).searchParams.get("token");
-  if (!token || !secret) return false;
+  if (!token || token.length > 4096 || !secret) return false;
   const [encodedHeader, encodedPayload, encodedSignature, extra] = token.split(".");
   if (!encodedHeader || !encodedPayload || !encodedSignature || extra) return false;
   try {
     const jwtHeader = base64UrlJson(encodedHeader);
     const claims = base64UrlJson(encodedPayload);
-    if (jwtHeader.alg !== "HS256" || claims.aud !== "ezprawko-media" || claims.key !== key || !claims.sub || claims.exp * 1000 <= Date.now()) return false;
+    const now = Math.floor(Date.now() / 1000);
+    if (jwtHeader.alg !== "HS256" || claims.aud !== "ezprawko-media" || claims.key !== key ||
+        typeof claims.sub !== "string" || !claims.sub.trim() ||
+        !Number.isSafeInteger(claims.exp) || claims.exp <= now || claims.exp > now + 300) return false;
     const cryptoKey = await crypto.subtle.importKey("raw", textEncoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
     return crypto.subtle.verify("HMAC", cryptoKey, base64UrlBytes(encodedSignature), textEncoder.encode(`${encodedHeader}.${encodedPayload}`));
   } catch {

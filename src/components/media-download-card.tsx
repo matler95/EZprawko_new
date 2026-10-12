@@ -67,7 +67,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   title: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
   detail: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
   error: { color: colors.error, fontSize: 13, lineHeight: 19 },
-  button: { alignItems: 'center', backgroundColor: colors.accentGold, borderRadius: 10, minHeight: 42, justifyContent: 'center', paddingHorizontal: 14 },
+  button: { alignItems: 'center', backgroundColor: colors.accentGold, borderRadius: 10, minHeight: 48, justifyContent: 'center', paddingHorizontal: 14 },
   buttonDisabled: { backgroundColor: colors.disabledSurface },
   buttonPressed: { opacity: 0.82 },
   buttonText: { color: colors.onGold, fontSize: 14, fontWeight: '800' },

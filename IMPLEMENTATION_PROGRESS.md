@@ -1,5 +1,56 @@
 # Implementation progress
 
+## Checkpoint — Phase 6: media-grant negative tests (2026-10-12)
+
+- Fixed the active Cloudflare Worker (src/index.js): grants must have an integer expiry in the future and no more than five minutes ahead, plus a nonempty string subject. Existing two-minute Supabase grants remain compatible.
+- Missing/null/string/nonfinite expiry values no longer bypass expiration. Malformed percent-encoded paths and control characters return 404 instead of throwing; oversized tokens are rejected.
+- Added local tests of the actual Worker: valid GET/HEAD, bad signatures/audience/object keys, expired/missing-exp claims, malformed paths, missing objects and unsupported methods. Rejected grants do not access R2.
+- Worker tests, 235-sign tests, translation integration tests and 5,000-exam tests passed. No secrets were used and no remote deployment was performed.
+- Final code validation passed: `npx tsc --noEmit` and `npx expo lint`; Expo Doctor reported 21/21 checks with no issues.
+- Deployment action remaining: run `npx wrangler@latest deploy` in infrastructure/cloudflare-media-worker to activate this security correction. Supabase and the mobile authentication protocol require no change. This checkpoint does not claim rate limiting, entitlement checks, R2 inventory verification or physical-device offline QA complete.
+
+## Checkpoint — Phase 6: deterministic exam-engine regression tests (2026-10-12)
+
+- Added `scripts/test-exam-engine.cjs`, exercising the actual TypeScript engine against the bundled SQLite bank with a reproducible random seed.
+- All 5,000 generated exams passed (1,000 each for AM/A/B/C/D): exact 20+12 section order, point quotas, 74-point maximum, 25-minute duration, question timing metadata, category eligibility, no duplicate IDs and no mutation of the bank.
+- Verified scoring at 74, 68, 67 and 0 points; rejected empty/insufficient pools, unsupported category and duplicate-ID inputs.
+- Validation passed: engine tests, `npx tsc --noEmit` and `npx expo lint`. This closes the planned generator-test item, not physical-device/offline QA or release readiness.
+
+## Checkpoint — Phase 5: offline official sign lexicon (2026-10-12)
+
+- Replaced the 12-item demo with 235 official entries in the planned A/B/C/D/T groups. Names and graphics were extracted from the government regulation annex and checked against the four subsequent amendments, including 2026/133; repealed T-22 is excluded.
+- Bundled approximately 1.5 MB of WebP artwork, generated reproducibly with source-page and document SHA-256 provenance. The gallery does not depend on CDN, credentials, or connectivity.
+- Added a virtualized list, group filters, accent-insensitive/name/code search (including B20), enlarged sign details, source links, Android detail-back handling, empty states and direct Study entry. Mobile UI guidance informed readable cards and 44–58 px controls; official artwork intentionally retains its white source background in dark mode.
+- Added a versioned SQLite question_signs migration and a bound Study filter. The 26 mappings use exact code evidence from question text/media filenames, not guessed image classifications. Missing links are disclosed with a fallback to the signs topic.
+- Tests passed: catalogue/assets/search/current names, mapping migration/idempotence/preservation of records, bound SQL filter, and translation/exam regression checks. TypeScript, Expo lint and Expo Doctor (21/21) passed; Android export bundled all 235 sign assets (1,704 modules, 6.4 MB JS bundle).
+- Remaining: physical-device/offline/accessibility QA, comprehensive human-reviewed sign annotations of question images/videos, and optional groups outside A/B/C/D/T. The planned lexicon functionality is implemented; comprehensive multimedia annotation and release QA are not claimed complete.
+
+## Checkpoint — Phase 5: official EN/DE/UA question content (2026-10-12)
+
+- Inspected the local government workbook and reconciled all 3,518 question IDs with the existing SQLite catalog. The workbook contains the official language columns; no additional translation source is required for the records available there.
+- Extended the importer to extract only complete translated question/answer sets. Imported EN: 3,518; DE: 3,517; UA (`uk` internally): 2,303, totaling 9,338 entries in an approximately 2.6 MB offline package with source SHA-256 provenance.
+- Added a versioned, transactional SQLite translation migration that upgrades existing installations without replacing question records, flags, practice records, settings, or exam history.
+- Added a persisted question-language selector in Settings. Study browsing/search and flashcards, new exams, resumed exams, and review now read official translated content. Missing translations fall back to a complete Polish question/answer set with an explicit notice; the app interface remains Polish.
+- Active and completed exams retain their selected language independently of later changes in Settings. Point values, answer labels, correct keys, and media routing are unchanged.
+- Added a repository integration test against in-memory SQLite: migration/idempotence, all 9,338 answer keys, language display/fallback, session resume, 74-point scoring, and translated review passed.
+- Validation passed: `npx tsc --noEmit`, `npx expo lint`, `npx expo-doctor` (21/21), translation integration checks, and Android export (1,452 modules, 6.3 MB bundle).
+- Remaining in Phase 5: complete verified sign artwork/catalog and sign-to-question links. Physical-device language/upgrade/offline QA is listed separately in QA_CHECKLIST.md. Translation import and mobile language selection are implemented; the entire Phase 5 is not yet declared complete.
+
+## Checkpoint — Phase 4: screen themes, ergonomics, and motion (2026-10-12)
+
+- Connected semantic palettes to Dashboard/onboarding, Study/flashcards, Progress, Settings, sign lexicon, active exam, review, and media/account/download cards. Search inputs, secondary text, feedback, and modal surfaces now follow the selected theme.
+- Fixed the nested theme-provider bug that bypassed saving the manual preference. Appearance is loaded from SQLite before revealing the app; native tabs, navigator, status bar, and shared themed components use the same selection.
+- Added an animated exam progress bar and timer warnings (yellow at 10 seconds, red/pulsing at 5 seconds for questions). Motion respects the device's Reduce Motion setting. Answer targets in Study are at least 60 px high.
+- Added a compact dashboard ring showing the actual pass rate of recent attempts. Dashboard data refreshes on focus after returning from exams, Study, or Settings.
+- Removed the unused Explore route and commented LegacyHomeScreen/exam monolith from the index route. Replaced the web starter navigation with EZprawko tabs and removed the Expo logo overlay from startup. Native splash appearance changes require a new binary.
+- Added repeatable theme contrast checks: 24 semantic foreground/background pairs pass at least 4.5:1. The mobile UI guidance informed control sizing, compact-screen layout, and reduced-motion handling.
+- Validation passed: `npx tsc --noEmit`, `npx expo lint`, `npx expo-doctor` (21/21), contrast checks, and Android export (1,450 bundled modules). Physical-device visual verification remains on the QA checklist; no claim of visual QA is made from the bundle checks.
+
+## Checkpoint — private CDN device confirmation (2026-10-12)
+
+- The tester confirmed media now loads after the R2 folder mapping correction. The Supabase session → per-object grant → Worker → private R2 delivery path is confirmed by the user.
+- Full offline, expired-token, and media-bank integrity checks are still pending.
+
 ## Checkpoint — R2 folder-aware media access (2026-10-12)
 
 - Mapped converted video references to `wideo/<basename>.mp4` and images to `zdjecia/<filename>`, matching the user-confirmed bucket folders.
@@ -51,7 +102,7 @@
 ## Remaining
 
 - Detailed answer explanations. The imported official source contains no explanation field, so detailed explanations require a separately reviewed content source rather than generated legal/road-safety guidance.
-- Configure a signed private CDN/media-token service and transcode source WMV videos to MP4 before private device testing.
+- Harden production media access (user entitlements and rate limiting), audit the complete converted media bank, and test offline behavior. Private CDN delivery is now working and confirmed by the tester.
 - Physical-device QA, EAS configuration, and release-readiness review.
 
 ## Checkpoint — Phase 1: official WORD exam flow and routing (2026-10-12)

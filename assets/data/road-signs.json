@@ -1,0 +1,1672 @@
+{
+  "version": "ca12d871b2689b1866ac40be3e2cdffc33a65f6e0939057c03eb8c1616c5ff1d",
+  "sources": [
+    {
+      "act": "2019/2310",
+      "sha256": "c9972e947cf244c13e1d56bb0c2a97a4d248a8066021ae0fbece1441ec710a9d"
+    },
+    {
+      "act": "2021/433",
+      "sha256": "bcf1b019c5cef4f6b205cbbdc867eec1eb6763cd1937fbd5369e4232a43e5764"
+    },
+    {
+      "act": "2021/2065",
+      "sha256": "f1cdfe6e1ab0eff45ad46014dddedb167d2e7b2bf92a555fea73fe4d5b21e772"
+    },
+    {
+      "act": "2022/2372",
+      "sha256": "bd29ae2368f592cba38cabdde53cacd3a63b0b42170953ff9ad4c4fbba7dfc3e"
+    },
+    {
+      "act": "2026/133",
+      "sha256": "6c7343fd63ec1664dce4f5f4f390a164cf8ab138b69e52d6439aa8a0c03976ad"
+    }
+  ],
+  "entries": [
+    {
+      "code": "A-1",
+      "name": "niebezpieczny zakręt w prawo",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-2",
+      "name": "niebezpieczny zakręt w lewo",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-3",
+      "name": "niebezpieczne zakręty – pierwszy w prawo",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-4",
+      "name": "niebezpieczne zakręty – pierwszy w lewo",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-5",
+      "name": "skrzyżowanie dróg",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-6a",
+      "name": "skrzyżowanie z drogą podporządkowaną występującą po obu stronach",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-6b",
+      "name": "skrzyżowanie z drogą podporządkowaną występującą po prawej stronie",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-6c",
+      "name": "skrzyżowanie z drogą podporządkowaną występującą po lewej stronie",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-6d",
+      "name": "wlot drogi jednokierunkowej z prawej strony",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-6e",
+      "name": "wlot drogi jednokierunkowej z lewej strony",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-7",
+      "name": "ustąp pierwszeństwa",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-8",
+      "name": "skrzyżowanie o ruchu okrężnym",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-9",
+      "name": "przejazd kolejowy z zaporami",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-10",
+      "name": "przejazd kolejowy bez zapór",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-11",
+      "name": "nierówna droga",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-11a",
+      "name": "próg zwalniający",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-12a",
+      "name": "zwężenie jezdni – dwustronne",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-12b",
+      "name": "zwężenie jezdni – prawostronne",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-12c",
+      "name": "zwężenie jezdni – lewostronne",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-13",
+      "name": "ruchomy most",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-14",
+      "name": "roboty na drodze",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-15",
+      "name": "śliska jezdnia",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-16",
+      "name": "przejście dla pieszych",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-17",
+      "name": "dzieci",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-18a",
+      "name": "zwierzęta gospodarskie",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-18b",
+      "name": "zwierzęta dzikie",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-19",
+      "name": "boczny wiatr",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-20",
+      "name": "odcinek jezdni o ruchu dwukierunkowym",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-21",
+      "name": "tramwaj",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-22",
+      "name": "niebezpieczny zjazd",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-23",
+      "name": "stromy podjazd",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-24",
+      "name": "rowerzyści",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-25",
+      "name": "spadające odłamki skalne",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-26",
+      "name": "lotnisko",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-27",
+      "name": "nabrzeże lub brzeg rzeki",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-28",
+      "name": "sypki żwir",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-29",
+      "name": "sygnały świetlne",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-30",
+      "name": "inne niebezpieczeństwo",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-31",
+      "name": "niebezpieczne pobocze",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-32",
+      "name": "oszronienie jezdni",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-33",
+      "name": "zator drogowy",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "A-34",
+      "name": "wypadek drogowy",
+      "group": "A",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 41
+    },
+    {
+      "code": "B-1",
+      "name": "zakaz ruchu w obu kierunkach",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-2",
+      "name": "zakaz wjazdu",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-3",
+      "name": "zakaz wjazdu pojazdów silnikowych, z wyjątkiem motocykli jednośladowych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-3a",
+      "name": "zakaz wjazdu autobusów",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-4",
+      "name": "zakaz wjazdu motocykli",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-5",
+      "name": "zakaz wjazdu samochodów ciężarowych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-6",
+      "name": "zakaz wjazdu ciągników rolniczych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-7",
+      "name": "zakaz wjazdu pojazdów silnikowych z przyczepą",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-8",
+      "name": "zakaz wjazdu pojazdów zaprzęgowych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-9",
+      "name": "zakaz wjazdu rowerów",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-10",
+      "name": "zakaz wjazdu motorowerów",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-11",
+      "name": "zakaz wjazdu wózków rowerowych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-12",
+      "name": "zakaz wjazdu wózków ręcznych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-13",
+      "name": "zakaz wjazdu pojazdów z towarami wybuchowymi lub łatwo zapalnymi",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-13a",
+      "name": "zakaz wjazdu pojazdów z towarami niebezpiecznymi",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-14",
+      "name": "zakaz wjazdu pojazdów z towarami, które mogą skazić wodę",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-15",
+      "name": "zakaz wjazdu pojazdów o szerokości ponad ... m",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-16",
+      "name": "zakaz wjazdu pojazdów o wysokości ponad ... m",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-17",
+      "name": "zakaz wjazdu pojazdów o długości ponad ... m",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-18",
+      "name": "zakaz wjazdu pojazdów o rzeczywistej masie całkowitej ponad ... t",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-19",
+      "name": "zakaz wjazdu pojazdów o nacisku pojedynczej osi napędowej powyżej ..... t",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-20",
+      "name": "stop",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-21",
+      "name": "zakaz skręcania w lewo",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-22",
+      "name": "zakaz skręcania w prawo",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-23",
+      "name": "zakaz zawracania",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-24",
+      "name": "koniec zakazu zawracania",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-25",
+      "name": "zakaz wyprzedzania",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-26",
+      "name": "zakaz wyprzedzania przez samochody ciężarowe",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-27",
+      "name": "koniec zakazu wyprzedzania",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-28",
+      "name": "koniec zakazu wyprzedzania przez samochody ciężarowe",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-29",
+      "name": "zakaz używania sygnałów dźwiękowych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-30",
+      "name": "koniec zakazu używania sygnałów dźwiękowych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-31",
+      "name": "pierwszeństwo dla nadjeżdżających z przeciwka",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-32",
+      "name": "stój – kontrola celna",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-33",
+      "name": "ograniczenie prędkości",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-34",
+      "name": "koniec ograniczenia prędkości",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-35",
+      "name": "zakaz postoju",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-36",
+      "name": "zakaz zatrzymywania się",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-37",
+      "name": "zakaz postoju w dni nieparzyste",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-38",
+      "name": "zakaz postoju w dni parzyste",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-39",
+      "name": "strefa ograniczonego postoju",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-40",
+      "name": "koniec strefy ograniczonego postoju",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-41",
+      "name": "zakaz ruchu pieszych",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-42",
+      "name": "koniec zakazów",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-43",
+      "name": "strefa ograniczonej prędkości",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "B-44",
+      "name": "koniec strefy ograniczonej prędkości",
+      "group": "B",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 42
+    },
+    {
+      "code": "C-1",
+      "name": "nakaz jazdy w prawo przed znakiem",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-2",
+      "name": "nakaz jazdy w prawo za znakiem",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-3",
+      "name": "nakaz jazdy w lewo przed znakiem",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-4",
+      "name": "nakaz jazdy w lewo za znakiem",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-5",
+      "name": "nakaz jazdy prosto",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-6",
+      "name": "nakaz jazdy prosto lub w prawo",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-7",
+      "name": "nakaz jazdy prosto lub w lewo",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-8",
+      "name": "nakaz jazdy w prawo lub w lewo",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-9",
+      "name": "nakaz jazdy z prawej strony znaku",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-10",
+      "name": "nakaz jazdy z lewej strony znaku",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-11",
+      "name": "nakaz jazdy z prawej lub lewej strony znaku",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-12",
+      "name": "ruch okrężny",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-13",
+      "name": "droga dla rowerów",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-13a",
+      "name": "koniec drogi dla rowerów",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-14",
+      "name": "prędkość minimalna",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-15",
+      "name": "koniec minimalnej prędkości",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-16",
+      "name": "droga dla pieszych",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-16a",
+      "name": "koniec drogi dla pieszych",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-17",
+      "name": "nakazany kierunek jazdy dla pojazdów z towarami niebezpiecznymi",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-18",
+      "name": "nakaz używania łańcuchów przeciwpoślizgowych",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "C-19",
+      "name": "koniec nakazu używania łańcuchów przeciwpoślizgowych",
+      "group": "C",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 43
+    },
+    {
+      "code": "D-1",
+      "name": "droga z pierwszeństwem",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-2",
+      "name": "koniec drogi z pierwszeństwem",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-3",
+      "name": "droga jednokierunkowa",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-4a",
+      "name": "droga bez przejazdu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-4b",
+      "name": "wjazd na drogę bez przejazdu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-5",
+      "name": "pierwszeństwo na zwężonym odcinku jezdni",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-6",
+      "name": "przejście dla pieszych",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-6a",
+      "name": "przejazd dla rowerzystów",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-6b",
+      "name": "przejście dla pieszych i przejazd dla rowerzystów",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-7",
+      "name": "droga ekspresowa",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-8",
+      "name": "koniec drogi ekspresowej",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-9",
+      "name": "autostrada",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-10",
+      "name": "koniec autostrady",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-11",
+      "name": "początek pasa ruchu dla autobusów",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-12",
+      "name": "pas ruchu dla autobusów",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-13",
+      "name": "początek pasa ruchu powolnego",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-13a",
+      "name": "początek pasa ruchu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-14",
+      "name": "koniec pasa ruchu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-15",
+      "name": "przystanek autobusowy",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-16",
+      "name": "przystanek trolejbusowy",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-17",
+      "name": "przystanek tramwajowy",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-18",
+      "name": "parking",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-18a",
+      "name": "parking – miejsce zastrzeżone",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-18b",
+      "name": "parking zadaszony",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-19",
+      "name": "postój taksówek",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-20",
+      "name": "koniec postoju taksówek",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-21",
+      "name": "szpital",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-21a",
+      "name": "Policja",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-22",
+      "name": "punkt opatrunkowy",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-23",
+      "name": "stacja paliwowa",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-23a",
+      "name": "stacja paliwowa tylko z gazem do napędu pojazdów",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-23b",
+      "name": "stacja paliwowa z punktem ładowania pojazdów elektrycznych lub hybrydowych",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2021/2065/ogl",
+      "sourcePage": 3
+    },
+    {
+      "code": "D-23c",
+      "name": "punkt ładowania pojazdów elektrycznych lub hybrydowych",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2021/2065/ogl",
+      "sourcePage": 3
+    },
+    {
+      "code": "D-24",
+      "name": "telefon",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-25",
+      "name": "poczta",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-26",
+      "name": "stacja obsługi technicznej",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-26a",
+      "name": "wulkanizacja",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-26b",
+      "name": "myjnia",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-26c",
+      "name": "toaleta publiczna",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-26d",
+      "name": "natrysk",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-27",
+      "name": "bufet lub kawiarnia",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-28",
+      "name": "restauracja",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-29",
+      "name": "hotel (motel)",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-30",
+      "name": "obozowisko (kemping)",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-31",
+      "name": "obozowisko (kemping) wyposażone w podłączenia elektryczne do przyczep",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-32",
+      "name": "pole biwakowe",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-33",
+      "name": "schronisko młodzieżowe",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-34",
+      "name": "punkt informacji turystycznej",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-34a",
+      "name": "informacja radiowa o ruchu drogowym",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-34b",
+      "name": "zbiorcza tablica informacyjna",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2021/2065/ogl",
+      "sourcePage": 3
+    },
+    {
+      "code": "D-35",
+      "name": "przejście podziemne dla pieszych",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-35a",
+      "name": "schody ruchome w dół",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-36",
+      "name": "przejście nadziemne dla pieszych",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-36a",
+      "name": "schody ruchome w górę",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-37",
+      "name": "tunel",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-38",
+      "name": "koniec tunelu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-39",
+      "name": "dopuszczalne prędkości",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2022/2372/ogl",
+      "sourcePage": 2
+    },
+    {
+      "code": "D-39a",
+      "name": "opłaty drogowe",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-40",
+      "name": "strefa zamieszkania",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-41",
+      "name": "koniec strefy zamieszkania",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-42",
+      "name": "obszar zabudowany",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-43",
+      "name": "koniec obszaru zabudowanego",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-44",
+      "name": "strefa płatnego parkowania lub śródmiejska strefa płatnego parkowania",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-45",
+      "name": "koniec strefy płatnego parkowania lub śródmiejskiej strefy płatnego parkowania",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 44
+    },
+    {
+      "code": "D-46",
+      "name": "droga wewnętrzna",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-47",
+      "name": "koniec drogi wewnętrznej",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-48",
+      "name": "zmiana pierwszeństwa",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-49",
+      "name": "pobór opłat",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-50",
+      "name": "zatoka",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-51",
+      "name": "automatyczna kontrola prędkości",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-51a",
+      "name": "automatyczna kontrola średniej prędkości",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-51b",
+      "name": "koniec automatycznej kontroli średniej prędkości",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-52",
+      "name": "strefa ruchu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-53",
+      "name": "koniec strefy ruchu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-54",
+      "name": "strefa czystego transportu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "D-55",
+      "name": "koniec strefy czystego transportu",
+      "group": "D",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 45
+    },
+    {
+      "code": "T-1",
+      "name": "tabliczka wskazująca odległość znaku ostrzegawczego od miejsca niebezpiecznego",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-1a",
+      "name": "tabliczka wskazująca odległość znaku informacyjnego do początku (końca) drogi, odcinka drogi, pasa ruchu lub obiektu",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-1b",
+      "name": "tabliczka wskazująca długość tunelu lub odcinek drogi do końca tunelu",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-2",
+      "name": "tabliczka wskazująca długość odcinka drogi, na którym powtarza się lub występuje niebezpieczeństwo",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-3",
+      "name": "tabliczka wskazująca koniec odcinka, na którym powtarza się lub występuje niebezpieczeństwo",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-3a",
+      "name": "tabliczka wskazująca koniec miejsca przeznaczonego na postój",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-4",
+      "name": "tabliczka wskazująca liczbę zakrętów",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-5",
+      "name": "tabliczka wskazująca początek drogi krętej",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-6a",
+      "name": "tabliczka wskazująca rzeczywisty przebieg drogi z pierwszeństwem przez skrzyżowanie (umieszczana na drodze z pierwszeństwem)",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-6b",
+      "name": "tabliczka wskazująca układ dróg podporządkowanych (umieszczana na drodze z pierwszeństwem)",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-6c",
+      "name": "tabliczka wskazująca rzeczywisty przebieg drogi z pierwszeństwem przez skrzyżowanie (umieszczana na drodze podporządkowanej)",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-6d",
+      "name": "tabliczka wskazująca prostopadły przebieg drogi z pierwszeństwem przez skrzyżowanie oraz układ dróg podporządkowanych (umieszczana na drodze podporządkowanej)",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-7",
+      "name": "tabliczka wskazująca układ torów i drogi na przejeździe",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-8",
+      "name": "tabliczka wskazująca miejsce, w którym ruch pojazdów został skierowany na tory tramwajowe",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-9",
+      "name": "tabliczka wskazująca rzeczywistą wielkość spadku lub wzniesienia drogi",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-10",
+      "name": "tabliczka wskazująca bocznicę kolejową lub tor o podobnym charakterze",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-11",
+      "name": "tabliczka wskazująca przeprawę promową",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-12",
+      "name": "tabliczka wskazująca podłużny uskok nawierzchni",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-13",
+      "name": "tabliczka wskazująca odcinek drogi, na którym występują deformacje nawierzchni w postaci kolein",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-14",
+      "name": "tabliczka wskazująca miejsce częstych wypadków o charakterze wskazanym na tabliczce",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-15",
+      "name": "tabliczka wskazująca miejsce częstych wypadków spowodowanych śliską nawierzchnią jezdni ze względu na opady deszczu",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-16",
+      "name": "tabliczka wskazująca miejsce wyjazdu pojazdów uprzywilejowanych wskazanych na tabliczce",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-17",
+      "name": "tabliczka wskazująca granicę państwa",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-18",
+      "name": "tabliczka wskazująca nieoczekiwaną zmianę kierunku ruchu o przebiegu wskazanym na tabliczce",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-19",
+      "name": "tabliczka wskazująca na malowanie znaków poziomych",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-20",
+      "name": "tabliczka wskazująca długość odcinka jezdni, na którym zakaz obowiązuje",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-21",
+      "name": "tabliczka wskazująca odległość znaku od miejsca, od którego lub w którym zakaz obowiązuje",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23a",
+      "name": "tabliczka wskazująca motocykle",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23b",
+      "name": "tabliczka wskazująca samochody ciężarowe, pojazdy specjalne, pojazdy używane do celów specjalnych, o dopuszczalnej masie całkowitej przekraczającej 3,5 t, oraz ciągniki samochodowe",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23c",
+      "name": "tabliczka wskazująca ciągniki rolnicze i pojazdy wolnobieżne",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23d",
+      "name": "tabliczka wskazująca pojazdy silnikowe z przyczepą, z wyjątkiem pojazdów z przyczepą jednoosiową lub naczepą",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23e",
+      "name": "tabliczka wskazująca pojazdy z przyczepą kempingową",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23f",
+      "name": "tabliczka wskazująca autobusy",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23g",
+      "name": "tabliczka wskazująca trolejbusy",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23h",
+      "name": "tabliczka wskazująca pojazdy z towarami niebezpiecznymi",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23i",
+      "name": "tabliczka wskazująca pojazdy z towarami wybuchowymi lub łatwo zapalnymi",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-23j",
+      "name": "tabliczka wskazująca pojazdy z towarami, które mogą skazić wodę",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-24",
+      "name": "tabliczka wskazująca, że pozostawiony pojazd zostanie usunięty na koszt właściciela",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-25a",
+      "name": "tabliczka wskazująca początek zakazu postoju lub zatrzymywania",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-25b",
+      "name": "tabliczka wskazująca kontynuację zakazu postoju lub zatrzymywania",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-25c",
+      "name": "tabliczka wskazująca odwołanie zakazu postoju lub zatrzymywania",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-26",
+      "name": "tabliczka wskazująca, że zakaz postoju lub zatrzymywania dotyczy strony placu",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-27",
+      "name": "tabliczka wskazująca, że przejście dla pieszych jest szczególnie uczęszczane przez dzieci",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-28",
+      "name": "tabliczka wskazująca, że za przejazd drogą pobierana jest opłata",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-29",
+      "name": "tabliczka informująca o miejscu przeznaczonym dla pojazdu samochodowego osób, o których mowa w art. 8 ust. 1 i 2 ustawy",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 49
+    },
+    {
+      "code": "T-30",
+      "name": "tabliczka wskazująca sposób ustawienia pojazdu względem krawędzi jezdni",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 50
+    },
+    {
+      "code": "T-31",
+      "name": "tabliczka wskazująca kategorię tunelu",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 50
+    },
+    {
+      "code": "T-32",
+      "name": "tabliczka wskazująca minimalny odstęp od poprzedzającego pojazdu po zatrzymaniu",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 50
+    },
+    {
+      "code": "T-33",
+      "name": "tabliczka wskazująca umieszczenie w zatoce telefonu alarmowego i gaśnicy",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 50
+    },
+    {
+      "code": "T-34",
+      "name": "tabliczka wskazująca pobór opłaty elektronicznej za przejazd drogą publiczną. DODATKOWE ZNAKI PIONOWE Dodatkowe znaki przed przejazdami kolejowymi 1) G-1a „słupek wskaźnikowy z trzema kreskami umieszczany po prawej stronie jezdni",
+      "group": "T",
+      "source": "https://eli.gov.pl/eli/DU/2019/2310/ogl",
+      "sourcePage": 50
+    }
+  ]
+}

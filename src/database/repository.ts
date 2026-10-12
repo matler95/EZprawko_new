@@ -1,11 +1,14 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 import { buildOfficialExam, type ExamQuestion } from "@/domain/exam-engine";
+import { installTranslations, selectedQuestionLanguage, examQuestionLanguage, questionContent, type QuestionLanguage } from "@/database/translations";
+import { installQuestionSigns } from "@/database/signs";
 
 export type Question = ExamQuestion & {
   question: string;
   correctAnswer: string;
   answers: { label: string; answer: string }[];
   mediaFilename: string | null;
+  contentLanguage: QuestionLanguage;
 };
 
 type QuestionRow = {
@@ -53,7 +56,10 @@ export async function initializeDatabase(db: SQLiteDatabase) {
     CREATE TABLE IF NOT EXISTS question_explanations (question_id INTEGER PRIMARY KEY, explanation TEXT NOT NULL, source_url TEXT, reviewed_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS question_topics (question_id INTEGER PRIMARY KEY, topic TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS practice_mastery (question_id INTEGER PRIMARY KEY, correct_streak INTEGER NOT NULL DEFAULT 0, last_correct_at INTEGER);
+    CREATE TABLE IF NOT EXISTS question_translations (question_id INTEGER NOT NULL, language TEXT NOT NULL, question TEXT NOT NULL, answers_json TEXT NOT NULL, PRIMARY KEY(question_id, language));
   `);
+  await installTranslations(db);
+  await installQuestionSigns(db);
   const topicCount = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) AS count FROM question_topics");
   if (!topicCount?.count) {
     const questions = await db.getAllAsync<{ id: number; question: string }>("SELECT id, question FROM questions");
@@ -104,20 +110,16 @@ export async function createExam(
     categories: JSON.parse(row.categories),
   }));
   const exam = buildOfficialExam(pool, category);
+  const language = await selectedQuestionLanguage(db);
   const byId = new Map(rows.map((row) => [row.id, row]));
   return Promise.all(
     exam.questions.map(async (examQuestion) => {
       const row = byId.get(examQuestion.id)!;
-      const answers = await db.getAllAsync<{ label: string; answer: string }>(
-        "SELECT label, answer FROM answers WHERE question_id = ? ORDER BY label",
-        row.id,
-      );
       return {
         ...examQuestion,
-        question: row.question,
         correctAnswer: row.correct_answer,
         mediaFilename: row.media_filename,
-        answers,
+        ...(await questionContent(db, row.id, language)),
       };
     }),
   );
@@ -129,6 +131,7 @@ export async function saveCompletedExam(
   questions: Question[],
   selected: Record<number, string | undefined>,
   startedAt = Date.now(),
+  language: QuestionLanguage = 'pl',
 ) {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const score = questions.reduce(
@@ -138,6 +141,7 @@ export async function saveCompletedExam(
     0,
   );
   await db.withExclusiveTransactionAsync(async (transaction) => {
+    await transaction.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-language:${id}`, language);
     await transaction.runAsync(
       "INSERT INTO exam_sessions VALUES (?, ?, ?, ?, ?, ?, ?)",
       id,
@@ -171,6 +175,7 @@ export type ExamReviewQuestion = {
   isCorrect: boolean;
   mediaFilename: string | null;
   answers: { label: string; answer: string }[];
+  contentLanguage: QuestionLanguage;
 };
 
 export type ExamReview = {
@@ -179,6 +184,7 @@ export type ExamReview = {
   score: number;
   passed: boolean;
   durationSeconds: number;
+  language: QuestionLanguage;
   questions: ExamReviewQuestion[];
 };
 
@@ -218,21 +224,18 @@ export async function examReview(
      ORDER BY a.rowid`,
     sessionId,
   );
+  const language = await examQuestionLanguage(db, sessionId);
   const questions = await Promise.all(
     rows.map(async (row, position) => ({
       position,
       id: row.question_id,
       scope: row.scope,
       points: row.points,
-      question: row.question,
       correctAnswer: row.correct_answer,
       selectedAnswer: row.selected_answer,
       isCorrect: row.is_correct === 1,
       mediaFilename: row.media_filename,
-      answers: await db.getAllAsync<{ label: string; answer: string }>(
-        "SELECT label, answer FROM answers WHERE question_id = ? ORDER BY label",
-        row.question_id,
-      ),
+      ...(await questionContent(db, row.question_id, language)),
     })),
   );
   return {
@@ -241,6 +244,7 @@ export async function examReview(
     score: session.score,
     passed: session.passed === 1,
     durationSeconds: Math.max(0, Math.round((session.completed_at - session.started_at) / 1000)),
+    language,
     questions,
   };
 }
@@ -482,6 +486,7 @@ export async function setDailyReminderIdentifier(
 async function hydrateQuestions(
   db: SQLiteDatabase,
   examQuestions: ExamQuestion[],
+  language: QuestionLanguage,
 ) {
   return Promise.all(
     examQuestions.map(async (examQuestion) => {
@@ -490,22 +495,18 @@ async function hydrateQuestions(
         examQuestion.id,
       );
       if (!row) throw new Error(`Question ${examQuestion.id} is unavailable`);
-      const answers = await db.getAllAsync<{ label: string; answer: string }>(
-        "SELECT label, answer FROM answers WHERE question_id = ? ORDER BY label",
-        row.id,
-      );
       return {
         ...examQuestion,
-        question: row.question,
         correctAnswer: row.correct_answer,
         mediaFilename: row.media_filename,
-        answers,
+        ...(await questionContent(db, row.id, language)),
       };
     }),
   );
 }
 
 export async function startActiveExam(db: SQLiteDatabase, category: string) {
+  const language = await selectedQuestionLanguage(db);
   const rows = await db.getAllAsync<QuestionRow>(
     "SELECT id, scope, points, categories FROM questions",
   );
@@ -538,13 +539,15 @@ export async function startActiveExam(db: SQLiteDatabase, category: string) {
         position,
         question.id,
       );
+    await transaction.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-language:${id}`, language);
   });
   return {
     id,
     category,
     expiresAt,
     index: 0,
-    questions: await hydrateQuestions(db, base.questions),
+    language,
+    questions: await hydrateQuestions(db, base.questions, language),
     selections: {} as Record<number, string>,
   };
 }
@@ -582,12 +585,14 @@ export async function resumeActiveExam(db: SQLiteDatabase) {
       answeringTimeSeconds: item.scope === "PODSTAWOWY" ? 15 : 50,
     } as ExamQuestion;
   });
+  const language = await examQuestionLanguage(db, session.id);
   return {
     id: session.id,
     category: session.category,
     expiresAt: session.expires_at,
     index: session.current_index,
-    questions: await hydrateQuestions(db, base),
+    language,
+    questions: await hydrateQuestions(db, base, language),
     selections: Object.fromEntries(
       rows
         .filter((row) => row.selected_answer)

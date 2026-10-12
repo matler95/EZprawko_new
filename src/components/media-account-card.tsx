@@ -65,7 +65,7 @@ export function MediaAccountCard() {
           <Text style={{ color: colors.textPrimary }}>{session.user.email}</Text>
           <Text style={{ color: colors.textSecondary }}>Możesz pobierać multimedia do pytań.</Text>
           <Pressable disabled={busy} onPress={() => void signOut()} style={styles.secondary}>
-            <Text style={{ color: colors.primary }}>{busy ? "Proszę czekać…" : "Wyloguj się"}</Text>
+            <Text style={{ color: colors.primaryText }}>{busy ? "Proszę czekać…" : "Wyloguj się"}</Text>
           </Pressable>
         </>
       ) : (
@@ -99,7 +99,7 @@ export function MediaAccountCard() {
             value={password}
           />
           <Pressable disabled={busy || !email.trim() || !password} onPress={() => void signIn()} style={[styles.button, { backgroundColor: colors.primary, opacity: busy || !email.trim() || !password ? 0.5 : 1 }]}>
-            <Text style={styles.buttonText}>{busy ? "Logowanie…" : "Zaloguj się"}</Text>
+            <Text style={[styles.buttonText, { color: colors.onPrimary }]}>{busy ? "Logowanie…" : "Zaloguj się"}</Text>
           </Pressable>
         </>
       )}
@@ -113,6 +113,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: "700" },
   input: { borderRadius: 12, borderWidth: 1, minHeight: 48, paddingHorizontal: 16 },
   button: { alignItems: "center", borderRadius: 12, justifyContent: "center", minHeight: 52 },
-  buttonText: { color: "#FFFFFF", fontWeight: "700" },
+  buttonText: { fontWeight: "700" },
   secondary: { justifyContent: "center", minHeight: 44 },
 });

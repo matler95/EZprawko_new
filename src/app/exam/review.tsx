@@ -103,6 +103,7 @@ export default function ExamReviewScreen() {
                 <Text style={styles.kicker}>PYTANIE {selected.position + 1} · {selected.points} PKT</Text>
                 <QuestionMedia filename={selected.mediaFilename} />
                 <Text style={styles.question}>{selected.question}</Text>
+                {selected.contentLanguage !== review.language ? <Text style={styles.muted}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
                 {selected.answers.map((answer) => {
                   const wasSelected = selected.selectedAnswer === answer.label;
                   const isCorrect = selected.correctAnswer === answer.label;
@@ -133,7 +134,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   back: { color: colors.primaryText, fontWeight: "800", marginBottom: 28 },
   kicker: { color: colors.primaryText, fontSize: 11, fontWeight: "800", letterSpacing: 0.9 },
   hero: { borderRadius: 24, marginTop: 12, padding: 24 },
-  heroPassed: { backgroundColor: colors.brandSurface }, heroFailed: { backgroundColor: colors.error },
+  heroPassed: { backgroundColor: colors.brandSurface }, heroFailed: { backgroundColor: colors.dangerSolid },
   verdict: { color: colors.onPrimary, fontSize: 13, fontWeight: "800", letterSpacing: 1 },
   score: { color: colors.onPrimary, fontSize: 44, fontVariant: ["tabular-nums"], fontWeight: "800", marginTop: 8 },
   heroCopy: { color: colors.brandMuted, marginTop: 4 },
