@@ -1,3 +1,5 @@
+import { useTranslation } from '@/hooks/use-translation';
+import { t } from '@/domain/ui-copy';
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 
@@ -13,20 +15,21 @@ type Props = {
 
 /** Display translated wording while keeping the ministerial T/N answer keys. */
 export function basicAnswerText(answers: Answer[], key: string | null | undefined) {
-  if (!key) return "Brak odpowiedzi";
+  if (!key) return t("Brak odpowiedzi");
   return (answers.find((answer) => answer.label === key)?.answer ?? (key === "T" ? "Tak" : "Nie")).toLocaleUpperCase();
 }
 
 export function BasicAnswerButtons({ answers, disabled = false, locked = false, selectedAnswer, correctAnswer, onAnswer }: Props) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const s = styles(colors);
   const review = Boolean(correctAnswer);
   return <View style={s.container}>
-    {locked ? <Text style={s.notice}>Odpowiedzi zablokowane — trwa czytanie lub wideo.</Text> : null}
+    {locked ? <Text style={s.notice}>{t("Odpowiedzi zablokowane — trwa czytanie lub wideo.")}</Text> : null}
     <View style={s.row}>{["T", "N"].map((key) => {
       const selected = selectedAnswer === key;
       const correct = correctAnswer === key;
-      const marks = [selected ? "Twój wybór" : "", correct ? "✓ Klucz MI" : ""].filter(Boolean).join(" · ");
+      const marks = [selected ? t("Twój wybór") : "", correct ? t("✓ Klucz MI") : ""].filter(Boolean).join(" · ");
       const unavailable = disabled || review || !onAnswer;
       return <Pressable key={key} accessibilityRole={review ? "text" : "button"}
         accessibilityLabel={[basicAnswerText(answers, key), marks].filter(Boolean).join(", ")}

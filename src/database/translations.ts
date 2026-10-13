@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import catalog from '@/assets/data/question-translations.json';
+import { examPreferencesChanged } from '@/domain/exam-preparation-events';
 
 export type QuestionLanguage = 'pl' | 'en' | 'de' | 'uk';
 export const questionLanguages = [
@@ -36,6 +37,7 @@ export async function selectedQuestionLanguage(db: SQLiteDatabase) {
 
 export async function setQuestionLanguage(db: SQLiteDatabase, language: QuestionLanguage) {
   await db.runAsync("INSERT OR REPLACE INTO settings (key, value) VALUES ('question-language', ?)", language);
+  examPreferencesChanged();
 }
 
 export async function examQuestionLanguage(db: SQLiteDatabase, sessionId: string) {

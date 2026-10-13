@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 import { useIsFocused } from "expo-router";
@@ -10,6 +11,7 @@ export function Skeleton({ width = "100%", height = 16, radius = 8 }: { width?: 
 }
 
 export function LoadingSkeleton({ variant, label }: { variant: "dashboard" | "study" | "progress"; label?: string }) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const s = styles(colors);
   const reduced = useReducedMotion();
@@ -25,7 +27,7 @@ export function LoadingSkeleton({ variant, label }: { variant: "dashboard" | "st
     animation.start();
     return () => { animation.stop(); opacity.setValue(1); };
   }, [focused, opacity, reduced]);
-  return <Animated.View accessible accessibilityRole="progressbar" accessibilityLabel={label ?? "Wczytywanie danych"} accessibilityState={{ busy: true }} style={{ opacity }}>
+  return <Animated.View accessible accessibilityRole="progressbar" accessibilityLabel={t(label ?? "Wczytywanie danych")} accessibilityState={{ busy: true }} style={{ opacity }}>
     <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.group}>
       {variant === "dashboard" ? <>
         <Skeleton width="48%" height={28} /><Skeleton width="64%" />
@@ -41,11 +43,12 @@ export function LoadingSkeleton({ variant, label }: { variant: "dashboard" | "st
 }
 
 export function LoadingError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const s = styles(colors);
   return <View style={s.card}>
-    <Text accessibilityRole="alert" style={s.copy}>Nie udało się wczytać danych. Spróbuj ponownie.</Text>
-    <Pressable accessibilityRole="button" onPress={onRetry} style={s.retry}><Text style={s.retryText}>Ponów odczyt</Text></Pressable>
+    <Text accessibilityRole="alert" style={s.copy}>{t("Nie udało się wczytać danych. Spróbuj ponownie.")}</Text>
+    <Pressable accessibilityRole="button" onPress={onRetry} style={s.retry}><Text style={s.retryText}>{t("Ponów odczyt")}</Text></Pressable>
   </View>;
 }
 const styles = (colors: AppTheme) => StyleSheet.create({

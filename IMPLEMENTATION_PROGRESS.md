@@ -1,5 +1,69 @@
 # Implementation progress
 
+## Checkpoint — UX audit, shared UI language (2026-10-13)
+
+- Added a reactive PL/EN/DE/UK interface-language preference and a 452-entry UI
+  catalogue covering navigation, onboarding, Study/exam/review, dashboard,
+  analytics, Settings/account/media/reminders, recovery and accessibility copy.
+  Placeholder parity and uniqueness are tested. This is editorial UI copy,
+  not an official translation of legal or educational content.
+- Changing interface language atomically saves UI and default question language;
+  an explicit separate question-language override remains available. Existing
+  exams retain their recorded category/content language. New onboarding chooses
+  language before category; incomplete drafts and completed installs remain supported.
+  Language defaults use the runtime Intl locale, with Polish fallback.
+- Existing enabled local reminders refresh their content in the current language,
+  without requesting permission or enabling a disabled reminder. Legal documents,
+  sign names and editorial explanations remain Polish with an explicit notice;
+  official question translations/fallback and answer keys are unchanged.
+- Tests cover real SQLite atomic preference persistence/rollback, maintenance
+  fencing, reactive subscriptions, all four locales and safe media error mapping.
+  Registration, password-recovery e-mails/deep links and server account deletion
+  are not added or enabled; they still require access-policy/server decisions.
+
+## Checkpoint — UX audit, final local polish and validation (2026-10-13)
+
+- Dashboard now leads with daily learning and mistake review before the exam card.
+  Category-scoped indicators distinguish coverage, mastery and recent pass rate;
+  global history is explicitly separate and opens the recorded answer review.
+  Study keeps its question/answer/summary across tab returns, shows topic/batch
+  context and supports exact failed-exam replay including unanswered questions.
+- Added responsive/wrapping controls, minimum touch targets and symbol-based
+  answer states. Missing explanations use compact honest copy. Sign-linked counts
+  follow the selected category. Mobile UI design guidance informed hierarchy,
+  touch targets and recoverable states without adding screens or session features.
+- One next exam is warmed while the app is open. A Start joining that work receives
+  its current/final progress rather than starting another draw/download. A ready
+  candidate starts with cache-only verification, without bulk media downloading.
+  First use, missing cache or changed preferences still need delivery; neither
+  instant cold start nor a measured device latency is claimed.
+- Answer submissions validate current question position and cannot overwrite a
+  double submission. Clicks at/after the global deadline finish without crediting
+  a late answer. Completion remains atomic/idempotent with retained-answer retry.
+  User-facing media errors use an allowlist/generic fallback, never raw private
+  URLs, filesystem paths or backend diagnostics.
+- Validation: all 25 scripts/test-*.cjs passed; 5,000 seeded engine draws plus
+  all 12 real-bank category pools, 9,338 official translation records, reset/export,
+  auth stubs, cache/preparation, deadlines, duplicate/failed writes and UI contracts.
+  TypeScript and Expo lint passed without errors/warnings; Expo Doctor 21/21;
+  24 theme contrast pairs >=4.5:1. Android Metro/Hermes export passed (1,776 modules,
+  6.8 MB JS bundle) to ignored .expo/ux-audit-export; no build/deploy/cloud mutations.
+- Remaining acceptance requires physical Android/iPhone QA: cold/warm timings,
+  decoder/video continuity after process termination, background/foreground,
+  native navigation gestures, large fonts, screen reader, keyboard and real
+  authorized login/reminder delivery. Editorial language/legal/rights approval
+  and any EAS/release steps remain separate. Local scope is complete, not production QA.
+
+## Checkpoint — UX audit, exam and learning reliability (2026-10-12)
+
+- Atomic, retryable exam completion now uses the active session ID as the completed result ID; answers/history and active-session removal share one SQLite transaction. Tests inject completion failure and verify rollback and nonduplicated retry. Last-question completion no longer strands index 32 before saving the result.
+- Added synchronous answer/finish locks, retained-answer retry, stable absolute per-question deadlines persisted in settings, wall-clock phase calculation, and Android hardware-back confirmation. Basic phases retain 20+15 seconds; specialist has 50 seconds. Video completion no longer shortens the fixed reading phase. Video playback continuity after process termination still requires device review.
+- Added one persisted next-exam candidate prepared while the app is open. Preparation never starts a clock; partial media failure retains the exact candidate. Start uses that same candidate with cache-only verification. Category/language/reset fencing and active/upcoming-media eviction protection are tested locally. Instant start depends on earlier completed delivery; first use or missing files still requires preparation. Cold/warm physical-device timing is not yet measured.
+- Study keeps its current question/answer/summary when returning from another tab, resets context on explicit category/filter/source changes, and blocks answering when its required media file is unavailable. Exact exam mistake review includes skipped questions, selects the exam's category and opens up to its 32 questions. History opens saved answer review; missing/read-error results have retry/home.
+- Dashboard readiness, Progress average/trend/coverage and exam weak areas now use the selected category. Global history remains separately labelled. Study labels the bounded random batch, selected topic and exact-exam filter, and adds recovery actions for empty results. Flag write errors have visible feedback.
+- Validation passed: TypeScript, Expo lint, test-prepared-exam, test-session-categories (12 official pools plus deadlines/atomic completion/category isolation), test-study-session (including tab return), test-bank-progress (category coverage), test-media-preparation and test-user-data. Native gestures, media decoding, background transitions and real storage failures remain physical QA.
+- Next: shared interface language/onboarding, then remaining copy/accessibility polish. Private account creation/recovery policy and device QA remain external decisions; no cloud changes were made.
+
 ## Checkpoint — PLAN_UX_IMPLEMENTACJI.md, UX-4 settings (2026-10-12)
 
 - Reorganized Settings into Learning, Appearance, Account, Multimedia, Reminders, Data and Information. Theme-aware cards, wrapping selections, >=48px targets, radio checked/disabled states, headers and readable explanatory text follow the existing mobile design guidance. The screen retains keyboard-aware scrolling and limits content width on larger displays.

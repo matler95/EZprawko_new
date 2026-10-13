@@ -25,6 +25,7 @@ function load(relative) {
     if (name === 'expo-router') return { Link: primitive('Link'), router: { replace: (value) => { navigated = value; } } };
     if (name === 'expo-splash-screen') return { hideAsync: async () => {} };
     if (name === '@/global.css') return {};
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if (name === '@/context/app-theme-context') return { useAppTheme: () => ({ colors: load('src/constants/theme.ts').Colors.light }) };
     if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
     throw new Error(`Unexpected dependency ${name}`);
@@ -70,8 +71,10 @@ for (const rule of ['32','25','68','74','Nie możesz wrócić','zastąpi']) asse
 assert.equal(starts,0, 'rendering a briefing must not start a session');
 briefing.props.onRequestClose(); assert.equal(cancels,1);
 const starting = ExamBriefing({ ...props, starting: true });
-starting.props.onRequestClose(); assert.equal(cancels,1);
-assert(nodes(starting).filter((n) => n.type === 'Pressable').every((n) => n.props.disabled));
+starting.props.onRequestClose(); assert.equal(cancels,2,'preparation remains cancellable before commit');
+assert(nodes(starting).filter((n) => n.type === 'Pressable').some((n) => !n.props.disabled));
+const committing = ExamBriefing({ ...props, starting: true, committing: true });
+committing.props.onRequestClose(); assert.equal(cancels,2,'commit cannot be cancelled halfway through');
 const { ErrorBoundary, ScreenErrorBoundary } = load('src/components/error-boundary.tsx');
 assert.deepEqual(ErrorBoundary.getDerivedStateFromError(new Error('sensitive details')), { failed: true });
 const boundary = new ErrorBoundary({ children: (home) => ({ home }) });

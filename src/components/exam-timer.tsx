@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -8,6 +9,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { timerLevel } from '@/domain/timer-presentation';
 
 export function ExamTimer({ seconds, question = false, active = true }: { seconds: number; question?: boolean; active?: boolean }) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const reducedMotion = useReducedMotion();
   const focused = useIsFocused();
@@ -38,7 +40,7 @@ export function ExamTimer({ seconds, question = false, active = true }: { second
   return (
     <View style={[styles.badge, { backgroundColor: danger ? colors.errorSurface : warning ? colors.warningSurface : colors.primarySurface }]}>
       {danger ? <Animated.View accessible={false} pointerEvents="none" style={[StyleSheet.absoluteFill, styles.outline, { opacity: pulse, borderColor: colors.error }]} /> : null}
-      <Text accessibilityLabel={`${question ? 'Czas pytania' : 'Czas egzaminu'}: ${text}${level === 'expired' ? ', czas upłynął' : danger ? ', czas na ukończeniu' : warning ? ', kończy się czas' : ''}`} style={[styles.text, { color: danger ? colors.error : warning ? colors.warning : colors.primaryText }]}>{text}</Text>
+      <Text accessibilityLabel={`${question ? t("Czas pytania") : t("Czas egzaminu")}: ${text}${level === 'expired' ? t(", czas upłynął") : danger ? t(", czas na ukończeniu") : warning ? t(", kończy się czas") : ''}`} style={[styles.text, { color: danger ? colors.error : warning ? colors.warning : colors.primaryText }]}>{text}</Text>
     </View>
   );
 }

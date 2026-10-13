@@ -18,6 +18,7 @@ function load(file) {
   new Function('require','exports',code)((name) => {
     if (name === 'react') return { ...React, useState: () => [failed, (next) => { failed = next; }] };
     if (name === 'react/jsx-runtime') return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if (name === 'react-native') return { View:'View',Text:'Text',Pressable:'Pressable',ScrollView:'ScrollView',StyleSheet:{create:(s)=>s},Platform:{select:(s)=>s.default} };
     if (name === 'react-native-safe-area-context') return { SafeAreaView:'SafeAreaView' };
     if (name === 'expo-router') return { Link:'Link',router:{canGoBack:()=>hasBack,back:()=>{navigation='back';},replace:(route)=>{navigation=route;}} };

@@ -1,9 +1,10 @@
 import type { SQLiteDatabase } from "expo-sqlite";
+import { categoryClause } from '@/domain/driving-categories';
 
 export type BankProgress = { total: number; answered: number };
 
 // Count coverage, not correctness/mastery. Ignore skipped answers and stale IDs.
-export async function bankProgress(db: SQLiteDatabase): Promise<BankProgress> {
+export async function bankProgress(db: SQLiteDatabase, category?: string): Promise<BankProgress> {
   return (await db.getFirstAsync<BankProgress>(`
     WITH answered_questions AS (
       SELECT question_id FROM practice_attempts WHERE selected_answer IS NOT NULL
@@ -14,5 +15,6 @@ export async function bankProgress(db: SQLiteDatabase): Promise<BankProgress> {
     )
     SELECT COUNT(*) AS total, COUNT(a.question_id) AS answered
     FROM questions q LEFT JOIN answered_questions a ON a.question_id = q.id
-  `)) ?? { total: 0, answered: 0 };
+    ${category ? `WHERE ${categoryClause}` : ''}
+  `, category ? [category] : [])) ?? { total: 0, answered: 0 };
 }

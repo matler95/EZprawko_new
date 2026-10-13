@@ -117,6 +117,11 @@ globalny streak zachowany, zmiana kategorii/zerowa historia nie tworzą fałszyw
   wymagają osobnego zakresu i decyzji; nie oznaczamy całego uwierzytelniania jako gotowego.
 - UX-4: uporządkowane sekcje, zapis/retry ustawień i zarządzanie zajętością
   multimediów wdrożone i zweryfikowane lokalnie (2026-10-12); fizyczne QA otwarte.
-- UX-5–UX-7: zaplanowane, niewdrożone w tym etapie.
+- UX-5: nowe długości/tryby i trwała historia sesji Nauki pominięte na życzenie
+  właściciela. Istniejące partie/filtry, powroty między tabami i dokładne powtórki
+  błędów dopracowane w PLAN_DOPRACOWANIA_UX.md; restart procesu nie odtwarza sesji Nauki.
+- UX-6: statystyki i rekomendacje aktualnej kategorii wdrożone lokalnie.
+- UX-7: lokalne poprawki copy/dostępności oraz wspólny język UI wdrożone
+  (2026-10-13), wraz z testami regresji i eksportem Android. Fizyczne QA otwarte.
 - Zewnętrzne: EAS, konfiguracja rejestracji/maili/linków/usuwania konta,
   prawne zatwierdzenie treści i multimedia, fizyczne QA.

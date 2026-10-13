@@ -10,6 +10,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
   new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText)(name=>{
     if(name==='react')return {...React,useCallback:f=>f,useRef:v=>{const i=ri++;return refs[i]??(refs[i]={current:v});},useState:v=>{const i=si++;if(!(i in states))states[i]=v;return [states[i],x=>states[i]=typeof x==='function'?x(states[i]):x];},useEffect:(f,deps)=>{const i=ei++;if(!effects[i]||deps.some((v,j)=>v!==effects[i][j])){effects[i]=deps;pending.push(f);}}};
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return {Pressable:'Pressable',ScrollView:'ScrollView',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s},Platform:{select:s=>s.default}};
     if(name==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
     if(name==='expo-router')return {router:{setParams:value=>Object.assign(routeParams,value)},useFocusEffect:f=>focus=f,useLocalSearchParams:()=>routeParams};
@@ -47,6 +48,7 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
     button(t,'Następne').props.onPress();await tick();t=render();
     failWrite=true;await button(t,'Pierwsza').props.onPress();t=render();assert.match(text(t),/Nie zapisano/);assert.equal(writes,1);failWrite=false;
     await button(t,'Pierwsza').props.onPress();t=render();assert.equal(writes,2);assert.match(text(t),/Dobra odpowiedź/,'haptic failure cannot lose answer');
+    cleanup();focus();await tick();t=render();assert.match(text(t),/Pytanie 2/);assert(button(t,'Pierwsza').props.disabled,'returning from another tab preserves question and answer');
     button(t,'Poprzednie').props.onPress();await tick();t=render();assert(button(t,'Druga').props.disabled,'review locks prior answer');
     button(t,'Zakończ sesję').props.onPress();await tick();t=render();assert.match(text(t),/Poprawne: 1.*Błędne: 1/);assert.match(text(t),/Bez odpowiedzi: 1/);assert.match(text(t),/Zmiana w tej sesji:.*\+.*1/);
     failMastery=true;await button(t,'Powtórz błędy').props.onPress();t=render();assert.match(text(t),/Nie udało się rozpocząć powtórki/);failMastery=false;

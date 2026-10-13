@@ -13,6 +13,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};c
   new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText)(name=>{
     if(name==='react')return {...React,useCallback:f=>f,useContext:()=>({setIsTabBarHidden:v=>hidden=v}),useRef:v=>{const i=ri++;return refs[i]??(refs[i]={current:v});},useState:v=>{const i=si++;if(!(i in states))states[i]=v;return [states[i],x=>states[i]=typeof x==='function'?x(states[i]):x];}};
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return {Pressable:'Pressable',ScrollView:'ScrollView',Text:'Text',View:'View',StyleSheet:{create:s=>s},Platform:{select:s=>s.default}};
     if(name==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
     if(name==='expo-router')return {useFocusEffect:f=>focus=f};
@@ -26,7 +27,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};c
   },exports);return exports;}
 function nodes(t){if(!t||typeof t!=='object')return [];const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
 function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
-function button(t,label){const node=nodes(t).find(n=>n.type==='Pressable'&&text(n)===label);assert(node,`Missing ${label}: ${text(t)}`);return node;}
+function button(tree,label){const translated=load('src/domain/ui-copy.ts').t(label);const node=nodes(tree).find(n=>n.type==='Pressable'&&text(n)===translated);assert(node,`Missing ${translated}: ${text(tree)}`);return node;}
 const tick=()=>new Promise(setImmediate),setting=key=>native.prepare('SELECT value FROM settings WHERE key=?').get(key)?.value;
 (async()=>{
   const r=load('src/database/onboarding.ts'),categories=load('src/domain/driving-categories.ts').drivingCategories;
@@ -48,13 +49,15 @@ const tick=()=>new Promise(setImmediate),setting=key=>native.prepare('SELECT val
   for(theme of ['light','dark']){
     native.exec('DELETE FROM settings');states=[];refs=[];completed=[];
     const render=()=>{si=ri=0;return Flow({onComplete:(...v)=>completed.push(v)});};
-    render();let cleanup=focus();await tick();let tree=render();assert(hidden);assert(button(tree,'Dalej').props.disabled);assert(!nodes(tree).some(n=>n.props.accessibilityState?.checked));
+    render();let cleanup=focus();await tick();let tree=render();assert(hidden);assert(!button(tree,'Dalej').props.disabled,'language is available before category');
+    button(tree,'English').props.onPress();tree=render();assert.equal(load('src/domain/ui-language.ts').uiLanguage(),'en');
+    button(tree,'Dalej').props.onPress();await tick();tree=render();assert(button(tree,'Dalej').props.disabled,'category remains an explicit choice');
     button(tree,'A1').props.onPress();tree=render();const next=button(tree,'Dalej');const before=writes;
-    next.props.onPress();next.props.onPress();await tick();tree=render();assert.equal(writes-before,1,'double tap saves once');assert.match(text(tree),/Krok 2 z 4/);
-    button(tree,'English').props.onPress();tree=render();button(tree,'Dalej').props.onPress();await tick();tree=render();assert.match(text(tree),/tylko na tym urządzeniu/);assert.match(text(tree),/zalogowaniu/);
-    cleanup();states=[];refs=[];render();cleanup=focus();await tick();tree=render();assert.match(text(tree),/Krok 3 z 4/,'confirmed step survives reopening');
-    button(tree,'Dalej').props.onPress();await tick();tree=render();assert.match(text(tree),/English/);assert.match(text(tree),/opcjonalne/);
-    failWrite=true;button(tree,'Zacznij pierwsze 5 pytań').props.onPress();await tick();tree=render();assert.match(text(tree),/Nie udało się zakończyć/);assert.equal(completed.length,0);assert.equal(setting('onboarding-complete'),undefined);failWrite=false;
+    next.props.onPress();next.props.onPress();await tick();tree=render();assert.equal(writes-before,1,'double tap saves once');assert.equal(JSON.parse(setting('onboarding-draft')).step,2);
+    assert.match(text(tree),/Progress is saved only on this device/);
+    cleanup();states=[];refs=[];render();cleanup=focus();await tick();tree=render();assert.equal(JSON.parse(setting('onboarding-draft')).step,2,'confirmed step survives reopening');
+    button(tree,'Dalej').props.onPress();await tick();tree=render();assert.match(text(tree),/English/);assert.match(text(tree),/Reminders are optional/);
+    failWrite=true;button(tree,'Zacznij pierwsze 5 pytań').props.onPress();await tick();tree=render();assert.match(text(tree),/Setup could not be completed/);assert.equal(completed.length,0);assert.equal(setting('onboarding-complete'),undefined);failWrite=false;
     button(tree,'Zacznij pierwsze 5 pytań').props.onPress();await tick();assert.deepEqual(completed,[['A1','study']]);assert.equal(setting('target-category'),'A1');assert.equal(setting('question-language'),'en');cleanup();assert(!hidden);
   }
   states=[];refs=[];si=ri=0;failRead=true;Flow({onComplete:()=>{}});const cleanup=focus();await tick();si=ri=0;let tree=Flow({onComplete:()=>{}});assert(nodes(tree).some(n=>n.type==='LoadingError'));failRead=false;cleanup();

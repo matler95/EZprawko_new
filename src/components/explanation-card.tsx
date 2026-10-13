@@ -1,18 +1,21 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import type { QuestionExplanation } from "@/database/explanations";
 
 export function ExplanationCard({ explanation, loading = false, failed = false }: { explanation: QuestionExplanation | null; loading?: boolean; failed?: boolean }) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const s = styles(colors);
+  if (!loading && !failed && !explanation) return <Text style={s.copy}>{t('Do tego pytania nie ma jeszcze zweryfikowanego wyjaśnienia. Klucz odpowiedzi pochodzi z bazy ministerialnej.')}</Text>;
   return <View style={s.card}>
-    <Text style={s.title}>Dlaczego ta odpowiedź jest poprawna?</Text>
-    {loading ? <Text style={s.copy}>Wczytujemy wyjaśnienie…</Text> : failed ? <Text style={s.copy}>Nie udało się wczytać wyjaśnienia. Otwórz pytanie ponownie.</Text> : !explanation ? <Text style={s.copy}>Do tego pytania nie ma jeszcze zweryfikowanego wyjaśnienia. Klucz odpowiedzi pochodzi z bazy ministerialnej.</Text> : <>
+    <Text style={s.title}>{t("Dlaczego ta odpowiedź jest poprawna?")}</Text>
+    {loading ? <Text style={s.copy}>{t("Wczytujemy wyjaśnienie…")}</Text> : failed ? <Text style={s.copy}>{t("Nie udało się wczytać wyjaśnienia. Otwórz pytanie ponownie.")}</Text> : !explanation ? <Text style={s.copy}>{t("Do tego pytania nie ma jeszcze zweryfikowanego wyjaśnienia. Klucz odpowiedzi pochodzi z bazy ministerialnej.")}</Text> : <>
       <Text style={s.copy}>{explanation.explanationText}</Text>
-      <Text style={s.meta}>Wyjaśnienie w języku polskim</Text>
-      <Text style={s.copy}>Podstawa prawna: {explanation.legalBasis ?? "nieuzupełniona w starszym rekordzie"}</Text>
-      {explanation.sourceUrl ? <Link href={explanation.sourceUrl as `https://${string}`} style={s.source}>Otwórz źródło urzędowe ↗</Link> : null}
+      <Text style={s.meta}>{t("Wyjaśnienie w języku polskim")}</Text>
+      <Text style={s.copy}>{t("Podstawa prawna:")} {explanation.legalBasis ?? t("nieuzupełniona w starszym rekordzie")}</Text>
+      {explanation.sourceUrl ? <Link href={explanation.sourceUrl as `https://${string}`} style={s.source}>{t("Otwórz źródło urzędowe ↗")}</Link> : null}
     </>}
   </View>;
 }

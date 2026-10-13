@@ -13,6 +13,7 @@ function load(file){
   new Function('require','exports',code)((name)=>{
     if(name==='react')return {...React,useState:(v)=>[v,()=>{}],useRef:(v)=>({current:v})};
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return {View:'View',Text:'Text',Pressable:'Pressable',StyleSheet:{create:s=>s},Platform:{select:s=>s.default},Alert:{alert:(...v)=>{dialog=v;}}};
     if(name==='expo-sqlite')return {useSQLiteContext:()=>db};
     if(name==='expo-file-system/legacy')return fileSystem;

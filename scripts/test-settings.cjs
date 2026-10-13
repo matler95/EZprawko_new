@@ -11,7 +11,9 @@ function load(file) {
   new Function('require', 'exports', ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText)(name => {
     if (name === 'react') return { ...React, useCallback: f => f, useRef: v => { const i = ri++; return refs[i] ?? (refs[i] = { current: v }); }, useState: v => { const i = si++; if (!(i in states)) states[i] = v; return [states[i], x => { states[i] = typeof x === 'function' ? x(states[i]) : x; }]; } };
     if (name === 'react/jsx-runtime') return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if (name === '@/global.css') return {};
+    if (name === '@/hooks/use-ui-language') return { useUiLanguage: () => 'pl' };
     if (name === 'react-native') return { View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'ios', select: s => s.ios ?? s.default }, StyleSheet: { create: s => s }, Alert: { alert: (...args) => { alert = args; } }, AppState: { addEventListener: (_event, cb) => { foreground = cb; return { remove: () => {} }; } } };
     if (name === 'react-native-safe-area-context') return { SafeAreaView: 'SafeAreaView' };
     if (name === 'expo-router') return { useFocusEffect: cb => { focus = cb; } };
@@ -28,7 +30,7 @@ function load(file) {
 }
 function nodes(t) { if (!t || typeof t !== 'object') return []; return [t, ...[t.props?.children].flat(Infinity).flatMap(nodes)]; }
 function text(t) { if (typeof t === 'string' || typeof t === 'number') return String(t); if (!t || typeof t !== 'object') return ''; return [t.props?.children].flat(Infinity).map(text).join(' '); }
-function button(tree, label) { return nodes(tree).find(n => n.type === 'Pressable' && text(n).trim() === label); }
+function button(tree, label) { return nodes(tree).findLast(n => n.type === 'Pressable' && text(n).trim() === label); }
 function render(Screen) { si = ri = 0; return Screen(); }
 (async () => {
   const Screen = load('src/app/settings.tsx').default;

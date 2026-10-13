@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
@@ -13,6 +14,7 @@ type ReminderState = Awaited<ReturnType<typeof readDailyReminder>>;
 function pickerDate(time: ReminderTime) { return new Date(2020, 0, 1, time.hour, time.minute); }
 
 export function ReminderCard() {
+  const { t } = useTranslation();
   const db = useSQLiteContext();
   const { colors, preference } = useAppTheme();
   const system = useColorScheme();
@@ -58,7 +60,7 @@ export function ReminderCard() {
       if (focused.current && id === request.current) setState(next);
     } catch (failure) {
       if (focused.current) {
-        setError(failure instanceof Error ? failure.message : 'Nie udało się zmienić przypomnienia. Spróbuj ponownie.');
+        setError(failure instanceof Error ? failure.message : t("Nie udało się zmienić przypomnienia. Spróbuj ponownie."));
         void refresh();
       }
     } finally { lock.current = false; if (focused.current) setBusy(false); }
@@ -76,26 +78,26 @@ export function ReminderCard() {
   };
 
   return <View style={s.card}>
-    <Text accessibilityRole="header" style={s.heading}>Codzienna powtórka</Text>
-    {!supported ? <Text style={s.detail}>Lokalne przypomnienia i wybór godziny są dostępne na Androidzie i iOS.</Text> : reading ? <Text accessibilityRole="alert" style={s.detail}>Sprawdzanie przypomnień…</Text> : readError || !state ? <>
-      <Text style={s.detail}>Nie udało się odczytać przypomnień.</Text>
-      <Pressable accessibilityRole="button" style={s.button} onPress={() => void refresh()}><Text style={s.action}>Spróbuj ponownie</Text></Pressable>
+    <Text accessibilityRole="header" style={s.heading}>{t("Codzienna powtórka")}</Text>
+    {!supported ? <Text style={s.detail}>{t("Lokalne przypomnienia i wybór godziny są dostępne na Androidzie i iOS.")}</Text> : reading ? <Text accessibilityRole="alert" style={s.detail}>{t("Sprawdzanie przypomnień…")}</Text> : readError || !state ? <>
+      <Text style={s.detail}>{t("Nie udało się odczytać przypomnień.")}</Text>
+      <Pressable accessibilityRole="button" style={s.button} onPress={() => void refresh()}><Text style={s.action}>{t("Spróbuj ponownie")}</Text></Pressable>
     </> : <>
-      <Text style={s.detail}>{state.enabled ? 'Włączone' : 'Wyłączone'} · codziennie o {formatReminderTime(state.time)} · czas lokalny telefonu</Text>
-      <Pressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Zmień godzinę przypomnienia, obecnie ${formatReminderTime(state.time)}`} style={s.button} onPress={openPicker}><Text style={s.action}>Zmień godzinę · {formatReminderTime(state.time)}</Text></Pressable>
-      <Pressable disabled={busy} accessibilityRole="switch" accessibilityState={{ checked: state.enabled, disabled: busy, busy }} style={s.button} onPress={() => void save(state.time, !state.enabled, !state.enabled)}><Text style={s.action}>{busy ? 'Zapisywanie…' : state.enabled ? 'Wyłącz przypomnienie' : 'Włącz przypomnienie'}</Text></Pressable>
-      {!state.permissionGranted && <Pressable accessibilityRole="link" style={s.button} onPress={() => { void openSettings().catch(() => setError('Nie udało się otworzyć ustawień systemowych. Otwórz je ręcznie.')); }}><Text style={s.action}>Ustawienia powiadomień w systemie ↗</Text></Pressable>}
-      {state.scheduleCount > 1 && <Text style={s.detail}>Wykryto kilka zapisanych przypomnień. Zapisz godzinę ponownie, aby uporządkować harmonogram.</Text>}
-      <Text style={s.detail}>Zmiana godziny przy wyłączonej funkcji nie włącza powiadomień. Dostarczenie może być opóźnione przez system, tryb skupienia lub oszczędzanie baterii.</Text>
+      <Text style={s.detail}>{state.enabled ? t("Włączone") : t("Wyłączone")} {t("· codziennie o")} {formatReminderTime(state.time)} {t("· czas lokalny telefonu")}</Text>
+      <Pressable disabled={busy} accessibilityRole="button" accessibilityLabel={t("Zmień godzinę przypomnienia, obecnie {0}", [formatReminderTime(state.time)])} style={s.button} onPress={openPicker}><Text style={s.action}>{t("Zmień godzinę ·")} {formatReminderTime(state.time)}</Text></Pressable>
+      <Pressable disabled={busy} accessibilityRole="switch" accessibilityState={{ checked: state.enabled, disabled: busy, busy }} style={s.button} onPress={() => void save(state.time, !state.enabled, !state.enabled)}><Text style={s.action}>{busy ? t("Zapisywanie…") : state.enabled ? t("Wyłącz przypomnienie") : t("Włącz przypomnienie")}</Text></Pressable>
+      {!state.permissionGranted && <Pressable accessibilityRole="link" style={s.button} onPress={() => { void openSettings().catch(() => setError(t("Nie udało się otworzyć ustawień systemowych. Otwórz je ręcznie."))); }}><Text style={s.action}>{t("Ustawienia powiadomień w systemie ↗")}</Text></Pressable>}
+      {state.scheduleCount > 1 && <Text style={s.detail}>{t("Wykryto kilka zapisanych przypomnień. Zapisz godzinę ponownie, aby uporządkować harmonogram.")}</Text>}
+      <Text style={s.detail}>{t("Zmiana godziny przy wyłączonej funkcji nie włącza powiadomień. Dostarczenie może być opóźnione przez system, tryb skupienia lub oszczędzanie baterii.")}</Text>
     </>}
-    {error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
+    {error && <Text accessibilityRole="alert" style={s.error}>{t(error)}</Text>}
     <Modal visible={pickerOpen && Platform.OS === 'ios'} animationType="slide" onRequestClose={() => setPickerOpen(false)} presentationStyle="pageSheet">
       <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.modal}>
-        <Text accessibilityRole="header" style={s.heading}>Godzina nauki</Text>
-        <Text style={s.detail}>Codziennie o {formatReminderTime({ hour: draft.getHours(), minute: draft.getMinutes() })}, według czasu telefonu.</Text>
+        <Text accessibilityRole="header" style={s.heading}>{t("Godzina nauki")}</Text>
+        <Text style={s.detail}>{t("Codziennie o")} {formatReminderTime({ hour: draft.getHours(), minute: draft.getMinutes() })}{t(", według czasu telefonu.")}</Text>
         {pickerOpen && <DateTimePicker value={draft} mode="time" display="spinner" themeVariant={dark ? 'dark' : 'light'} textColor={colors.textPrimary} onValueChange={(_event, date) => setDraft(date)} />}
-        <Pressable accessibilityRole="button" style={s.button} onPress={() => { setPickerOpen(false); if (state) void save({ hour: draft.getHours(), minute: draft.getMinutes() }, state.enabled); }}><Text style={s.action}>Zapisz godzinę</Text></Pressable>
-        <Pressable accessibilityRole="button" style={s.button} onPress={() => setPickerOpen(false)}><Text style={s.action}>Anuluj</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.button} onPress={() => { setPickerOpen(false); if (state) void save({ hour: draft.getHours(), minute: draft.getMinutes() }, state.enabled); }}><Text style={s.action}>{t("Zapisz godzinę")}</Text></Pressable>
+        <Pressable accessibilityRole="button" style={s.button} onPress={() => setPickerOpen(false)}><Text style={s.action}>{t("Anuluj")}</Text></Pressable>
       </ScrollView></SafeAreaView>
     </Modal>
   </View>;

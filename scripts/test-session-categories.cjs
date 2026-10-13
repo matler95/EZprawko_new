@@ -46,6 +46,12 @@ const db={execAsync:async sql=>native.exec(sql),runAsync:async(sql,...values)=>n
   }
   await assert.rejects(()=>r.setSelectedCategory(db,'B+E'),/Unsupported/);
   let exam=await r.startActiveExam(db,'B');
+  await assert.rejects(()=>r.saveActiveProgress(db,exam.id,1,exam.questions[1].id,'T'), /bieżącego/);
+  assert.equal((await r.resumeActiveExam(db)).index,0,'out-of-order question must not advance the exam');
+  await r.saveActiveProgress(db,exam.id,1,exam.questions[0].id,'T');
+  await assert.rejects(()=>r.saveActiveProgress(db,exam.id,1,exam.questions[0].id,'N'), /zmieniła/);
+  assert.equal((await r.resumeActiveExam(db)).selections[exam.questions[0].id],'T','double submission must not overwrite an answer');
+  native.prepare('UPDATE active_exam SET current_index=31').run();
   await r.saveActiveProgress(db,exam.id,32,exam.questions[31].id,null);
   assert.equal(await r.resumeActiveExam(db),null,'index 32 must not produce a dead resume card');
   exam=await r.startActiveExam(db,'A');assert.equal((await r.resumeActiveExam(db)).id,exam.id,'new exam replaces stranded session');
@@ -77,6 +83,27 @@ const db={execAsync:async sql=>native.exec(sql),runAsync:async(sql,...values)=>n
   native.prepare('UPDATE active_exam SET current_index=0,expires_at=1').run();assert.equal(await r.resumeActiveExam(db),null);
   exam=await r.startActiveExam(db,'B');
   native.prepare('UPDATE active_exam_questions SET question_id=999999 WHERE position=0').run();assert.equal(await r.resumeActiveExam(db),null);
+  exam=await r.startActiveExam(db,'B');
+  const clock=await r.questionClock(db,exam.id,0,exam.questions[0]);
+  assert.deepEqual(await r.questionClock(db,exam.id,0,exam.questions[0]),clock,'resume must preserve the original deadline');
+  const clockDomain=load('src/domain/exam-clock.ts');
+  assert.equal(clockDomain.examClockState(clock,clock.readingEndsAt-1).phase,'READING');
+  assert.equal(clockDomain.examClockState(clock,clock.readingEndsAt).phase,'ANSWERING');
+  assert(clockDomain.examClockState(clock,clock.answeringEndsAt).expired);
+  const choices=Object.fromEntries(exam.questions.map(q=>[q.id,q.correctAnswer]));
+  const failCompletion={...db,withExclusiveTransactionAsync:fn=>db.withExclusiveTransactionAsync(tx=>fn({...tx,runAsync:async(sql,...v)=>{
+    if(sql.startsWith('INSERT INTO exam_answers'))throw Error('synthetic completion failure');return tx.runAsync(sql,...v);
+  }}))};
+  await assert.rejects(()=>r.saveCompletedExam(failCompletion,'B',exam.questions,choices,Date.now(),'pl',exam.id),/synthetic completion/);
+  assert.equal((await r.resumeActiveExam(db)).id,exam.id,'failed completion rolls back active removal and history');
+  const complete=await r.saveCompletedExam(db,'B',exam.questions,choices,Date.now(),'pl',exam.id);
+  assert.equal(complete.score,74);assert.equal(await r.resumeActiveExam(db),null);
+  await r.saveCompletedExam(db,'B',exam.questions,choices,Date.now(),'pl',exam.id);
+  assert.equal(native.prepare('SELECT COUNT(*) AS n FROM exam_sessions WHERE id=?').get(exam.id).n,1,'retry cannot duplicate completed exam');
+  assert.equal((await r.recentExams(db,12,'B')).length,1);
+  assert.equal((await r.recentExams(db,12,'A')).length,0);
+  assert.equal(await r.examReadiness(db,'A'),null);assert.equal((await r.examReadiness(db,'B')).averageScore,74);
+  assert.equal((await r.weakAreas(db,'A')).length,0);
   exam=await r.startActiveExam(db,'B');
   await r.clearActiveExam(db);assert.equal(await r.resumeActiveExam(db),null);
   assert.equal(native.prepare('SELECT COUNT(*) AS n FROM questions').get().n,3518);

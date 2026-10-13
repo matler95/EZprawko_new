@@ -1,9 +1,11 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useFocusEffect, useLocalSearchParams, router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  BackHandler,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +18,7 @@ import { QuestionMedia } from "@/components/question-media";
 import { BasicAnswerButtons } from "@/components/basic-answer-buttons";
 import { AnimatedProgress } from "@/components/animated-progress";
 import { ExamTimer } from "@/components/exam-timer";
-import { questionTimerSeconds } from "@/domain/timer-presentation";
+import { examClockState, type ExamClock } from "@/domain/exam-clock";
 import { QuestionTransition } from "@/components/question-transition";
 import { LoadingError } from "@/components/skeleton";
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
@@ -27,19 +29,10 @@ import {
   clearActiveExam,
   resumeActiveExam,
   saveActiveProgress,
+  questionClock,
   saveCompletedExam,
   type Question,
 } from "@/database/repository";
-
-type ExamPhase = "MEDIA_PLAYING" | "READING" | "ANSWERING";
-
-const isVideoQuestion = (question: Question) =>
-  Boolean(question.mediaFilename?.toLowerCase().match(/\.(wmv|mp4|m4v|mov)$/));
-
-const initialPhaseFor = (question: Question): ExamPhase => {
-  if (question.scope === "SPECJALISTYCZNY") return "ANSWERING";
-  return isVideoQuestion(question) ? "MEDIA_PLAYING" : "READING";
-};
 
 export default function ExamScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -47,6 +40,7 @@ export default function ExamScreen() {
 }
 
 function ActiveExamScreen({ id }: { id: string }) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
@@ -58,9 +52,14 @@ function ActiveExamScreen({ id }: { id: string }) {
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [index, setIndex] = useState(0);
   const [selections, setSelections] = useState<Record<number, string>>({});
-  const [phase, setPhase] = useState<ExamPhase>("READING");
+  const [clock, setClock] = useState<ExamClock | null>(null);
+  const [now, setNow] = useState(Date.now);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const advanceLock = useRef(false);
+  const finishLock = useRef(false);
+  const retryAction = useRef<{ type: 'finish'; answers: Record<number, string> } | { type: 'advance'; answer: string | null } | null>(null);
   const [globalSeconds, setGlobalSeconds] = useState(25 * 60);
-  const [questionClock, setQuestionClock] = useState({ key: '', seconds: 0 });
+
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const [result, setResult] = useState<{ id: string; score: number; passed: boolean } | null>(null);
@@ -68,9 +67,11 @@ function ActiveExamScreen({ id }: { id: string }) {
   const [reload, setReload] = useState(0);
 
   const question = questions[index];
+  const clockReady = clock?.index === index;
+  const timing = clockReady && clock ? examClockState(clock, now) : { phase: 'READING' as const, seconds: 0, expired: false };
+  const phase = timing.phase;
   const clockKey = question ? `${question.id}:${phase}` : '';
-  const questionSeconds = questionTimerSeconds(questionClock, clockKey,
-    question ? (phase === 'ANSWERING' ? question.answeringTimeSeconds : question.readingTimeSeconds) : 0);
+  const questionSeconds = timing.seconds;
 
   useFocusEffect(
     useCallback(() => {
@@ -99,7 +100,7 @@ function ActiveExamScreen({ id }: { id: string }) {
       setIndex(exam.index);
       setQuestions(exam.questions);
       setSelections(exam.selections);
-      setPhase(initialPhaseFor(current));
+
       setLoadFailed(false);
     }).catch(() => { if (active) setLoadFailed(true); });
     return () => {
@@ -116,113 +117,112 @@ function ActiveExamScreen({ id }: { id: string }) {
     return () => clearInterval(timer);
   }, [expiresAt, result]);
 
-  const finishExam = useCallback(
-    async (answers: Record<number, string>) => {
-      if (isFinishing || !questions.length || !userDataWritable()) return;
-      const revision = userDataRevision();
-      setIsFinishing(true);
+  useEffect(() => {
+    if (!sessionId || !question || result) return;
+    let current = true;
+    void questionClock(db, sessionId, index, question).then(value => {
+      if (current) { setClock(value); setNow(Date.now()); setActionError(null); }
+    }).catch(() => { if (current) setActionError(t("Nie udało się odczytać czasu pytania. Wróć do panelu i wznów próbę.")); });
+    return () => { current = false; };
+  }, [db, index, question, result, sessionId, t]);
+
+  const finishExam = useCallback(async (answers: Record<number, string>) => {
+    if (finishLock.current || !questions.length || !sessionId || !userDataWritable()) return;
+    finishLock.current = true; setIsFinishing(true); setActionError(null);
+    const revision = userDataRevision();
+    try {
       const startedAt = expiresAt ? expiresAt - 25 * 60 * 1000 : Date.now();
-      const completed = await saveCompletedExam(db, category, questions, answers, startedAt, language);
+      const completed = await saveCompletedExam(db, category, questions, answers, startedAt, language, sessionId);
       if (!userDataWritable(revision)) return;
-      await clearActiveExam(db);
-      setSessionId(null);
-      setResult(completed);
-    },
-    [category, db, expiresAt, isFinishing, language, questions],
-  );
+      retryAction.current = null; setSessionId(null); setResult(completed);
+    } catch {
+      retryAction.current = { type: 'finish', answers };
+      setActionError(t("Nie udało się zapisać wyniku. Twoje odpowiedzi pozostają w tej próbie. Ponów zapis."));
+    } finally { finishLock.current = false; setIsFinishing(false); }
+  }, [category, db, expiresAt, language, questions, sessionId, t]);
 
-  const advance = useCallback(
-    async (answer: string | null) => {
-      if (!question || isAdvancing || result || !userDataWritable()) return;
-      const revision = userDataRevision();
-      setIsAdvancing(true);
-      const updated = answer ? { ...selections, [question.id]: answer } : selections;
-      if (sessionId) {
-        await saveActiveProgress(db, sessionId, index + 1, question.id, answer);
-      }
-      if (!userDataWritable(revision)) return;
+  const advance = useCallback(async (answer: string | null) => {
+    if (!question || advanceLock.current || finishLock.current || result || !userDataWritable()) return;
+    advanceLock.current = true; setIsAdvancing(true); setActionError(null);
+    const revision = userDataRevision();
+    const updated = answer ? { ...selections, [question.id]: answer } : selections;
+    try {
       if (index === questions.length - 1) {
-        setSelections(updated);
-        await finishExam(updated);
-        return;
+        setSelections(updated); await finishExam(updated); return;
       }
-      const nextQuestion = questions[index + 1];
-      setSelections(updated);
-      setIndex((value) => value + 1);
-      setPhase(initialPhaseFor(nextQuestion));
-      setIsAdvancing(false);
-    },
-    [db, finishExam, index, isAdvancing, question, questions, result, selections, sessionId],
-  );
+      if (!sessionId) return;
+      await saveActiveProgress(db, sessionId, index + 1, question.id, answer);
+      if (!userDataWritable(revision)) return;
+      retryAction.current = null; setSelections(updated); setIndex(index + 1);
+    } catch {
+      retryAction.current = { type: 'advance', answer };
+      setActionError(t("Nie udało się zapisać odpowiedzi. Ponów zapis — zachowamy wybrany wariant."));
+    } finally { advanceLock.current = false; setIsAdvancing(false); }
+  }, [db, finishExam, index, question, questions.length, result, selections, sessionId, t]);
 
   useEffect(() => {
-    if (globalSeconds !== 0 || !questions.length || result) return;
-    const completion = setTimeout(() => void finishExam(selections), 0);
-    return () => clearTimeout(completion);
-  }, [finishExam, globalSeconds, questions.length, result, selections]);
-
+    if (result || !questions.length) return;
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, [questions.length, result]);
   useEffect(() => {
-    if (!question || result) return;
-    const seconds =
-      phase === "ANSWERING"
-        ? question.answeringTimeSeconds
-        : question.readingTimeSeconds;
-    if (seconds === 0) {
-      const transition = setTimeout(() => setPhase("ANSWERING"), 0);
-      return () => clearTimeout(transition);
-    }
-    const deadline = Date.now() + seconds * 1000;
-    const key = `${question.id}:${phase}`;
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-      setQuestionClock((previous) => previous.key === key && previous.seconds === remaining ? previous : { key, seconds: remaining });
-    };
-    tick();
-    const interval = setInterval(tick, 250);
-    const timeout = setTimeout(() => {
-      if (phase === "ANSWERING") void advance(null);
-      else setPhase("ANSWERING");
-    }, seconds * 1000);
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, [advance, phase, question, result]);
+    if (result || actionError || isAdvancing || isFinishing) return;
+    const transition = setTimeout(() => {
+      if (advanceLock.current || finishLock.current) return;
+      if (globalSeconds === 0 && questions.length) void finishExam(selections);
+      else if (clockReady && timing.expired) void advance(null);
+    }, 0);
+    return () => clearTimeout(transition);
+  }, [actionError, advance, clockReady, finishExam, globalSeconds, isAdvancing, isFinishing, questions.length, result, selections, timing.expired]);
 
-  const abandonExam = () => {
-    Alert.alert("Przerwać egzamin?", "Bieżąca próba nie zostanie zapisana.", [
-      { text: "Kontynuuj", style: "cancel" },
+  const abandonExam = useCallback(() => {
+    if (advanceLock.current || finishLock.current) return;
+    Alert.alert(t("Przerwać egzamin?"), t("Bieżąca próba nie zostanie zapisana."), [
+      { text: t("Kontynuuj"), style: "cancel" },
       {
-        text: "Przerwij",
+        text: t("Przerwij"),
         style: "destructive",
         onPress: () => {
-          void clearActiveExam(db).then(() => router.replace("/"));
+          void clearActiveExam(db).then(() => router.replace("/")).catch(() => setActionError(t("Nie udało się porzucić próby. Spróbuj ponownie.")));
         },
       },
     ]);
-  };
+  }, [db, t]);
+  useFocusEffect(useCallback(() => {
+    if (result) return;
+    const back = BackHandler.addEventListener('hardwareBackPress', () => { abandonExam(); return true; });
+    return () => back.remove();
+  }, [abandonExam, result]));
+
+  const chooseAnswer = useCallback((answer: string) => {
+    if (advanceLock.current || finishLock.current) return;
+    if (!clockReady || phase !== 'ANSWERING' || actionError || isAdvancing || isFinishing || !clock || !expiresAt) return;
+    const timestamp = Date.now();
+    if (timestamp >= expiresAt) void finishExam(selections);
+    else void advance(timestamp < clock.answeringEndsAt ? answer : null);
+  }, [actionError, advance, clock, clockReady, expiresAt, finishExam, isAdvancing, isFinishing, phase, selections]);
 
   if (result) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.result}>
+        <ScrollView contentContainerStyle={styles.result}>
           {result.passed ? <SuccessBadge key={result.id} /> : <Text style={styles.resultIcon}>↗</Text>}
-          <Text style={styles.kicker}>EGZAMIN ZAKOŃCZONY</Text>
-          <Text style={styles.resultTitle}>{result.passed ? "Zdane!" : "Spróbuj ponownie"}</Text>
+          <Text style={styles.kicker}>{t("EGZAMIN ZAKOŃCZONY")}</Text>
+          <Text style={styles.resultTitle}>{result.passed ? t("Zdane!") : t("Spróbuj ponownie")}</Text>
           <AnimatedExamScore key={result.id} score={result.score} sessionId={result.id} style={styles.resultScore} />
           <Text style={styles.muted}>
-            {result.passed ? "Wynik spełnia próg 68 punktów." : `Brakuje ${68 - result.score} pkt do zaliczenia.`}
+            {result.passed ? t("Wynik spełnia próg 68 punktów.") : t("Brakuje {0} pkt do zaliczenia.", [68 - result.score])}
           </Text>
           <Pressable
             onPress={() => router.replace({ pathname: "/exam/review", params: { sessionId: result.id } })}
             style={styles.reviewButton}
           >
-            <Text style={styles.reviewButtonText}>Przejrzyj odpowiedzi</Text>
+            <Text style={styles.reviewButtonText}>{t("Przejrzyj odpowiedzi")}</Text>
           </Pressable>
           <Pressable onPress={() => router.replace("/")} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Wróć do panelu</Text>
+            <Text style={styles.primaryButtonText}>{t("Wróć do panelu")}</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -233,23 +233,23 @@ function ActiveExamScreen({ id }: { id: string }) {
         <View style={styles.loading}>
           {loadFailed ? <>
             <LoadingError onRetry={() => setReload((value) => value + 1)} />
-            <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => router.replace("/")}><Text style={styles.primaryButtonText}>Wróć do panelu</Text></Pressable>
-          </> : <Text style={styles.muted}>Przygotowujemy egzamin…</Text>}
+            <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => router.replace("/")}><Text style={styles.primaryButtonText}>{t("Wróć do panelu")}</Text></Pressable>
+          </> : <Text style={styles.muted}>{t("Przygotowujemy egzamin…")}</Text>}
         </View>
       </SafeAreaView>
     );
   }
 
-  const canAnswer = phase === "ANSWERING" && globalSeconds > 0 && !isAdvancing;
+  const canAnswer = clockReady && phase === "ANSWERING" && globalSeconds > 0 && !isAdvancing && !isFinishing && !actionError;
   const phaseCopy =
     phase === "ANSWERING"
-      ? "Wybierz odpowiedź"
-      : "Zapoznaj się z pytaniem";
+      ? t("Wybierz odpowiedź")
+      : t("Zapoznaj się z pytaniem");
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Pressable accessibilityLabel="Przerwij egzamin" hitSlop={12} onPress={abandonExam}>
+        <Pressable accessibilityLabel={t("Przerwij egzamin")} hitSlop={12} onPress={abandonExam}>
           <Text style={styles.close}>×</Text>
         </Pressable>
         <View style={styles.timerGroup}>
@@ -262,27 +262,31 @@ function ActiveExamScreen({ id }: { id: string }) {
       <ScrollView key={`${sessionId}:${question.id}`} contentContainerStyle={styles.content} style={styles.scroll}>
         <QuestionTransition>
         <Text style={styles.kicker}>
-          {question.scope === "PODSTAWOWY" ? "WIEDZA PODSTAWOWA" : `KATEGORIA ${category}`} · {question.points} PKT
-        </Text>
+          {question.scope === "PODSTAWOWY" ? t("WIEDZA PODSTAWOWA") : t("KATEGORIA {0}", [category])} · {question.points}{t("PKT")}</Text>
         <View style={styles.phaseNotice}>
-          <Text style={styles.phaseNoticeText}>{phaseCopy}</Text>
+          <Text style={styles.phaseNoticeText}>{t(phaseCopy)}</Text>
         </View>
-        <QuestionMedia
-          examMode
-          filename={question.mediaFilename}
-          onVideoEnd={() => {
-            if (question.scope === "PODSTAWOWY") setPhase("ANSWERING");
-          }}
-        />
+        {clockReady && <QuestionMedia examMode filename={question.mediaFilename} />}
+        {actionError && <View style={styles.phaseNotice}>
+          <Text accessibilityRole="alert" style={styles.muted}>{t(actionError)}</Text>
+          <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => {
+            const retry = retryAction.current;
+            if (retry?.type === 'finish') void finishExam(retry.answers);
+            else if (retry?.type === 'advance') void advance(retry.answer);
+            else setReload(value => value + 1);
+          }}>
+            <Text style={styles.primaryButtonText}>{t("Ponów zapis")}</Text>
+          </Pressable>
+        </View>}
         <Text style={styles.question}>{question.question}</Text>
-        {language !== question.contentLanguage ? <Text style={styles.muted}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
+        {language !== question.contentLanguage ? <Text style={styles.muted}>{t("Brak oficjalnego tłumaczenia — pytanie w języku polskim.")}</Text> : null}
         <View style={styles.answers}>
-          {question.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={question.answers} disabled={!canAnswer} locked={phase !== "ANSWERING"} onAnswer={(key) => void advance(key)} /> : question.answers.map((answer) => (
+          {question.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={question.answers} disabled={!canAnswer} locked={phase !== "ANSWERING"} onAnswer={chooseAnswer} /> : question.answers.map((answer) => (
             <Pressable
               accessibilityState={{ disabled: !canAnswer }}
               disabled={!canAnswer}
               key={answer.label}
-              onPress={() => void advance(answer.label)}
+              onPress={() => chooseAnswer(answer.label)}
               style={[styles.answer, !canAnswer && styles.answerDisabled]}
             >
               <Text style={styles.answerLetter}>{answer.label}</Text>
@@ -299,7 +303,7 @@ function ActiveExamScreen({ id }: { id: string }) {
 const createStyles = (colors: AppTheme) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   loading: { alignItems: "center", flex: 1, justifyContent: "center", padding: 24 },
-  header: { alignItems: "center", flexDirection: "row", height: 64, justifyContent: "space-between", paddingHorizontal: 24 },
+  header: { alignItems: "center", flexDirection: "row", flexWrap: 'wrap', minHeight: 64, gap: 8, justifyContent: "space-between", paddingHorizontal: 24 },
   close: { color: colors.textPrimary, fontSize: 32, lineHeight: 34 },
   timerGroup: { alignItems: "center", flexDirection: "row", gap: 8 },
   globalTimer: { backgroundColor: colors.warningSurface, borderRadius: 12, color: colors.warning, fontVariant: ["tabular-nums"], fontWeight: "800", paddingHorizontal: 10, paddingVertical: 7 },
@@ -318,7 +322,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   answerDisabled: { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
   answerLetter: { backgroundColor: colors.primarySurface, borderRadius: 16, color: colors.primaryText, fontWeight: "800", height: 32, marginRight: 12, overflow: "hidden", paddingTop: 7, textAlign: "center", width: 32 },
   answerText: { color: colors.textPrimary, flex: 1, fontSize: 15, lineHeight: 21 },
-  result: { alignItems: "center", flex: 1, justifyContent: "center", padding: 32 },
+  result: { alignItems: "center", flexGrow: 1, justifyContent: "center", padding: 32 },
   resultIcon: { color: colors.primaryText, fontSize: 52, marginBottom: 20 },
   resultTitle: { color: colors.textPrimary, fontSize: 30, fontWeight: "800", marginTop: 10 },
   resultScore: { color: colors.primaryText, fontSize: 42, fontVariant: ["tabular-nums"], fontWeight: "800", marginTop: 28 },

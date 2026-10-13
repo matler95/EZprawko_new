@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -17,6 +18,7 @@ export function MediaDownloadCard(controls: DownloadControls = {}) {
 }
 
 function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBusyChange }: { category: DrivingCategory } & DownloadControls) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
@@ -51,10 +53,10 @@ function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBus
       }, () => request === generation.current && !cancelled.current);
       if (request === generation.current) {
         setProgress(result);
-        if (result.completed < result.total) setError('Pobieranie przerwane. Możesz je ponowić; zapisane pliki zostaną wykorzystane.');
+        if (result.completed < result.total) setError(t("Pobieranie przerwane. Możesz je ponowić; zapisane pliki zostaną wykorzystane."));
       }
     } catch {
-      if (request === generation.current) setError('Nie udało się pobrać wszystkich materiałów. Sprawdź połączenie i spróbuj ponownie.');
+      if (request === generation.current) setError(t("Nie udało się pobrać wszystkich materiałów. Sprawdź połączenie i spróbuj ponownie."));
     } finally {
       running.current = false;
       onBusyChange?.(false);
@@ -63,18 +65,18 @@ function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBus
   };
 
   const detail = !mediaConfig.enabled
-    ? 'Skonfiguruj prywatny adres CDN, aby umożliwić pobieranie materiałów.'
+    ? t('Zdjęcie lub film jest teraz niedostępny. Spróbuj później.')
     : progress
-      ? `${progress.completed}/${progress.total} pobranych materiałów`
-      : `Pobierz do 250 materiałów dla kategorii ${category}.`;
+      ? t("{0}/{1} pobranych materiałów", [progress.completed, progress.total])
+      : t("Pobierz do 250 materiałów dla kategorii {0}.", [category]);
 
   return (
     <View style={styles.card}>
       <View style={styles.copy}>
-        <Text style={styles.title}>Materiały offline</Text>
-        <Text style={styles.detail}>{detail}</Text>
-        <Text style={styles.detail}>To ograniczona partia, nie pełny pakiet kategorii. Cache może być usunięty przez system lub limit 1 GB.</Text>
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+        <Text style={styles.title}>{t("Materiały offline")}</Text>
+        <Text style={styles.detail}>{t(detail)}</Text>
+        <Text style={styles.detail}>{t('To część materiałów kategorii. Zapisane pliki mogą zostać usunięte przez system lub po przekroczeniu limitu 1 GB.')}</Text>
+        {error ? <Text accessibilityRole="alert" style={styles.error}>{t(error)}</Text> : null}
       </View>
       <Pressable
         accessibilityRole="button"
@@ -86,9 +88,9 @@ function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBus
           (!mediaConfig.enabled || busy || disabled) && styles.buttonDisabled,
           pressed && styles.buttonPressed,
         ]}>
-        {busy ? <ActivityIndicator color={colors.onGold} /> : <Text style={styles.buttonText}>{error ? 'Spróbuj ponownie' : 'Pobierz'}</Text>}
+        {busy ? <ActivityIndicator color={colors.onGold} /> : <Text style={styles.buttonText}>{error ? t("Spróbuj ponownie") : t("Pobierz")}</Text>}
       </Pressable>
-      {busy ? <Pressable accessibilityRole="button" onPress={() => { cancelled.current = true; }} style={styles.button}><Text style={styles.buttonText}>Przerwij po bieżącym pliku</Text></Pressable> : null}
+      {busy ? <Pressable accessibilityRole="button" onPress={() => { cancelled.current = true; }} style={styles.button}><Text style={styles.buttonText}>{t("Przerwij po bieżącym pliku")}</Text></Pressable> : null}
     </View>
   );
 }

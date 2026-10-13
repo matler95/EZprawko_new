@@ -2,6 +2,37 @@
 
 Run this checklist on a physical Android device and, before public release, an iPhone. Record the app version, device model, OS version, and outcome for every failed item.
 
+## UX audit acceptance — 2026-10-13 (physical checks still open)
+
+- [ ] Fresh install: choose PL/EN/DE/UK before category. Labels on all tabs, Settings,
+  dialogs, timers, result/review and account errors follow UI language. Main language
+  also changes default question language; a separate override works. Existing exams
+  retain their content language. Polish sign/legal/editorial content has a language notice.
+- [ ] Enable a local reminder, change UI language and verify one schedule with the
+  translated content at the original time. Changing language while disabled must not
+  enable notifications or ask permission. Verify actual OS delivery, not just stored IDs.
+- [ ] Let one next attempt warm while logged in. Measure warm Start through briefing
+  to question: no bulk downloads/new draw after click, no clock started during warming.
+  Cold first use/category/language/cache changes show honest progress and cancellation;
+  cancelled preparation must preserve an existing active exam.
+- [ ] Inject answer/result-write failure and retry: original selection retained, one
+  completed result, no stranded index-32 resume. Test fast double taps and taps just
+  after question/global deadlines. Background/reopen must not restart question time.
+- [ ] During active exam verify Android Back confirmation and actual iOS navigation
+  gesture behavior. Verify media plays once without controls; specifically inspect
+  process-death resume for replay/continuity before approving exam fidelity.
+- [ ] Study → another tab → Study keeps the question/selection/summary. Explicit new
+  category/filter/source resets the round. Restarting the process is not Study resume.
+  Open history and replay exact wrong/skipped questions from that attempt, including
+  its category; other attempts must not contaminate this filter.
+- [ ] Results A/B/PT do not contaminate another category's recent pass rate/trend;
+  global history remains labelled. Coverage is not mastery or a guarantee of passing.
+- [ ] Small phone, largest fonts, both themes, VoiceOver/TalkBack: buttons/filters wrap,
+  question/results scroll, answer status has text/symbols and login keyboard is usable.
+  Media failures have retry/login as appropriate, without exposing paths/private URLs.
+- Local evidence: 25 regression scripts, TypeScript/lint, Expo Doctor 21/21, 24 contrast
+  pairs and Android JS export passed. These do not substitute for device acceptance.
+
 ## PLAN_UX_IMPLEMENTACJI.md — UX-4 settings
 
 - [ ] On physical Android/iPhone, check Learning/Appearance/Account/Multimedia/Reminders/Data/Information in both themes, small screen and large fonts. All category/language/theme options wrap, have readable selected states and >=48px targets; verify screen-reader labels, roles and headers.
@@ -206,7 +237,7 @@ Run this checklist on a physical Android device and, before public release, an i
 
 ## Core exam
 
-- [ ] Start an exam for each supported target category: AM, A, B, C, and D.
+- [ ] Start an exam for all 12 supported targets: A, A1, A2, AM, B, B1, C, C1, D, D1, PT, T.
 - [ ] Verify every exam has 32 questions: 20 basic and 12 specialist.
 - [ ] Verify point weights add to 74 and that 68 points is the pass threshold.
 - [ ] Confirm the 25-minute deadline continues after backgrounding/reopening the app.
@@ -227,7 +258,7 @@ Run this checklist on a physical Android device and, before public release, an i
 
 ## Question languages — Phase 5
 
-- [ ] Select English in Settings and verify question text and answer options change in Study and in a new exam. The app interface remains Polish; this selection is for the official question content.
+- [ ] Select English as app language: UI and default questions change. Then change only question language and verify the UI stays in the chosen app language. New exams use the content preference.
 - [ ] Select German/Ukrainian and verify any missing official translation is visibly marked as Polish fallback rather than silently mixed.
 - [ ] Switch the configured language after starting an exam; verify resuming and reviewing that exam retains its original language.
 - [ ] Upgrade an existing install and verify saved history, flags, reminders, and category remain intact after the translation catalog migration.
@@ -251,7 +282,7 @@ Run this checklist on a physical Android device and, before public release, an i
 - [ ] Answer correct and incorrect study questions; verify haptic feedback and correct-answer reveal.
 - [ ] Flag/unflag a question and verify the Saved filter.
 - [ ] Verify All, 3 points, Mistakes, and Saved filters.
-- [ ] Answer questions assigned to multiple categories and verify the category weak-spot cards update.
+- [ ] Verify selected-category coverage/mastery and exam weak areas; the removed global weak-category cards must not reappear.
 - [ ] Complete five correct study answers on three separate days and verify the challenge card.
 
 ## Media, cache, and connectivity

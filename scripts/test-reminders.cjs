@@ -31,6 +31,10 @@ const db={execAsync:async sql=>native.exec(sql),getAllAsync:async(sql,...v)=>nat
   state=await r.updateDailyReminder(db,{hour:8,minute:35},false);assert(!state.enabled);assert.equal(scheduled.size,0);assert.equal(asks,0);
   assert.deepEqual((await prefs.reminderPreferences(db)).time,{hour:8,minute:35});
   state=await r.updateDailyReminder(db,state.time,true,true);assert(state.enabled);assert.equal(scheduled.size,1);assert.equal(scheduled.get(r.DAILY_REMINDER_ID).trigger.minute,35);
+  const ui=load('src/domain/ui-language.ts');ui.setUiLanguage('en');
+  await r.refreshDailyReminderLanguage(db);
+  assert.equal(scheduled.get(r.DAILY_REMINDER_ID).content.title,'Time for a short review');
+  assert.equal(scheduled.size,1);assert.equal(asks,0,'locale refresh must not request consent');ui.setUiLanguage('pl');
   scheduled.set('legacy',{identifier:'legacy',content:{}});native.prepare("UPDATE settings SET value='legacy' WHERE key='daily-reminder-id'").run();
   state=await r.updateDailyReminder(db,{hour:23,minute:59},true);assert.equal(scheduled.size,1);assert(!scheduled.has('legacy'));
   await Promise.all([r.updateDailyReminder(db,{hour:7,minute:1},true),r.updateDailyReminder(db,{hour:9,minute:2},true)]);
@@ -40,6 +44,7 @@ const db={execAsync:async sql=>native.exec(sql),getAllAsync:async(sql,...v)=>nat
   failSchedule=true;await assert.rejects(()=>r.updateDailyReminder(db,{hour:11,minute:0},true),/schedule fail/);assert.equal(scheduled.size,1);
   failCancel=true;await assert.rejects(()=>r.updateDailyReminder(db,{hour:9,minute:2},false),/cancel fail/);assert.equal(scheduled.size,1);
   await r.updateDailyReminder(db,{hour:0,minute:0},false);assert.equal(scheduled.size,0);
+  await r.refreshDailyReminderLanguage(db);assert.equal(scheduled.size,0,'language refresh cannot enable a disabled reminder');
   granted=false;await assert.rejects(()=>r.updateDailyReminder(db,{hour:0,minute:0},true,true),/zgody/);assert.equal(asks,1);assert.equal(scheduled.size,0);
   granted=true;await r.updateDailyReminder(db,{hour:19,minute:15},true);
   const exported=await userData.exportUserData(db);

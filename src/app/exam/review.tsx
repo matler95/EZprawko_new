@@ -1,7 +1,8 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -11,6 +12,8 @@ import { examReview, type ExamReview, type ExamReviewQuestion } from "@/database
 import { getQuestionExplanation, type QuestionExplanation } from "@/database/explanations";
 import { ExplanationCard } from "@/components/explanation-card";
 import { AnimatedExamScore, SuccessBadge } from "@/components/exam-result-motion";
+import { useTargetCategory } from '@/context/target-category-context';
+import { isDrivingCategory } from '@/domain/driving-categories';
 
 const formatDuration = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
@@ -18,11 +21,16 @@ const formatDuration = (seconds: number) => {
 };
 
 export default function ExamReviewScreen() {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const db = useSQLiteContext();
   const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
   const [review, setReview] = useState<ExamReview | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [reload, setReload] = useState(0);
+  const { setCategory } = useTargetCategory();
+  const navigationLock = useRef(false);
   const [selected, setSelected] = useState<ExamReviewQuestion | null>(null);
   const [explanation, setExplanation] = useState<{ id: number; value: QuestionExplanation | null; failed: boolean } | null>(null);
   useEffect(() => {
@@ -36,8 +44,11 @@ export default function ExamReviewScreen() {
 
   useEffect(() => {
     if (!sessionId) return;
-    void examReview(db, sessionId).then(setReview);
-  }, [db, sessionId]);
+    let current = true;
+    void examReview(db, sessionId).then(value => { if (current) { setReview(value); setFailed(!value); } })
+      .catch(() => { if (current) setFailed(true); });
+    return () => { current = false; };
+  }, [db, sessionId, reload]);
 
   const diagnosis = useMemo(() => {
     if (!review) return null;
@@ -54,7 +65,10 @@ export default function ExamReviewScreen() {
   if (!review) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.loading}><Text style={styles.muted}>Wczytujemy podsumowanie…</Text></View>
+        <View style={styles.loading}><Text style={styles.muted}>{!sessionId || failed ? t("Nie udało się otworzyć wyniku tej próby.") : t("Wczytujemy podsumowanie…")}</Text>
+          {sessionId && failed && <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => setReload(value => value + 1)}><Text style={styles.primaryButtonText}>{t("Spróbuj ponownie")}</Text></Pressable>}
+          <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => router.replace('/')}><Text style={styles.primaryButtonText}>{t("Wróć do panelu")}</Text></Pressable>
+        </View>
       </SafeAreaView>
     );
   }
@@ -62,33 +76,34 @@ export default function ExamReviewScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable onPress={() => router.replace("/")}><Text style={styles.back}>← Panel główny</Text></Pressable>
-        <Text style={styles.kicker}>PODSUMOWANIE EGZAMINU</Text>
+        <Pressable onPress={() => router.replace("/")}><Text style={styles.back}>{t("← Panel główny")}</Text></Pressable>
+        <Text style={styles.kicker}>{t("PODSUMOWANIE EGZAMINU")}</Text>
         <View style={[styles.hero, review.passed ? styles.heroPassed : styles.heroFailed]}>
           {review.passed ? <SuccessBadge key={review.id} inverse /> : null}
-          <Text style={styles.verdict}>{review.passed ? "POZYTYWNY" : "NEGATYWNY"}</Text>
+          <Text style={styles.verdict}>{review.passed ? t("POZYTYWNY") : t("NEGATYWNY")}</Text>
           <AnimatedExamScore key={review.id} score={review.score} sessionId={review.id} style={styles.score} />
-          <Text style={styles.heroCopy}>Kategoria {review.category} · czas {formatDuration(review.durationSeconds)}</Text>
+          <Text style={styles.heroCopy}>{t("Kategoria")} {review.category} {t("· czas")} {formatDuration(review.durationSeconds)}</Text>
         </View>
 
         {diagnosis ? (
           <View style={styles.diagnosis}>
-            <Text style={styles.diagnosisTitle}>Co warto powtórzyć</Text>
+            <Text style={styles.diagnosisTitle}>{t("Co warto powtórzyć")}</Text>
             <Text style={styles.diagnosisCopy}>
               {diagnosis.incorrect === 0
-                ? "Perfekcyjna próba — nie masz pytań do powtórki."
-                : `Stracono ${diagnosis.lostHighPoints} pkt w pytaniach za 3 punkty${diagnosis.basicHigh ? `, w tym ${diagnosis.basicHigh} z części podstawowej` : ""}.`}
+                ? t("Perfekcyjna próba — nie masz pytań do powtórki.")
+                : t('Stracono {0} pkt w pytaniach za 3 punkty. Błędy w części podstawowej za 3 pkt: {1}.', [diagnosis.lostHighPoints, diagnosis.basicHigh])}
             </Text>
-            {!review.passed ? <Text style={styles.diagnosisCopy}>Do zaliczenia zabrakło {68 - review.score} pkt.</Text> : null}
+            {!review.passed ? <Text style={styles.diagnosisCopy}>{t("Do zaliczenia zabrakło")} {68 - review.score} {t("pkt.")}</Text> : null}
           </View>
         ) : null}
 
-        <Text style={styles.section}>Twoje odpowiedzi</Text>
-        <Text style={styles.muted}>Dotknij numeru, aby zobaczyć treść i porównać odpowiedzi.</Text>
+        <Text style={styles.section}>{t("Twoje odpowiedzi")}</Text>
+        <Text style={styles.muted}>{t("Dotknij numeru, aby zobaczyć treść i porównać odpowiedzi.")}</Text>
         <View style={styles.grid}>
           {review.questions.map((item) => (
             <Pressable
-              accessibilityLabel={`Pytanie ${item.position + 1}`}
+              accessibilityRole="button"
+              accessibilityLabel={t('Pytanie {0}, {1}', [item.position + 1, item.isCorrect ? t('poprawna odpowiedź') : item.selectedAnswer ? t('błędna odpowiedź') : t('bez odpowiedzi')])}
               key={item.id}
               onPress={() => setSelected(item)}
               style={[
@@ -96,16 +111,24 @@ export default function ExamReviewScreen() {
                 item.isCorrect ? styles.tileCorrect : item.selectedAnswer ? styles.tileWrong : styles.tileSkipped,
               ]}
             >
-              <Text style={styles.tileText}>{item.position + 1}</Text>
+              <Text style={styles.tileText}>{item.position + 1} {item.isCorrect ? '✓' : item.selectedAnswer ? '×' : '—'}</Text>
             </Pressable>
           ))}
         </View>
         <View style={styles.legend}>
-          <Text style={styles.legendCorrect}>● poprawna</Text><Text style={styles.legendWrong}>● błędna</Text><Text style={styles.legendSkipped}>● brak odpowiedzi</Text>
+          <Text style={styles.legendCorrect}>{t("● poprawna")}</Text><Text style={styles.legendWrong}>{t("● błędna")}</Text><Text style={styles.legendSkipped}>{t("● brak odpowiedzi")}</Text>
         </View>
-        <Pressable onPress={() => router.navigate("/study?filter=mistakes")} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Powtórz błędy w nauce</Text>
-        </Pressable>
+        {diagnosis && diagnosis.incorrect > 0 && <Pressable accessibilityRole="button" onPress={() => {
+          if (navigationLock.current || !isDrivingCategory(review.category)) return;
+          navigationLock.current = true;
+          void setCategory(review.category).then(saved => {
+            if (saved) router.navigate({ pathname: '/study', params: { filter: 'mistakes', session: review.id, topic: undefined, sign: undefined, count: undefined, start: '1' } });
+            else setFailed(true);
+          }).finally(() => { navigationLock.current = false; });
+        }} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>{t("Powtórz błędy tej próby · kat.")} {review.category}</Text>
+        </Pressable>}
+        {failed && <Text accessibilityRole="alert" style={styles.muted}>{t("Nie udało się rozpocząć powtórki. Spróbuj ponownie.")}</Text>}
       </ScrollView>
 
       <Modal animationType="slide" onRequestClose={() => setSelected(null)} transparent visible={Boolean(selected)}>
@@ -114,10 +137,10 @@ export default function ExamReviewScreen() {
             <Pressable onPress={() => setSelected(null)} style={styles.closeButton}><Text style={styles.close}>×</Text></Pressable>
             {selected ? (
               <ScrollView contentContainerStyle={styles.sheetContent}>
-                <Text style={styles.kicker}>PYTANIE {selected.position + 1} · {selected.points} PKT</Text>
+                <Text style={styles.kicker}>{t("PYTANIE")} {selected.position + 1} · {selected.points} {t("PKT")}</Text>
                 <QuestionMedia filename={selected.mediaFilename} />
                 <Text style={styles.question}>{selected.question}</Text>
-                {selected.contentLanguage !== review.language ? <Text style={styles.muted}>Brak oficjalnego tłumaczenia — pytanie w języku polskim.</Text> : null}
+                {selected.contentLanguage !== review.language ? <Text style={styles.muted}>{t("Brak oficjalnego tłumaczenia — pytanie w języku polskim.")}</Text> : null}
                 {selected.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={selected.answers} selectedAnswer={selected.selectedAnswer} correctAnswer={selected.correctAnswer} /> : selected.answers.map((answer) => {
                   const wasSelected = selected.selectedAnswer === answer.label;
                   const isCorrect = selected.correctAnswer === answer.label;
@@ -130,7 +153,7 @@ export default function ExamReviewScreen() {
                   );
                 })}
                 <Text style={styles.answerSummary}>
-                  {selected.selectedAnswer ? `Twoja odpowiedź: ${selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.selectedAnswer) : selected.selectedAnswer}` : "Nie udzielono odpowiedzi"} · poprawna: {selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.correctAnswer) : selected.correctAnswer}
+                  {selected.selectedAnswer ? t("Twoja odpowiedź: {0}", [selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.selectedAnswer) : selected.selectedAnswer]) : t("Nie udzielono odpowiedzi")} {t("· poprawna:")} {selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.correctAnswer) : selected.correctAnswer}
                 </Text>
                 <ExplanationCard explanation={explanation?.id === selected.id ? explanation.value : null} loading={explanation?.id !== selected.id} failed={explanation?.id === selected.id && explanation.failed} />
               </ScrollView>

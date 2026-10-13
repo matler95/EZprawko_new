@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { Component, type ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { router, type ErrorBoundaryProps } from "expo-router";
@@ -6,14 +7,15 @@ import { Colors } from "@/constants/theme";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 
 function RecoveryScreen({ onRetry, onHome, colors }: { onRetry: () => void; onHome: () => void; colors: AppTheme }) {
+  const { t } = useTranslation();
   const s = styles(colors);
   return <View style={s.safe} onLayout={() => { void SplashScreen.hideAsync().catch(() => undefined); }}>
     <ScrollView contentContainerStyle={s.content}>
-      <Text accessibilityRole="header" style={s.title}>Nie udało się wyświetlić aplikacji</Text>
-      <Text style={s.copy}>Spróbuj ponownie lub wróć do panelu. Te przyciski nie kasują bazy pytań, zapisanych postępów ani multimediów.</Text>
-      <Text style={s.copy}>Jeśli egzamin jest w toku, jego czas nadal upływa.</Text>
-      <Pressable accessibilityRole="button" style={s.button} onPress={onHome}><Text style={s.buttonText}>Wróć do panelu</Text></Pressable>
-      <Pressable accessibilityRole="button" style={s.secondary} onPress={onRetry}><Text style={s.link}>Spróbuj ponownie</Text></Pressable>
+      <Text accessibilityRole="header" style={s.title}>{t("Nie udało się wyświetlić aplikacji")}</Text>
+      <Text style={s.copy}>{t("Spróbuj ponownie lub wróć do panelu. Te przyciski nie kasują bazy pytań, zapisanych postępów ani multimediów.")}</Text>
+      <Text style={s.copy}>{t("Jeśli egzamin jest w toku, jego czas nadal upływa.")}</Text>
+      <Pressable accessibilityRole="button" style={s.button} onPress={onHome}><Text style={s.buttonText}>{t("Wróć do panelu")}</Text></Pressable>
+      <Pressable accessibilityRole="button" style={s.secondary} onPress={onRetry}><Text style={s.link}>{t("Spróbuj ponownie")}</Text></Pressable>
     </ScrollView>
   </View>;
 }

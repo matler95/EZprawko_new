@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { isDrivingCategory, type DrivingCategory } from '@/domain/driving-categories';
 import { parseQuestionLanguage, type QuestionLanguage } from '@/database/translations';
 import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
+import { readUiLanguage } from '@/database/ui-language';
 
 export type OnboardingDraft = { step: number; category: DrivingCategory | null; language: QuestionLanguage };
 export const emptyOnboarding: OnboardingDraft = { step: 0, category: null, language: 'pl' };
@@ -9,13 +10,13 @@ export function parseOnboardingDraft(raw?: string): OnboardingDraft {
   try {
     const value = JSON.parse(raw ?? '{}');
     const category = typeof value.category === 'string' && isDrivingCategory(value.category) ? value.category : null;
-    const step = category && Number.isInteger(value.step) && value.step >= 0 && value.step <= 3 ? value.step : 0;
+    const step = Number.isInteger(value.step) && value.step >= 0 && value.step <= 3 && (category || value.step <= 1) ? value.step : 0;
     return { step, category, language: parseQuestionLanguage(value.language) };
   } catch { return { ...emptyOnboarding }; }
 }
 export async function readOnboardingDraft(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', 'onboarding-draft');
-  return parseOnboardingDraft(row?.value);
+  return row ? parseOnboardingDraft(row.value) : { ...emptyOnboarding, language: await readUiLanguage(db) };
 }
 export async function saveOnboardingDraft(db: SQLiteDatabase, draft: OnboardingDraft) {
   const revision = userDataRevision();
@@ -39,7 +40,7 @@ export async function finishOnboarding(db: SQLiteDatabase, draft: OnboardingDraf
       category = existing && isDrivingCategory(existing.value) ? existing.value : 'B';
       return;
     }
-    for (const [key, value] of [['target-category', category], ['question-language', parseQuestionLanguage(draft.language)], ['onboarding-complete', 'true']]) {
+    for (const [key, value] of [['target-category', category], ['question-language', parseQuestionLanguage(draft.language)], ['ui-language', parseQuestionLanguage(draft.language)], ['onboarding-complete', 'true']]) {
       await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', key, value);
     }
     await tx.runAsync('DELETE FROM settings WHERE key = ?', 'onboarding-draft');

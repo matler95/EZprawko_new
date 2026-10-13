@@ -8,6 +8,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
   new Function('require','exports',code)((name)=>{
     if(name==='react')return {...React,useCallback:fn=>fn,useRef:value=>{const i=ri++;return refs[i]??(refs[i]={current:value});},useState:value=>{const i=si++;if(!(i in states))states[i]=typeof value==='function'?value():value;return [states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;}];}};
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return {View:'View',Text:'Text',Pressable:'Pressable',ScrollView:'ScrollView',Modal:'Modal',StyleSheet:{create:s=>s},useColorScheme:()=>theme,Platform:{get OS(){return platform;},select:s=>s.default},AppState:{addEventListener:(_type,fn)=>{appListener=fn;return {remove:()=>{}};}}};
     if(name==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
     if(name==='expo-router')return {useFocusEffect:fn=>{focus=fn;}};

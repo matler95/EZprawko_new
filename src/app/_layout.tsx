@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { DarkTheme, DefaultTheme, ThemeProvider, router, useRootNavigationState, useNavigationContainerRef, usePathname } from 'expo-router';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import * as SplashScreen from 'expo-splash-screen';
@@ -15,12 +16,17 @@ import { TargetCategoryContext } from '@/context/target-category-context';
 import type { DrivingCategory } from '@/domain/driving-categories';
 import { Colors } from '@/constants/theme';
 import { ErrorBoundary, ScreenErrorBoundary } from '@/components/error-boundary';
+import { ExamPreparation } from '@/components/exam-preparation';
+import { readUiLanguage } from '@/database/ui-language';
+import { setUiLanguage } from '@/domain/ui-language';
+import { refreshDailyReminderLanguage } from '@/services/reminders';
 
 export const unstable_settings = { screenErrorBoundary: ScreenErrorBoundary };
 
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   const [maintenance, setMaintenance] = useState(false);
   const [dataEpoch, setDataEpoch] = useState(0);
   const maintenanceLock = useRef(false);
@@ -29,8 +35,8 @@ export default function TabLayout() {
       if (maintenanceLock.current) return;
       maintenanceLock.current = true; setMaintenance(true);
       void withDataMaintenance(operation)
-        .then((message) => Alert.alert('Dane aplikacji', message))
-        .catch(() => Alert.alert('Operacja nie została ukończona', 'Część kroków mogła zostać wykonana. Nie potwierdzamy pełnego usunięcia. Spróbuj ponownie; nie usuwamy konta ani danych serwerowych.'))
+        .then((message) => Alert.alert(t('Dane aplikacji'), t(message)))
+        .catch(() => Alert.alert(t('Operacja nie została ukończona'), t('Część kroków mogła zostać wykonana. Nie potwierdzamy pełnego usunięcia. Spróbuj ponownie; nie usuwamy konta ani danych serwerowych.')))
         .finally(() => { maintenanceLock.current = false; setDataEpoch((value) => value + 1); setMaintenance(false); });
     }}>
     <ErrorBoundary>{(recoverHome) => (
@@ -44,14 +50,16 @@ export default function TabLayout() {
 }
 
 function MaintenanceIndicator() {
+  const { t } = useTranslation();
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16, backgroundColor: colors.background }}>
-    <ActivityIndicator color={colors.primaryText} /><Text accessibilityRole="alert" style={{ color: colors.textPrimary, fontSize: 16 }}>Porządkowanie danych lokalnych…</Text>
+    <ActivityIndicator color={colors.primaryText} /><Text accessibilityRole="alert" style={{ color: colors.textPrimary, fontSize: 16 }}>{t("Porządkowanie danych lokalnych…")}</Text>
   </View>;
 }
 
 function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
+  const { t, language } = useTranslation();
   const db = useSQLiteContext();
   const colorScheme = useColorScheme();
   const [preference, setPreference] = useState<ThemePreference>('system');
@@ -68,6 +76,9 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
   const rootState = useRootNavigationState();
   const pathname = usePathname();
   const recoveryHandled = useRef(false);
+  useEffect(() => {
+    if (appearanceLoaded) void refreshDailyReminderLanguage(db).catch(() => undefined);
+  }, [appearanceLoaded, db, language]);
   useEffect(() => {
     let active = true;
     const guarded = pathname === '/study' || pathname === '/progress' || pathname === '/signs' || pathname.startsWith('/exam/');
@@ -88,7 +99,7 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
   }, [appearanceLoaded, navigation, recoverHome, rootState?.key]);
   useEffect(() => {
     let active = true;
-    void Promise.all([themePreference(db), selectedCategory(db), hasCompletedOnboarding(db)]).then(([value, target, completed]) => { if (active) { setPreference(value); setCategory(target); setOnboardingRequired(!completed); } })
+    void Promise.all([themePreference(db), selectedCategory(db), hasCompletedOnboarding(db), readUiLanguage(db)]).then(([value, target, completed, locale]) => { if (active) { setUiLanguage(locale); setPreference(value); setCategory(target); setOnboardingRequired(!completed); } })
       .catch(() => { if (active) setInitialReadFailed(true); })
       .finally(() => { if (active) setAppearanceLoaded(true); });
     return () => { active = false; };
@@ -96,7 +107,7 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
   const dark = preference === 'dark' || (preference === 'system' && colorScheme === 'dark');
   const colors = Colors[dark ? 'dark' : 'light'];
   if (!appearanceLoaded) return null;
-  if (initialReadFailed) throw new Error('Nie udało się odczytać ustawień aplikacji. Spróbuj ponownie.');
+  if (initialReadFailed) throw new Error(t("Nie udało się odczytać ustawień aplikacji. Spróbuj ponownie."));
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} onLayout={() => { void SplashScreen.hideAsync(); }}>
       <ThemeProvider value={{ ...(dark ? DarkTheme : DefaultTheme), colors: { ...(dark ? DarkTheme : DefaultTheme).colors, background: colors.background, card: colors.surface, text: colors.textPrimary, border: colors.border, primary: colors.primaryText } }}>
@@ -117,6 +128,7 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
         <TabBarContext value={{ isTabBarHidden: isTabBarHidden || onboardingRequired, setIsTabBarHidden }}>
           <StatusBar style={dark ? 'light' : 'dark'} />
           <AppTabs />
+          {!onboardingRequired && <ExamPreparation />}
         </TabBarContext>
         </TargetCategoryContext>
         </AppThemeContext>

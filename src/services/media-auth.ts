@@ -1,5 +1,6 @@
 import { supabase, supabaseConfigured } from "@/services/supabase";
 import { MediaAccountRequiredError } from '@/domain/account';
+import { t } from '@/domain/ui-copy';
 
 export async function mediaGrant(filename: string) {
   if (!supabaseConfigured) throw new Error("Brakuje konfiguracji konta w aplikacji.");
@@ -9,9 +10,9 @@ export async function mediaGrant(filename: string) {
   if (error) {
     const status = error.context instanceof Response ? error.context.status : undefined;
     if (status === 401) throw new MediaAccountRequiredError(true);
-    if (status === 503) throw new Error("Serwis multimediów nie jest skonfigurowany. Brakuje sekretu podpisującego.");
-    throw new Error(`Nie udało się uzyskać dostępu do materiału${status ? ` (Supabase HTTP ${status})` : ". Sprawdź połączenie z internetem"}.`);
+    if (status === 403) throw new Error(t('Dostęp do materiału nie został przyznany.'));
+    throw new Error(t('Zdjęcie lub film jest teraz niedostępny. Spróbuj później.'));
   }
-  if (!data?.token) throw new Error("Serwis nie zwrócił tokenu dostępu do materiału.");
+  if (!data?.token) throw new Error(t('Zdjęcie lub film jest teraz niedostępny. Spróbuj później.'));
   return data.token;
 }

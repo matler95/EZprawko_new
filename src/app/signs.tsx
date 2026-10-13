@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useCallback, useMemo, useState } from "react";
 import { BackHandler, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -8,12 +9,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { findSigns, roadSigns, signGroups, type RoadSign, type SignGroup } from "@/domain/road-signs";
 import { signImages } from "@/constants/sign-images";
 import { signQuestionCounts } from "@/database/signs";
+import { useTargetCategory } from '@/context/target-category-context';
 
 export default function SignsScreen() {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const s = createStyles(colors);
   const [search, setSearch] = useState("");
   const db = useSQLiteContext();
+  const { category } = useTargetCategory();
   const [group, setGroup] = useState<SignGroup | null>(null);
   const [selected, setSelected] = useState<RoadSign | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -25,39 +29,40 @@ export default function SignsScreen() {
   }, [selected]));
   useFocusEffect(useCallback(() => {
     let current = true;
-    void signQuestionCounts(db).then((value) => { if (current) { setCounts(value); setError(false); } }).catch(() => { if (current) setError(true); });
+    void signQuestionCounts(db, category).then((value) => { if (current) { setCounts(value); setError(false); } }).catch(() => { if (current) setError(true); });
     return () => { current = false; };
-  }, [db]));
+  }, [category, db]));
   const items = useMemo(() => findSigns(search, group), [group, search]);
   if (selected) return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
-    <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={s.back}><Text style={s.link}>← Wróć do znaków</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={s.back}><Text style={s.link}>{t("← Wróć do znaków")}</Text></Pressable>
     <Text style={s.title}>{selected.code}</Text>
     <Text style={s.name}>{selected.name}</Text>
-    <View style={s.artwork}><Image source={signImages[selected.code]} contentFit="contain" style={s.largeImage} accessibilityLabel={`Wzór znaku ${selected.code}`} /></View>
-    <Text style={s.sub}>{signGroups[selected.group]} · urzędowy wzór, strona {selected.sourcePage}</Text>
-    <Link href={selected.source} style={s.back}><Text style={s.link}>Otwórz źródło w Dzienniku Ustaw ↗</Text></Link>
-    {error ? <Text style={s.sub}>Nie udało się odczytać powiązań. Wróć do listy i spróbuj ponownie.</Text> : counts[selected.code] ? <>
-      <Text style={s.sub}>Powiązane pytania: {counts[selected.code]}. Kod wskazany w treści pytania lub nazwie materiału.</Text>
-      <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push({ pathname: "/study", params: { sign: selected.code, filter: "all", topic: undefined, count: "12" } })}><Text style={s.ctaText}>Ćwicz pytania z tym znakiem →</Text></Pressable>
+    <View style={s.artwork}><Image source={signImages[selected.code]} contentFit="contain" style={s.largeImage} accessibilityLabel={t("Wzór znaku {0}", [selected.code])} /></View>
+    <Text style={s.sub}>{t(signGroups[selected.group])} {t("· urzędowy wzór, strona")} {selected.sourcePage}</Text>
+    <Link href={selected.source} style={s.back}><Text style={s.link}>{t("Otwórz źródło w Dzienniku Ustaw ↗")}</Text></Link>
+    {error ? <Text style={s.sub}>{t("Nie udało się odczytać powiązań. Wróć do listy i spróbuj ponownie.")}</Text> : counts[selected.code] ? <>
+      <Text style={s.sub}>{t("Powiązane pytania:")} {counts[selected.code]}{t(". Kod wskazany w treści pytania lub nazwie materiału.")}</Text>
+      <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push({ pathname: "/study", params: { sign: selected.code, filter: "all", topic: undefined, count: "12" } })}><Text style={s.ctaText}>{t("Ćwicz pytania z tym znakiem →")}</Text></Pressable>
     </> : <>
-      <Text style={s.sub}>Brak zweryfikowanych powiązań z pytaniami. Nie oznacza to, że znak nie występuje w bazie.</Text>
-      <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push({ pathname: "/study", params: { topic: "Znaki i sygnały drogowe", filter: "all", sign: undefined } })}><Text style={s.ctaText}>Ćwicz dział: znaki i sygnały →</Text></Pressable>
+      <Text style={s.sub}>{t("Brak zweryfikowanych powiązań z pytaniami. Nie oznacza to, że znak nie występuje w bazie.")}</Text>
+      <Pressable accessibilityRole="button" style={s.cta} onPress={() => router.push({ pathname: "/study", params: { topic: "Znaki i sygnały drogowe", filter: "all", sign: undefined } })}><Text style={s.ctaText}>{t("Ćwicz dział: znaki i sygnały →")}</Text></Pressable>
     </>}
   </ScrollView></SafeAreaView>;
   return <SafeAreaView style={s.safe}><FlatList
     data={items} keyExtractor={(item) => item.code} initialNumToRender={12} windowSize={7}
     keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}
     ListHeaderComponent={<View style={s.header}>
-      <Text style={s.title}>Leksykon znaków</Text>
-      <Text style={s.sub}>{roadSigns.length} wzorów A/B/C/D/T dostępnych offline. Dotknij znaku, aby go powiększyć i przejść do nauki.</Text>
-      <TextInput accessibilityLabel="Szukaj znaku po kodzie lub nazwie" value={search} onChangeText={setSearch} placeholder="Szukaj, np. B20 lub STOP" placeholderTextColor={colors.textSecondary} style={s.search} />
-      <View style={s.filters}>{([null, "A", "B", "C", "D", "T"] as const).map((item) => <Pressable accessibilityRole="button" accessibilityState={{ selected: group === item }} key={item ?? "all"} onPress={() => setGroup(item)} style={[s.filter, group === item && s.active]}><Text style={[s.filterText, group === item && s.activeText]}>{item ? `${item} · ${signGroups[item]}` : "Wszystkie"}</Text></Pressable>)}</View>
-      <Text style={s.sub}>Wyniki: {items.length}</Text>
+      <Text style={s.title}>{t("Leksykon znaków")}</Text>
+      <Text style={s.sub}>{roadSigns.length} {t("wzorów A/B/C/D/T dostępnych offline. Dotknij znaku, aby go powiększyć i przejść do nauki.")}</Text>
+      <TextInput accessibilityLabel={t("Szukaj znaku po kodzie lub nazwie")} value={search} onChangeText={setSearch} placeholder={t("Szukaj, np. B20 lub STOP")} placeholderTextColor={colors.textSecondary} style={s.search} />
+      <View style={s.filters}>{([null, "A", "B", "C", "D", "T"] as const).map((item) => <Pressable accessibilityRole="button" accessibilityState={{ selected: group === item }} key={item ?? "all"} onPress={() => setGroup(item)} style={[s.filter, group === item && s.active]}><Text style={[s.filterText, group === item && s.activeText]}>{item ? `${item} · ${t(signGroups[item])}` : t("Wszystkie")}</Text></Pressable>)}</View>
+      <Text style={s.sub}>{t('Nazwy znaków i treści źródłowe są po polsku.')}</Text>
+      <Text style={s.sub}>{t("Wyniki:")} {items.length}</Text>
     </View>}
-    ListEmptyComponent={<View style={s.header}><Text style={s.sub}>Nie znaleziono znaku. Spróbuj podać kod lub krótszą nazwę.</Text><Pressable style={s.back} onPress={() => { setSearch(""); setGroup(null); }}><Text style={s.link}>Pokaż wszystkie znaki</Text></Pressable></View>}
+    ListEmptyComponent={<View style={s.header}><Text style={s.sub}>{t("Nie znaleziono znaku. Spróbuj podać kod lub krótszą nazwę.")}</Text><Pressable style={s.back} onPress={() => { setSearch(""); setGroup(null); }}><Text style={s.link}>{t("Pokaż wszystkie znaki")}</Text></Pressable></View>}
     renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${item.code}, ${item.name}`} onPress={() => setSelected(item)} style={s.card}>
       <View style={s.thumbnail}><Image source={signImages[item.code]} contentFit="contain" style={s.image} /></View>
-      <View style={s.description}><Text style={s.code}>{item.code}</Text><Text style={s.name}>{item.name}</Text><Text style={s.type}>{signGroups[item.group]}{counts[item.code] ? ` · pytania: ${counts[item.code]}` : ""}</Text></View>
+      <View style={s.description}><Text style={s.code}>{item.code}</Text><Text style={s.name}>{item.name}</Text><Text style={s.type}>{t(signGroups[item.group])}{counts[item.code] ? ` · ${t('Pytania:')} ${counts[item.code]}` : ""}</Text></View>
       <Text style={s.link}>›</Text>
     </Pressable>}
   /></SafeAreaView>;

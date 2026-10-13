@@ -28,11 +28,13 @@ function load(file){
     if(name==='react')return {...React,useEffect:(fn,deps)=>effects.push({fn,deps}),useRef:(initial)=>{const i=ri++;return refs[i]??(refs[i]={current:initial});},
       useState:(initial)=>{const i=si++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],(v)=>{states[i]=typeof v==='function'?v(states[i]):v;}];}};
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return native;
     if(name==='expo-router')return {useIsFocused:()=>focused};
     if(name==='@/hooks/use-reduced-motion')return {useMotionPreference:()=>({ready,reduced})};
     if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors.light})};
     if(name==='@/global.css')return {};
+    if(name.startsWith('@/domain/'))return load(`src/${name.slice(2)}.ts`);
     throw Error(`Unexpected dependency ${name}`);
   },exports);cache.set(file,exports);return exports;
 }

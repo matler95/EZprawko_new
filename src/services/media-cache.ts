@@ -2,6 +2,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { deliveredMediaFilename, deliveredMediaKey, mediaConfig, mediaUrl } from '@/config/media';
 import { mediaGrant } from '@/services/media-auth';
 import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
+import { MediaAccountRequiredError } from '@/domain/account';
+import { t } from '@/domain/ui-copy';
 
 const CACHE_DIRECTORY = `${FileSystem.cacheDirectory}question-media/`;
 const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
@@ -9,6 +11,11 @@ const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
 const safeName = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 const downloads = new Map<string, Promise<string | undefined>>();
 let clearing = false;
+const protectedMedia = new Map<string, Set<string>>();
+export function protectMedia(group: string, filenames: readonly string[]) {
+  protectedMedia.set(group, new Set(filenames.map(name => safeName(deliveredMediaFilename(name)))));
+}
+export function releaseProtectedMedia(group: string) { protectedMedia.delete(group); }
 
 export async function cachedMediaUri(sourceFilename: string, cacheOnly = false) {
   if (clearing) throw new Error('Trwa czyszczenie materiałów. Spróbuj ponownie za chwilę.');
@@ -42,9 +49,9 @@ async function fetchCachedMedia(sourceFilename: string, cacheOnly: boolean) {
     const result = await FileSystem.downloadAsync(remote, temporaryUri, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (result.status === 401 || result.status === 403) throw new Error("Serwer multimediów odrzucił token dostępu. Sprawdź zgodność sekretów Supabase i Cloudflare.");
-    if (result.status === 404) throw new Error(`Nie znaleziono pliku w R2: ${objectKey}`);
-    if (result.status !== 200) throw new Error(`Błąd serwera multimediów (HTTP ${result.status}). Spróbuj ponownie.`);
+    if (result.status === 401) throw new MediaAccountRequiredError(true);
+    if (result.status === 403) throw new Error(t('Dostęp do materiału nie został przyznany.'));
+    if (result.status !== 200) throw new Error(t('Zdjęcie lub film jest teraz niedostępny. Spróbuj później.'));
     const downloaded = await FileSystem.getInfoAsync(temporaryUri);
     if (!downloaded.exists || downloaded.isDirectory || !('size' in downloaded) || downloaded.size <= 0) throw new Error('Pobrany materiał jest pusty. Spróbuj ponownie.');
     if (downloaded.size > MAX_CACHE_BYTES) throw new Error('Materiał przekracza limit cache 1 GB. Nie można przygotować tej próby.');
@@ -82,8 +89,10 @@ async function evictOldMedia() {
     entry.info.exists && 'modificationTime' in entry.info ? entry.info.modificationTime ?? 0 : 0;
   for (const entry of entries.sort((a, b) => modified(a) - modified(b))) {
     if (total <= MAX_CACHE_BYTES) break;
+    if ([...protectedMedia.values()].some(names => names.has(entry.name))) continue;
     const size = entry.info.exists && 'size' in entry.info ? entry.info.size ?? 0 : 0;
     await FileSystem.deleteAsync(`${CACHE_DIRECTORY}${entry.name}`, { idempotent: true });
     total -= size;
   }
+  if (total > MAX_CACHE_BYTES) throw new Error('Brak miejsca na przygotowanie materiałów. Usuń pobrane materiały i spróbuj ponownie.');
 }

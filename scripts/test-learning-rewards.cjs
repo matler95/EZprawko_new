@@ -5,6 +5,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
   const code=ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
   new Function('require','exports',code)((name)=>{
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return {Text:'Text',View:'View',StyleSheet:{create:s=>s},Platform:{select:s=>s.default}};
     if(name==='@/global.css')return {};
     if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors[theme]})};

@@ -1,3 +1,4 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View, type StyleProp, type TextStyle } from "react-native";
 import { useIsFocused } from "expo-router";
@@ -5,6 +6,7 @@ import { useMotionPreference } from "@/hooks/use-reduced-motion";
 import { useAppTheme } from "@/context/app-theme-context";
 
 export function AnimatedExamScore({ score, sessionId, style }: { score: number; sessionId: string; style?: StyleProp<TextStyle> }) {
+  const { t } = useTranslation();
   const { reduced, ready } = useMotionPreference();
   const focused = useIsFocused();
   const [value] = useState(() => new Animated.Value(0));
@@ -24,7 +26,7 @@ export function AnimatedExamScore({ score, sessionId, style }: { score: number; 
     animation.start(({ finished }) => { if (finished) setDisplayed(score); });
     return () => { animation.stop(); value.removeListener(listener); };
   }, [focused, ready, reduced, score, sessionId, value]);
-  return <Text style={style} accessibilityLabel={`Wynik egzaminu: ${score} z 74 punktów`}>
+  return <Text style={style} accessibilityLabel={t("Wynik egzaminu: {0} z 74 punktów", [score])}>
     {!ready ? "—" : reduced || !focused ? score : displayed}/74
   </Text>;
 }

@@ -23,6 +23,7 @@ function load(file) {
       useRef:(initial)=>{const i=refIndex++;return refs[i]??(refs[i]={current:initial});},
       useState:(initial)=>{const i=stateIndex++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],()=>{}];} };
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return native;
     if(name==='expo-router')return {useIsFocused:()=>focused};
     if(name==='expo-haptics')return { NotificationFeedbackType:{ Warning:'Warning' },notificationAsync:(kind)=>{

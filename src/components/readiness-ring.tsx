@@ -1,12 +1,14 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useAppTheme } from '@/context/app-theme-context';
 
 export function ReadinessRing({ value }: { value: number | null }) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const percentage = Math.max(0, Math.min(100, value ?? 0));
   return (
-    <View accessible accessibilityLabel={value === null ? 'Brak ukończonych egzaminów' : `Zdawalność ostatnich prób: ${percentage}%`} style={styles.ring}>
+    <View accessible accessibilityLabel={value === null ? t("Brak ukończonych egzaminów") : t("Zdawalność ostatnich prób: {0}%", [percentage])} style={styles.ring}>
       {Array.from({ length: 32 }, (_, index) => {
         const angle = index * Math.PI / 16;
         return <View key={index} style={[styles.segment, { backgroundColor: index < Math.round(percentage * 32 / 100) ? colors.primaryText : colors.disabledSurface, left: 42 + 35 * Math.sin(angle) - 2, top: 42 - 35 * Math.cos(angle) - 4, transform: [{ rotate: `${index * 360 / 32}deg` }] }]} />;

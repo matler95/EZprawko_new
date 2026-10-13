@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 import links from "../../assets/data/question-signs.json";
+import { categoryClause } from '@/domain/driving-categories';
 
 export async function installQuestionSigns(db: SQLiteDatabase) {
   await db.execAsync(`CREATE TABLE IF NOT EXISTS question_signs (
@@ -17,7 +18,7 @@ export async function installQuestionSigns(db: SQLiteDatabase) {
   });
 }
 
-export async function signQuestionCounts(db: SQLiteDatabase): Promise<Record<string, number>> {
-  const rows = await db.getAllAsync<{ code: string; count: number }>("SELECT sign_code AS code, COUNT(*) AS count FROM question_signs GROUP BY sign_code");
+export async function signQuestionCounts(db: SQLiteDatabase, category?: string): Promise<Record<string, number>> {
+  const rows = await db.getAllAsync<{ code: string; count: number }>(`SELECT s.sign_code AS code, COUNT(*) AS count FROM question_signs s JOIN questions q ON q.id = s.question_id ${category ? `WHERE ${categoryClause}` : ''} GROUP BY s.sign_code`, category ? [category] : []);
   return Object.fromEntries(rows.map((row) => [row.code, row.count]));
 }

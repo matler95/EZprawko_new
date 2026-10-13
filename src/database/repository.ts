@@ -7,6 +7,8 @@ import { categoryClause, isDrivingCategory, type DrivingCategory } from "@/domai
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { awardSignExpert, installLearningDays, learningDays } from "@/database/learning-progress";
 import { learningStreak, localDay } from "@/domain/learning-streak";
+import { newExamClock, type ExamClock } from '@/domain/exam-clock';
+import { validExamSelection } from '@/domain/exam-selection';
 
 export type Question = ExamQuestion & {
   question: string;
@@ -143,11 +145,12 @@ export async function saveCompletedExam(
   selected: Record<number, string | undefined>,
   startedAt = Date.now(),
   language: QuestionLanguage = 'pl',
+  activeSessionId?: string,
 ) {
   const revision = userDataRevision();
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const id = activeSessionId ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const completedAt = Date.now();
-  const score = questions.reduce(
+  let score = questions.reduce(
     (total, question) =>
       total +
       (selected[question.id] === question.correctAnswer ? question.points : 0),
@@ -155,6 +158,8 @@ export async function saveCompletedExam(
   );
   await db.withExclusiveTransactionAsync(async (transaction) => {
     if (!userDataWritable(revision)) return;
+    const previous = await transaction.getFirstAsync<{ id: string; score: number }>('SELECT id, score FROM exam_sessions WHERE id = ?', id);
+    if (previous) { score = previous.score; return; }
     await transaction.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-language:${id}`, language);
     await transaction.runAsync(
       "INSERT INTO exam_sessions (id, category, started_at, expires_at, completed_at, score, passed, local_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -175,6 +180,11 @@ export async function saveCompletedExam(
         selected[question.id] ?? null,
         selected[question.id] === question.correctAnswer ? 1 : 0,
       );
+    if (activeSessionId) {
+      await transaction.runAsync('DELETE FROM active_exam_questions WHERE session_id = ?', activeSessionId);
+      await transaction.runAsync('DELETE FROM active_exam WHERE id = ?', activeSessionId);
+      await transaction.runAsync('DELETE FROM settings WHERE key = ?', `exam-clock:${activeSessionId}`);
+    }
   });
   return { id, score, passed: score >= 68 };
 }
@@ -282,6 +292,7 @@ export type ExamReadiness = {
 export async function recentExams(
   db: SQLiteDatabase,
   limit = 12,
+  category?: string,
 ): Promise<ExamHistoryItem[]> {
   const rows = await db.getAllAsync<{
     id: string;
@@ -290,8 +301,8 @@ export async function recentExams(
     score: number;
     passed: number;
   }>(
-    "SELECT id, category, completed_at, score, passed FROM exam_sessions WHERE completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT ?",
-    limit,
+    `SELECT id, category, completed_at, score, passed FROM exam_sessions WHERE completed_at IS NOT NULL ${category ? 'AND category = ?' : ''} ORDER BY completed_at DESC LIMIT ?`,
+    category ? [category, limit] : [limit],
   );
   return rows.map((row) => ({
     id: row.id,
@@ -302,8 +313,8 @@ export async function recentExams(
   }));
 }
 
-export async function examReadiness(db: SQLiteDatabase): Promise<ExamReadiness | null> {
-  const attempts = await recentExams(db, 5);
+export async function examReadiness(db: SQLiteDatabase, category?: string): Promise<ExamReadiness | null> {
+  const attempts = await recentExams(db, 5, category);
   if (!attempts.length) return null;
 
   const averageScore = Math.round(
@@ -319,12 +330,14 @@ export async function examReadiness(db: SQLiteDatabase): Promise<ExamReadiness |
   };
 }
 
-export async function weakAreas(db: SQLiteDatabase) {
+export async function weakAreas(db: SQLiteDatabase, category?: string) {
   return db.getAllAsync<{ scope: string; attempted: number; correct: number }>(`
     SELECT q.scope, COUNT(*) AS attempted, SUM(a.is_correct) AS correct
     FROM exam_answers a JOIN questions q ON q.id = a.question_id
+    JOIN exam_sessions s ON s.id = a.session_id
+    ${category ? 'WHERE s.category = ?' : ''}
     GROUP BY q.scope ORDER BY correct * 1.0 / NULLIF(attempted, 0) ASC
-  `);
+  `, category ? [category] : []);
 }
 
 export type WeakCategory = {
@@ -530,14 +543,17 @@ async function hydrateQuestions(
 export async function startActiveExam(db: SQLiteDatabase, category: string,
   prepare?: (questions: readonly Question[]) => Promise<void>,
   canStart: () => boolean = () => true,
+  prepared?: { category: string; language: QuestionLanguage; questions: Question[] },
 ) {
   const revision = userDataRevision();
   if (!isDrivingCategory(category)) throw new Error("Unsupported theory exam category");
   const language = await selectedQuestionLanguage(db);
-  const rows = await db.getAllAsync<QuestionRow>(
+  if (prepared && (prepared.category !== category || prepared.language !== language)) throw new Error('Zmieniono ustawienia. Przygotuj próbę ponownie.');
+  if (prepared && !validExamSelection(prepared.questions, category)) throw new Error('Nieprawidłowy zestaw egzaminu. Przygotuj próbę ponownie.');
+  const rows = prepared ? [] : await db.getAllAsync<QuestionRow>(
     "SELECT id, scope, points, categories FROM questions",
   );
-  const base = buildOfficialExam(
+  const base = prepared ? { durationSeconds: 1500, questions: prepared.questions } : buildOfficialExam(
     rows.filter((row) => JSON.parse(row.categories).includes(category)).map((row) => ({
       id: row.id,
       scope: row.scope,
@@ -559,6 +575,8 @@ export async function startActiveExam(db: SQLiteDatabase, category: string,
     await transaction.execAsync(
       "DELETE FROM active_exam_questions; DELETE FROM active_exam;",
     );
+    await transaction.runAsync('DELETE FROM settings WHERE key LIKE ?', 'exam-clock:%');
+    if (prepared) await transaction.runAsync("DELETE FROM settings WHERE key = 'prepared-exam'");
     await transaction.runAsync(
       "INSERT INTO active_exam VALUES (?, ?, ?, ?)",
       id,
@@ -650,6 +668,10 @@ export async function saveActiveProgress(
   const revision = userDataRevision();
   await db.withExclusiveTransactionAsync(async (transaction) => {
     if (!userDataWritable(revision)) return;
+    const current = await transaction.getFirstAsync<{ current_index: number }>('SELECT current_index FROM active_exam WHERE id = ?', sessionId);
+    if (!current || current.current_index !== index - 1) throw new Error('Ta próba zmieniła się. Wróć do panelu i wznów egzamin.');
+    const position = await transaction.getFirstAsync<{ question_id: number }>('SELECT question_id FROM active_exam_questions WHERE session_id = ? AND position = ?', sessionId, index - 1);
+    if (position?.question_id !== questionId) throw new Error('Odpowiedź nie należy do bieżącego pytania.');
     await transaction.runAsync(
       "UPDATE active_exam_questions SET selected_answer = ? WHERE session_id = ? AND question_id = ?",
       selectedAnswer,
@@ -665,9 +687,30 @@ export async function saveActiveProgress(
 }
 
 export async function clearActiveExam(db: SQLiteDatabase) {
-  await db.execAsync(
-    "DELETE FROM active_exam_questions; DELETE FROM active_exam;",
-  );
+  await db.withExclusiveTransactionAsync(async tx => {
+    await tx.execAsync("DELETE FROM active_exam_questions; DELETE FROM active_exam;");
+    await tx.runAsync('DELETE FROM settings WHERE key LIKE ?', 'exam-clock:%');
+  });
+}
+
+export async function questionClock(db: SQLiteDatabase, sessionId: string, index: number, question: Question): Promise<ExamClock> {
+  const revision = userDataRevision();
+  let clock = newExamClock(index, question.readingTimeSeconds, question.answeringTimeSeconds);
+  await db.withExclusiveTransactionAsync(async tx => {
+    if (!userDataWritable(revision)) throw new Error('Data reset interrupted exam');
+    const active = await tx.getFirstAsync<{ current_index: number }>('SELECT current_index FROM active_exam WHERE id = ?', sessionId);
+    if (!active || active.current_index !== index) throw new Error('Exam changed');
+    const stored = await tx.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', `exam-clock:${sessionId}`);
+    if (stored) {
+      try {
+        const value = JSON.parse(stored.value) as ExamClock;
+        if (value.index === index && Number.isFinite(value.readingEndsAt) && Number.isFinite(value.answeringEndsAt) && value.answeringEndsAt >= value.readingEndsAt) { clock = value; return; }
+      } catch { /* Replace an invalid legacy clock with a valid one. */ }
+    }
+    clock = newExamClock(index, question.readingTimeSeconds, question.answeringTimeSeconds);
+    await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-clock:${sessionId}`, JSON.stringify(clock));
+  });
+  return clock;
 }
 
 export async function challengeStatus(db: SQLiteDatabase) {

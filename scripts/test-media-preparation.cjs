@@ -17,6 +17,7 @@ new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(ro
   if(name==='@/services/media-auth')return {mediaGrant:async()=>{grantCalls++;return 'fixture';}};
   if(name==='react')return {...React,useCallback:f=>f,useRef:v=>{const i=ri++;return refs[i]??(refs[i]={current:v});},useState:v=>{const i=si++;if(!(i in states))states[i]=v;return [states[i],x=>states[i]=typeof x==='function'?x(states[i]):x];}};
   if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
   if(name==='react-native')return {View:'View',Text:'Text',Pressable:'Pressable',Modal:'Modal',ScrollView:'ScrollView',ActivityIndicator:'ActivityIndicator',StyleSheet:{create:s=>s},Platform:{select:s=>s.default}};
   if(name==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
   if(name==='expo-router')return {useFocusEffect:f=>focus=f};

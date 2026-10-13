@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { reminderPreferences, saveReminderPreferences } from '@/database/reminder-preferences';
 import { defaultReminderTime, reminderMinutes, type ReminderTime } from '@/domain/reminder-time';
 import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
+import { t } from '@/domain/ui-copy';
 
 const REMINDER_ID_KEY = 'daily-reminder-id';
 
@@ -18,14 +19,14 @@ function guard(revision: number) {
   if (!userDataWritable(revision)) throw new Error('Zmiana przypomnienia przerwana przez reset danych.');
 }
 async function ensureChannel() {
-  if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('learning', { name: 'Nauka prawa jazdy', importance: Notifications.AndroidImportance.DEFAULT });
+  if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('learning', { name: t('Nauka prawa jazdy'), importance: Notifications.AndroidImportance.DEFAULT });
 }
 async function schedule(time: ReminderTime) {
   reminderMinutes(time);
   await ensureChannel();
   return Notifications.scheduleNotificationAsync({
     identifier: DAILY_REMINDER_ID,
-    content: { title: 'Czas na krótką powtórkę', body: 'Rozwiąż dziś 5 pytań za 3 punkty.', sound: true, data: { reminderKey: DAILY_REMINDER_ID } },
+    content: { title: t('Czas na krótką powtórkę'), body: t('Rozwiąż dziś 5 pytań za 3 punkty.'), sound: true, data: { reminderKey: DAILY_REMINDER_ID } },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: time.hour, minute: time.minute, channelId: 'learning' },
   });
 }
@@ -36,6 +37,19 @@ async function snapshot(db: SQLiteDatabase) {
   return { ...preference, enabled: permission.granted && owned.length > 0, permissionGranted: permission.granted, identifiers: owned.map((item) => item.identifier), scheduleCount: owned.length };
 }
 export function readDailyReminder(db: SQLiteDatabase) { return serial(() => snapshot(db)); }
+// Only refresh an already enabled local reminder. Never request permission or enable one.
+export function refreshDailyReminderLanguage(db: SQLiteDatabase) {
+  const revision = userDataRevision();
+  return serial(async () => {
+    guard(revision);
+    const previous = await snapshot(db);
+    if (!previous.enabled) return;
+    guard(revision);
+    await schedule(previous.time);
+    if (!userDataWritable(revision)) { await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID); return; }
+    for (const identifier of previous.identifiers) if (identifier !== DAILY_REMINDER_ID) await Notifications.cancelScheduledNotificationAsync(identifier);
+  });
+}
 export function updateDailyReminder(db: SQLiteDatabase, time: ReminderTime, enabled: boolean, requestPermission = false) {
   reminderMinutes(time);
   const revision = userDataRevision();

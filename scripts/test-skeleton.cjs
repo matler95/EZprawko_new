@@ -18,11 +18,13 @@ function load(file) {
   new Function('require','exports',code)((name)=>{
     if(name==='react')return { ...React,useEffect:(fn)=>effects.push(fn),useState:(init)=>[typeof init==='function'?init():init,()=>{}] };
     if(name==='react/jsx-runtime')return require(name);
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if(name==='react-native')return native;
     if(name==='expo-router')return { useIsFocused:()=>focused };
     if(name==='@/hooks/use-reduced-motion')return { useReducedMotion:()=>reduced };
     if(name==='@/context/app-theme-context')return { useAppTheme:()=>({ colors:load('src/constants/theme.ts').Colors[theme] }) };
     if(name==='@/global.css')return {};
+    if(name.startsWith('@/domain/'))return load(`src/${name.slice(2)}.ts`);
     throw Error(`Unexpected dependency ${name}`);
   },exports);
   return exports;

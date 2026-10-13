@@ -1,20 +1,22 @@
+import { useTranslation } from '@/hooks/use-translation';
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import type { ExamHistoryItem } from "@/database/repository";
 import { examDateLabels, scoreHeight, SCORE_MAX, SCORE_PASS, SCORE_PLOT_HEIGHT } from "@/domain/progress-presentation";
 
 export function ExamScoreChart({ history }: { history: ExamHistoryItem[] }) {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
   const s = styles(colors);
   const attempts = history.slice(0, 7).reverse();
   return <View style={s.card}>
-    <Text style={s.legend}>Próg zaliczenia: {SCORE_PASS}/{SCORE_MAX} pkt</Text>
-    <Text style={s.detail}>Ostatnie {attempts.length} podejść · od najstarszego · czas lokalny</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel="Wykres ostatnich wyników egzaminu">
+    <Text style={s.legend}>{t("Próg zaliczenia:")} {SCORE_PASS}/{SCORE_MAX} {t("pkt")}</Text>
+    <Text style={s.detail}>{t("Ostatnie")} {attempts.length} {t("podejść · od najstarszego · czas lokalny")}</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel={t("Wykres ostatnich wyników egzaminu")}>
       <View style={s.columns}>
         {attempts.map((item) => {
           const date = examDateLabels(item.completedAt);
-          return <View key={item.id} style={s.column} accessible accessibilityLabel={`Kategoria ${item.category}, ${date.date}.${date.year}, godzina ${date.time}, ${item.score} z ${SCORE_MAX} punktów, ${item.passed ? "zdany" : "niezdany"}`}>
+          return <View key={item.id} style={s.column} accessible accessibilityLabel={t('Kategoria {0}, {1}.{2}, godzina {3}, {4} z {5} punktów, {6}', [item.category, date.date, date.year, date.time, item.score, SCORE_MAX, item.passed ? t('Zdany') : t('Niezdany')])}>
             <Text style={s.score}>{item.score}/{SCORE_MAX}</Text>
             <View style={s.plot}>
               <View style={[s.bar, { height: scoreHeight(item.score), backgroundColor: item.passed ? colors.success : colors.error }]} />
@@ -23,12 +25,12 @@ export function ExamScoreChart({ history }: { history: ExamHistoryItem[] }) {
             <Text style={s.date}>{date.date}</Text>
             <Text style={s.detail}>{date.year}</Text>
             <Text style={s.detail}>{date.time}</Text>
-            <Text style={s.detail}>Kat. {item.category} · {item.passed ? "Zdany" : "Niezdany"}</Text>
+            <Text style={s.detail}>{t("Kat.")} {item.category} · {item.passed ? t("Zdany") : t("Niezdany")}</Text>
           </View>;
         })}
       </View>
     </ScrollView>
-    <Text style={s.detail}>Linia przerywana = 68 pkt · skala 0–74 pkt. Przesuń wykres, aby zobaczyć kolejne wyniki.</Text>
+    <Text style={s.detail}>{t("Linia przerywana = 68 pkt · skala 0–74 pkt. Przesuń wykres, aby zobaczyć kolejne wyniki.")}</Text>
   </View>;
 }
 

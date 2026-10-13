@@ -9,7 +9,7 @@ function load(relative) {
   const code = ts.transpileModule(fs.readFileSync(path.join(root, relative), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
   }).outputText;
-  new Function('require', 'exports', code)((name) => require(path.resolve(root, path.dirname(relative), name)), exports);
+  new Function('require', 'exports', code)((name) => name.startsWith('@/') ? load(`src/${name.slice(2)}.ts`) : require(path.resolve(root, path.dirname(relative), name)), exports);
   return exports;
 }
 const catalog = require('../assets/data/road-signs.json');
@@ -37,9 +37,9 @@ for (const sign of roadSigns) {
 }
 const original = new DatabaseSync(path.join(root, 'assets/database/questions.db'), { readOnly: true });
 const native = new DatabaseSync(':memory:');
-native.exec('CREATE TABLE questions(id INTEGER PRIMARY KEY, question TEXT); CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT); CREATE TABLE flags(question_id INTEGER PRIMARY KEY); PRAGMA foreign_keys=ON;');
-const insert = native.prepare('INSERT INTO questions VALUES (?, ?)');
-for (const q of original.prepare('SELECT id,question FROM questions').all()) insert.run(q.id, q.question);
+native.exec('CREATE TABLE questions(id INTEGER PRIMARY KEY, question TEXT, categories TEXT); CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT); CREATE TABLE flags(question_id INTEGER PRIMARY KEY); PRAGMA foreign_keys=ON;');
+const insert = native.prepare('INSERT INTO questions VALUES (?, ?, ?)');
+for (const q of original.prepare('SELECT id,question,categories FROM questions').all()) insert.run(q.id, q.question, q.categories);
 original.close();
 native.prepare('INSERT INTO flags VALUES (?)').run(893);
 let writes = 0;
