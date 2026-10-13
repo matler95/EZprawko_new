@@ -9,8 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { QuestionMedia } from "@/components/question-media";
 import { BasicAnswerButtons, basicAnswerText } from "@/components/basic-answer-buttons";
 import { examReview, type ExamReview, type ExamReviewQuestion } from "@/database/repository";
-import { getQuestionExplanation, type QuestionExplanation } from "@/database/explanations";
-import { ExplanationCard } from "@/components/explanation-card";
+import { QuestionExplanation } from '@/components/question-explanation';
 import { useTargetCategory } from '@/context/target-category-context';
 import { isDrivingCategory } from '@/domain/driving-categories';
 
@@ -31,15 +30,6 @@ export default function ExamReviewScreen() {
   const { setCategory } = useTargetCategory();
   const navigationLock = useRef(false);
   const [selected, setSelected] = useState<ExamReviewQuestion | null>(null);
-  const [explanation, setExplanation] = useState<{ id: number; value: QuestionExplanation | null; failed: boolean } | null>(null);
-  useEffect(() => {
-    if (!selected) return;
-    let current = true;
-    void getQuestionExplanation(db, selected.id).then((value) => {
-      if (current) setExplanation({ id: selected.id, value, failed: false });
-    }).catch(() => { if (current) setExplanation({ id: selected.id, value: null, failed: true }); });
-    return () => { current = false; };
-  }, [db, selected]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -153,7 +143,7 @@ export default function ExamReviewScreen() {
                 <Text style={styles.answerSummary}>
                   {selected.selectedAnswer ? t("Twoja odpowiedź: {0}", [selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.selectedAnswer) : selected.selectedAnswer]) : t("Nie udzielono odpowiedzi")} {t("· poprawna:")} {selected.scope === "PODSTAWOWY" ? basicAnswerText(selected.answers, selected.correctAnswer) : selected.correctAnswer}
                 </Text>
-                <ExplanationCard explanation={explanation?.id === selected.id ? explanation.value : null} loading={explanation?.id !== selected.id} failed={explanation?.id === selected.id && explanation.failed} />
+                <QuestionExplanation key={selected.id} questionId={selected.id} />
               </ScrollView>
             ) : null}
           </View>

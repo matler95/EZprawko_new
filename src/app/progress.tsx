@@ -11,11 +11,13 @@ import { bankProgress, type BankProgress } from "@/database/bank-progress";
 import { coveragePercent, examDateLabels } from "@/domain/progress-presentation";
 import {
   recentExams,
-  weakAreas,
   type ExamHistoryItem,
 } from "@/database/repository";
 
 import { useTargetCategory } from '@/context/target-category-context';
+import { learningInsights } from '@/database/learning-insights';
+import { MIN_TOPIC_SAMPLE, rankTopicInsights, type TopicInsight } from '@/domain/learning-recommendation';
+import { studyMastery, type MasterySnapshot } from '@/database/study-session';
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
@@ -25,9 +27,9 @@ export default function ProgressScreen() {
   const { category } = useTargetCategory();
   const [history, setHistory] = useState<ExamHistoryItem[]>([]);
   const [coverage, setCoverage] = useState<BankProgress>({ total: 0, answered: 0 });
-  const [weak, setWeak] = useState<
-    { scope: string; attempted: number; correct: number }[]
-  >([]);
+  const [weak, setWeak] = useState<TopicInsight[]>([]);
+  const [historicalMistakes, setHistoricalMistakes] = useState(0);
+  const [mastery, setMastery] = useState<MasterySnapshot>({ total: 0, mastered: 0 });
   const [allHistory, setAllHistory] = useState<ExamHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedRevision, setFailedRevision] = useState<number | null>(null);
@@ -37,9 +39,9 @@ export default function ProgressScreen() {
     let current = true;
     setLoading(true);
     setFailedRevision(null);
-    void Promise.all([recentExams(db, 12, category), weakAreas(db, category), recentExams(db), bankProgress(db, category)]).then(([nextHistory, nextWeak, nextCategories, nextCoverage]) => {
+    void Promise.all([recentExams(db, 12, category), learningInsights(db, category), recentExams(db), bankProgress(db, category), studyMastery(db, category)]).then(([nextHistory, insights, nextCategories, nextCoverage, nextMastery]) => {
       if (!current) return;
-      setHistory(nextHistory); setWeak(nextWeak); setAllHistory(nextCategories);
+      setHistory(nextHistory); setWeak(rankTopicInsights(insights.topics)); setHistoricalMistakes(insights.historicalMistakes); setAllHistory(nextCategories); setMastery(nextMastery);
       setCoverage(nextCoverage);
     }).catch(() => { if (current) setFailedRevision(reload); })
       .finally(() => { if (current) setLoading(false); });
@@ -63,6 +65,11 @@ export default function ProgressScreen() {
           </View>
           <Text style={s.cardDetail}>{t("Pytania kategorii")} {category}{t(". Unikalne pytania z odpowiedzią w Nauce lub ukończonym egzaminie — nie oznacza opanowania materiału.")}</Text>
         </View>
+        <View style={s.coverage}>
+          <Text style={s.heading}>{t('Opanowanie materiału kategorii')}</Text>
+          <Text style={s.coverageNumber}>{mastery.mastered}/{mastery.total}</Text>
+          <Text style={s.cardDetail}>{t('Opanowanie wymaga 3 poprawnych powtórek zaliczanych nie częściej niż co 24 godziny. Błąd zeruje serię danego pytania.')}</Text>
+        </View>
         <View style={s.metric}>
           <Text style={s.big}>
             {history.length
@@ -81,19 +88,17 @@ export default function ProgressScreen() {
           <Text style={s.empty}>{t("Wykres pojawi się po pierwszym egzaminie.")}</Text>
         )}
         <Text style={s.heading}>{t("Słabsze obszary")}</Text>
+        <Text style={s.sub}>{t('Działy: ostatni wynik każdego pytania w Nauce lub ukończonym egzaminie tej kategorii. Minimum 5 pytań do porównania.')}</Text>
         {weak.map((item) => (
-          <View key={item.scope} style={s.card}>
-            <Text style={{ color: colors.textPrimary }}>{item.scope === "PODSTAWOWY" ? t("Wiedza podstawowa") : t("Wiedza specjalistyczna")}</Text>
-            <Text style={s.score}>
-              {item.attempted
-                ? Math.round((item.correct / item.attempted) * 100)
-                : 0}
-              %
-            </Text>
-          </View>
+          <Pressable accessibilityRole="button" key={item.topic} style={s.card} onPress={() => router.navigate({ pathname: '/study', params: { topic: item.topic, filter: 'all', sign: undefined, session: undefined, count: undefined } })}>
+            <View style={{ flex: 1 }}><Text style={{ color: colors.textPrimary }}>{t(item.topic)}</Text>
+              <Text style={s.cardDetail}>{t('Sprawdzone pytania: {0}/{1}', [item.answered, item.total])}</Text>
+              <Text style={s.cardDetail}>{t('Ćwicz ten dział →')}</Text></View>
+            <Text style={s.score}>{item.answered >= MIN_TOPIC_SAMPLE ? `${Math.round(item.correct / item.answered * 100)}%` : t('Za mało danych')}</Text>
+          </Pressable>
         ))}
         {!weak.length && <Text style={s.empty}>{t("Obszary do powtórki pojawią się po egzaminie kategorii")} {category}.</Text>}
-        <Pressable accessibilityRole="button" style={s.card} onPress={() => router.navigate('/study?filter=mistakes')}><Text style={s.score}>{t("Przejdź do powtórki błędów →")}</Text></Pressable>
+        {historicalMistakes > 0 && <Pressable accessibilityRole="button" style={s.card} onPress={() => router.navigate({ pathname: '/study', params: { filter: 'mistakes', topic: undefined, sign: undefined, session: undefined, count: undefined } })}><Text style={s.score}>{t('Pytania z historycznymi błędami: {0}', [historicalMistakes])}</Text></Pressable>}
         <Text style={s.heading}>{t("Historia · wszystkie kategorie")}</Text>
         {allHistory.length ? (
           allHistory.map((item) => (

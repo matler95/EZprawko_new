@@ -14,6 +14,9 @@ import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 import { type MediaPreloadProgress } from '@/services/media-preload';
 import { ensurePreparedExam, consumePreparedExam, verifyPreparedMedia } from '@/services/prepared-exam';
 import { mediaErrorMessage } from '@/domain/media-error';
+import { learningInsights } from '@/database/learning-insights';
+import { learningRecommendation, type TopicInsight } from '@/domain/learning-recommendation';
+import { AppButton } from '@/components/ui/app-controls';
 
 import {
   clearActiveExam,
@@ -46,21 +49,27 @@ export default function DashboardScreen() {
   const [startError, setStartError] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<ExamReadiness | null>(null);
+  const [topics, setTopics] = useState<TopicInsight[]>([]);
+  const [historicalMistakes, setHistoricalMistakes] = useState(0);
+  const recommendation = learningRecommendation(topics, historicalMistakes);
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
+    let request = 0;
     setFailedRevision(null);
-    const refresh = () => { void Promise.all([
+    const refresh = () => { const current = ++request; void Promise.all([
       hasCompletedOnboarding(db),
       examReadiness(db, category),
       resumeActiveExam(db),
-    ]).then(([completed, nextReadiness, active]) => {
-      if (!mounted) return;
+      learningInsights(db, category),
+    ]).then(([completed, nextReadiness, active, insights]) => {
+      if (!mounted || current !== request) return;
       setOnboardingComplete(completed);
       setReadiness(nextReadiness);
       setActiveExamId(active?.id ?? null);
+      setTopics(insights.topics); setHistoricalMistakes(insights.historicalMistakes);
       setOnboardingChecked(true);
-    }).catch(() => { if (mounted) setFailedRevision(reload); }); };
+    }).catch(() => { if (mounted && current === request) setFailedRevision(reload); }); };
     refresh();
     const timer = setInterval(() => { if (AppState.currentState === 'active') refresh(); }, 60_000);
     const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
@@ -157,26 +166,30 @@ export default function DashboardScreen() {
         {(startError || categoryError) && <Text accessibilityRole="alert" style={styles.resumeCopy}>{t(startError || categoryError)}</Text>}
 
         <Text style={styles.section}>{t("Dzisiejsza nauka")}</Text>
-        <Pressable onPress={() => router.navigate("/study?filter=three&count=5")} style={styles.recommendedCard}>
-          <View>
+        {!activeExamId && <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/study', params: {
+          filter: recommendation.kind === 'topic' ? 'all' : recommendation.kind === 'mistakes' ? 'mistakes' : 'three', count: '5', start: '1',
+          topic: recommendation.kind === 'topic' ? recommendation.topic.topic : undefined,
+          sign: undefined, session: undefined,
+        } })} style={styles.recommendedCard}>
+          <View style={{ flex: 1 }}>
             <Text style={styles.recommendedKicker}>{t("NAJLEPSZY KOLEJNY KROK")}</Text>
-            <Text style={styles.recommendedTitle}>{t("5 pytań za 3 punkty")}</Text>
-            <Text style={styles.recommendedCopy}>{t("Zacznij od pytań o największej wadze na egzaminie.")}</Text>
+            <Text style={styles.recommendedTitle}>{recommendation.kind === 'topic' ? t('Ćwicz dział: {0}', [t(recommendation.topic.topic)]) : recommendation.kind === 'mistakes' ? t('Pytania z historycznymi błędami: {0}', [recommendation.count]) : t("5 pytań za 3 punkty")}</Text>
+            <Text style={styles.recommendedCopy}>{recommendation.kind === 'topic'
+              ? t('Ostatnie odpowiedzi: {0}/{1} poprawnych. Zacznij krótką powtórkę.', [recommendation.topic.correct, recommendation.topic.answered])
+              : recommendation.kind === 'mistakes' ? t('Wróć do pytań, w których zdarzyła się pomyłka. Historia pozostaje także po poprawieniu odpowiedzi.') : t("Zacznij od pytań o największej wadze na egzaminie.")}</Text>
           </View>
           <Text style={styles.chevron}>›</Text>
-        </Pressable>
-        <Pressable onPress={() => router.navigate("/study?filter=mistakes")} style={styles.card}>
-          <Text style={styles.cardTitle}>{t("Powtórz błędne odpowiedzi")}</Text>
+        </Pressable>}
+        {historicalMistakes > 0 && (activeExamId || recommendation.kind !== 'mistakes') && <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/study', params: { filter: 'mistakes', topic: undefined, sign: undefined, session: undefined, count: undefined } })} style={styles.card}>
+          <Text style={[styles.cardTitle, { flex: 1 }]}>{t('Pytania z historycznymi błędami: {0}', [historicalMistakes])}</Text>
           <Text style={styles.chevron}>›</Text>
-        </Pressable>
+        </Pressable>}
 
         <View style={styles.hero}>
           <Text style={styles.kicker}>{t("SYMULACJA EGZAMINU WORD")}</Text>
           <Text style={styles.heroTitle}>{t("32 pytania.")}{"\n"}{t("25 minut. 74 punkty.")}</Text>
           <Text style={styles.heroText}>{t("20 pytań podstawowych i 12 specjalistycznych. Próg zdania: 68 punktów.")}</Text>
-          <Pressable disabled={isStarting} onPress={() => { setStartError(null); setBriefing(true); }} style={[styles.gold, isStarting && styles.disabled]}>
-            <Text style={styles.goldText}>{isStarting ? t("Przygotowujemy…") : t("Rozpocznij egzamin próbny →")}</Text>
-          </Pressable>
+          <AppButton variant="gold" busy={isStarting} label={isStarting ? t("Przygotowujemy…") : t("Rozpocznij egzamin próbny →")} style={{ marginTop: 24 }} onPress={() => { setStartError(null); setBriefing(true); }} />
         </View>
 
         <View style={styles.readinessCard}>
@@ -214,9 +227,6 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   kicker: { color: colors.brandMuted, fontSize: 11, fontWeight: "700", letterSpacing: 1 },
   heroTitle: { color: colors.onPrimary, fontSize: 28, fontWeight: "700", lineHeight: 34, marginTop: 12 },
   heroText: { color: colors.brandMuted, fontSize: 14, lineHeight: 20, marginTop: 12 },
-  gold: { alignSelf: "stretch", minHeight: 56, justifyContent: 'center', backgroundColor: colors.accentGold, borderRadius: 16, marginTop: 24, padding: 16 },
-  goldText: { color: colors.onGold, fontWeight: "700" },
-  disabled: { opacity: 0.65 },
   readinessCard: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 18, flexDirection: "row", gap: 12, justifyContent: "space-between", marginTop: 16, padding: 20 },
   readinessCopyColumn: { flex: 1 },
   readinessTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: "700" },

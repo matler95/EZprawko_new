@@ -7,7 +7,7 @@ const React = require('react');
 const root = path.resolve(__dirname, '..');
 const primitive = (name) => name;
 const native = {
-  Pressable: primitive('Pressable'), Text: primitive('Text'), View: primitive('View'), ScrollView: primitive('ScrollView'), Modal: primitive('Modal'),
+  Pressable: primitive('Pressable'), Text: primitive('Text'), View: primitive('View'), ScrollView: primitive('ScrollView'), Modal: primitive('Modal'), ActivityIndicator: primitive('ActivityIndicator'),
   StyleSheet: { create: (s) => s }, Platform: { select: (values) => values.default }, useColorScheme: () => 'light',
 };
 const loaded = new Map();
@@ -27,6 +27,7 @@ function load(relative) {
     if (name === '@/global.css') return {};
     if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
     if (name === '@/context/app-theme-context') return { useAppTheme: () => ({ colors: load('src/constants/theme.ts').Colors.light }) };
+    if (name === '@/components/ui/app-controls') return load('src/components/ui/app-controls.tsx');
     if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
     throw new Error(`Unexpected dependency ${name}`);
   },result);
@@ -35,11 +36,13 @@ function load(relative) {
 }
 const nodes = (element) => {
   if (!React.isValidElement(element)) return [];
+  if (typeof element.type === 'function' && /^App(Button|Card|Status)$/.test(element.type.name)) return nodes(element.type(element.props));
   return [element,...React.Children.toArray(element.props.children).flatMap(nodes)];
 };
 const text = (element) => {
   if (typeof element === 'string' || typeof element === 'number') return String(element);
   if (!React.isValidElement(element)) return '';
+  if (typeof element.type === 'function' && /^App(Button|Card|Status)$/.test(element.type.name)) return text(element.type(element.props));
   return React.Children.toArray(element.props.children).map(text).join(' ');
 };
 const { BasicAnswerButtons, basicAnswerText } = load('src/components/basic-answer-buttons.tsx');
@@ -64,6 +67,13 @@ for (const [yes,no] of [['Tak','Nie'],['Yes','No'],['Ja','Nein'],['Так','Ні
   assert.equal(basicAnswerText(answers,'N'),no.toLocaleUpperCase());
 }
 const { ExamBriefing } = load('src/components/exam-briefing.tsx');
+const { AppButton, AppStatus } = load('src/components/ui/app-controls.tsx');
+const busyButton = AppButton({ label: 'Preparing', onPress() {}, busy: true });
+assert(busyButton.props.disabled && busyButton.props.accessibilityState.busy);
+assert.equal(busyButton.props.style({ pressed: false })[0].minHeight,56);
+assert.equal(text(busyButton).trim(),'Preparing');
+assert.equal(AppButton({ label:'Back',variant:'link',onPress(){} }).props.style({pressed:false})[0].minHeight,48);
+assert.equal(AppStatus({message:'Failure',tone:'error'}).props.accessibilityRole,'alert');
 let starts=0, cancels=0;
 const props = { visible: true, category: 'B', hasActiveExam: true, starting: false, error: null, onStart: () => starts++, onCancel: () => cancels++ };
 const briefing = ExamBriefing(props);

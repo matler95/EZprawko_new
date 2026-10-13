@@ -1,15 +1,15 @@
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useEventListener } from 'expo';
-import { useEffect, useState } from 'react';
+import { useEvent, useEventListener } from 'expo';
+import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import { deliveredMediaFilename, mediaConfig } from '@/config/media';
 import { cachedMediaUri } from '@/services/media-cache';
-import { MediaAccountRequiredError } from '@/domain/account';
-import { mediaErrorMessage } from '@/domain/media-error';
+import { mediaFailure, type MediaFailure } from '@/domain/media-error';
 import { MediaAccountCard } from '@/components/media-account-card';
 
 type QuestionMediaProps = {
@@ -31,11 +31,13 @@ function VideoMedia({
   examMode = false,
   onVideoEnd,
   onError,
+  onReadyChange,
 }: {
   uri: string;
   examMode?: boolean;
   onVideoEnd?: () => void;
   onError?: () => void;
+  onReadyChange: (ready: boolean) => void;
 }) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
@@ -44,7 +46,11 @@ function VideoMedia({
     if (examMode) instance.play();
   });
   useEventListener(player, 'playToEnd', () => onVideoEnd?.());
-  useEventListener(player, 'statusChange', ({ status }) => { if (status === 'error') onError?.(); });
+  const { status } = useEvent(player, 'statusChange', { status: player.status });
+  useEffect(() => {
+    onReadyChange(status === 'readyToPlay');
+    if (status === 'error') onError?.();
+  }, [status, onReadyChange, onError]);
 
   return (
     <VideoView
@@ -66,10 +72,19 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
     filename: string;
     uri?: string;
     error?: string;
-    requiresAccount?: boolean;
+    failure?: MediaFailure;
+    decoded?: boolean;
   }>();
+  const markReady = useCallback((decoded: boolean) => {
+    setMedia(current => current && current.filename === filename && current.uri && !current.error && current.decoded !== decoded
+      ? { ...current, decoded } : current);
+  }, [filename]);
+  const playbackError = useCallback(() => {
+    setMedia(current => current && current.filename === filename
+      ? { filename: current.filename, error: 'Nie udało się odtworzyć materiału. Spróbuj ponownie.' } : current);
+  }, [filename]);
   useEffect(() => {
-    onReadyChange?.(!filename || Boolean(media?.filename === filename && media.uri && !media.error));
+    onReadyChange?.(!filename || Boolean(media?.filename === filename && media.uri && media.decoded && !media.error));
   }, [filename, media, onReadyChange]);
 
   useEffect(() => {
@@ -79,14 +94,16 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
 
     cachedMediaUri(filename)
       .then((value) => {
-        if (active) setMedia({ filename, uri: value });
+        if (!value) throw new Error('Missing media');
+        if (active) setMedia({ filename, uri: value, decoded: false });
       })
       .catch((reason: unknown) => {
         if (active) {
+          const failure = mediaFailure(reason);
           setMedia({
             filename,
-            error: mediaErrorMessage(reason),
-            requiresAccount: reason instanceof MediaAccountRequiredError,
+            error: failure.message,
+            failure,
           });
         }
       });
@@ -119,7 +136,7 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
       <View style={styles.statusCard}>
         <Text style={styles.statusTitle}>{t("Materiał niedostępny")}</Text>
         <Text style={styles.statusCopy}>{t(error)}</Text>
-        {!examMode && media?.requiresAccount ? <>
+        {!examMode && media?.failure?.kind === 'account' ? <>
           <Pressable accessibilityRole="button" onPress={() => setAccountOpen(true)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={styles.statusTitle}>{t("Zaloguj się do materiałów")}</Text></Pressable>
           <Modal visible={accountOpen} animationType="slide" onRequestClose={() => setAccountOpen(false)}>
             <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -132,9 +149,11 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
             </SafeAreaView>
           </Modal>
         </> : null}
-        <Pressable onPress={() => { setMedia(undefined); setRetry((value) => value + 1); }} style={{ minHeight: 44, justifyContent: 'center' }}>
+        {!examMode && (media?.failure?.kind === 'access' || media?.failure?.kind === 'storage') ?
+          <Pressable accessibilityRole="button" onPress={() => router.navigate('/settings')} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={styles.statusTitle}>{t('Przejdź do konta i multimediów')}</Text></Pressable> : null}
+        {media?.failure?.retryable !== false && <Pressable accessibilityRole="button" onPress={() => { setMedia(undefined); setRetry((value) => value + 1); }} style={{ minHeight: 48, justifyContent: 'center' }}>
           <Text style={styles.statusTitle}>{t("Spróbuj ponownie")}</Text>
-        </Pressable>
+        </Pressable>}
       </View>
     );
   }
@@ -148,9 +167,9 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
     );
   }
 
-  if (isImage) return <Image accessibilityLabel={t("Materiał do pytania")} resizeMode="contain" source={{ uri }} style={styles.image} onError={() => setMedia({ filename, error: t('Nie udało się odtworzyć materiału. Spróbuj ponownie.') })} />;
+  if (isImage) return <Image key={`${filename}:${retry}`} accessibilityLabel={t("Materiał do pytania")} resizeMode="contain" source={{ uri }} style={styles.image} onLoad={() => markReady(true)} onError={playbackError} />;
 
-  if (canPlay) return <VideoMedia examMode={examMode} onVideoEnd={onVideoEnd} uri={uri} onError={() => setMedia({ filename, error: t('Nie udało się odtworzyć materiału. Spróbuj ponownie.') })} />;
+  if (canPlay) return <VideoMedia key={`${filename}:${retry}`} examMode={examMode} onVideoEnd={onVideoEnd} uri={uri} onError={playbackError} onReadyChange={markReady} />;
 
   return (
     <View style={styles.statusCard}>

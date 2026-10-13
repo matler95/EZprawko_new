@@ -1,5 +1,66 @@
 # Private device and release QA checklist
 
+## New improvement plan — F0 / F1.1 (2026-10-13)
+
+- [ ] F5 onboarding/settings: both themes, PL/EN/DE/UK and large font; shared buttons
+  wrap and onboarding stays centered on larger devices without restricting scrolling.
+- [ ] F5 onboarding: language/category radios keep selected state; busy save blocks
+  duplicate/secondary actions; Back, draft reopen and final Study destination still work.
+- [ ] F5 Settings: save/read errors and successful save are announced; danger cache
+  removal remains distinct and confirmed, disabled during download and reversible by
+  cancelling the confirmation. Test with actual keyboard and screen reader.
+
+- [ ] F5.1: shared primary/secondary/link/gold controls wrap long translated labels
+  at largest font; spinner does not hide the action label, status announcements are usable.
+- [ ] F5.1: exam preparation Start is blocked while busy, Cancel works until commit;
+  Study summary and preparation preserve prior navigation/retry/answer behavior.
+- [ ] F5.1: inspect migrated cards/buttons in both themes on Android/iPhone; minimum
+  targets are 56px for main actions and 48px for links, without fixed container height.
+
+- [ ] F4: Start recommends a weak topic with >=5 tested questions, historical mistakes
+  when sample is smaller, or five three-point questions for an empty record. An active
+  exam's resume remains primary; no readiness/pass guarantee is implied.
+- [ ] F4: Progress has coverage, separate mastery, topic sample size/latest score and
+  a topic practice action. Samples below five show insufficient data, not a diagnosis.
+- [ ] F4: category change cannot use other-category exams in topic results; shared
+  practice questions apply to their bank categories. Rapid returns cannot show an
+  obsolete refresh. Topic/review routes clear unrelated sign/session filters.
+- [ ] F4: history mistake labels are clear after correction; zero-count history action
+  is hidden. Long topic labels/large fonts wrap on both platforms.
+
+- [ ] F3.6: summary -> next batch retains category/language/filter/topic/sign/search;
+  large pool avoids previous source batch, small pool reports repeated questions.
+- [ ] F3.6: read failure keeps summary and answers; double tap starts one batch.
+  Blur/reset during read cannot start late; media preparation uses the new exact pool.
+- [ ] F3.6: completed-exam mistake replay offers its own replay, no general next-batch
+  action; continuation never broadens scope just to fill the batch.
+
+- [ ] F3 menu: Start and actual batch count are easy to find; topics/filters/search
+  expand with readable accessible state on small phones and large fonts.
+- [ ] F3 scope: collapsed panels never hide active search/topic/sign/exam constraints;
+  Clear returns to the current category. Topic/generic mistake entry has no old scope.
+- [ ] F3 navigation: unanswered Skip/Finish is distinct from answered Next/Summary;
+  skip does not increment practice stats and remains unanswered in the summary.
+
+- [ ] F2.4: explanation read failure -> inline Retry in Study and exam review;
+  selected answer, current position, media and statistics stay unchanged.
+- [ ] F2.4: rapid retry/change question/close review/reset cannot display an old
+  explanation; absent reviewed content shows the missing-content message, not Retry.
+
+- [ ] F1.2: select a media-bearing batch, observe exact count/progress, fail delivery,
+  log in and retry; the question IDs and starting position remain unchanged.
+- [ ] F1.2: cancel during delivery, rapidly switch tabs and return, change category,
+  language or reset data; obsolete preparation never opens a question or writes answers.
+- [ ] F1.2: ready batch -> Start -> actual image/video decode; cold and partially
+  cached sessions are prepared without claiming decoder success/full offline.
+- [ ] F1.2: denied access/storage -> Settings -> return resumes the same batch.
+
+- [ ] Complete physical baseline measurements and screenshots described in docs/UX_BASELINE.md.
+- [ ] Image/video answers unlock only after successful decoding; loading, buffering and errors remain blocked.
+- [ ] Missing URI has recovery; account-required opens login, access denial/storage error opens Settings rather than repeated download.
+- [ ] Retry, rapid question changes and leaving the screen do not apply obsolete media results.
+- [ ] Check actual video playback and exam timing on Android and iPhone after readiness changes.
+
 Run this checklist on a physical Android device and, before public release, an iPhone. Record the app version, device model, OS version, and outcome for every failed item.
 
 ## UX audit acceptance — 2026-10-13 (physical checks still open)

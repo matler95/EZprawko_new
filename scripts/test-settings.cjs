@@ -22,14 +22,15 @@ function load(file) {
     if (name === '@/context/target-category-context') return { useTargetCategory: () => ({ category, changing: false, error: null, setCategory: async value => { category = value; return true; } }) };
     if (name === '@/database/translations') return { questionLanguages: [{ code: 'pl', label: 'Polski' }, { code: 'en', label: 'English' }], translationCoverage: { en: 123 }, selectedQuestionLanguage: async () => { if (languageReadError) throw Error('read'); return language; }, setQuestionLanguage: async (_db, value) => { writes++; if (saveDelay) await saveDelay; if (languageSaveError) throw Error('write'); language = value; } };
     if (name === '@/services/media-cache') return { cacheSizeBytes: async () => { if (cacheReadError) throw Error('read'); return cacheBytes; }, clearMediaCache: async () => { clears++; if (clearError) throw Error('clear'); cacheBytes = 0; } };
+    if (name === '@/components/ui/app-controls') return load('src/components/ui/app-controls.tsx');
     if (name.startsWith('@/components/')) { const names = { 'media-download-card': 'MediaDownloadCard', 'media-account-card': 'MediaAccountCard', 'reminder-card': 'ReminderCard', 'user-data-card': 'UserDataCard', 'app-about-card': 'AppAboutCard' }; return { [names[name.split('/').at(-1)]]: name }; }
     if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
     throw Error(name);
   }, exports);
   return exports;
 }
-function nodes(t) { if (!t || typeof t !== 'object') return []; return [t, ...[t.props?.children].flat(Infinity).flatMap(nodes)]; }
-function text(t) { if (typeof t === 'string' || typeof t === 'number') return String(t); if (!t || typeof t !== 'object') return ''; return [t.props?.children].flat(Infinity).map(text).join(' '); }
+function nodes(t) { if (!t || typeof t !== 'object') return []; if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return nodes(t.type(t.props)); return [t, ...[t.props?.children].flat(Infinity).flatMap(nodes)]; }
+function text(t) { if (typeof t === 'string' || typeof t === 'number') return String(t); if (!t || typeof t !== 'object') return ''; if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return text(t.type(t.props)); return [t.props?.children].flat(Infinity).map(text).join(' '); }
 function button(tree, label) { return nodes(tree).findLast(n => n.type === 'Pressable' && text(n).trim() === label); }
 function render(Screen) { si = ri = 0; return Screen(); }
 (async () => {

@@ -1,0 +1,48 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
+const root=path.resolve(__dirname,'..'),cache=new Map(),db={};
+let states=[],refs=[],si=0,ri=0,focus,category='B',active=null,insights={topics:[],historicalMistakes:0},routes=[];
+function load(file){if(cache.has(file))return cache.get(file);const exports={};
+  new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,file),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText)(name=>{
+    if(name==='react')return {useCallback:fn=>fn,useRef:value=>{const i=ri++;return refs[i]??(refs[i]={current:value});},useState:value=>{const i=si++;if(!(i in states))states[i]=value;return [states[i],next=>states[i]=typeof next==='function'?next(states[i]):next];}};
+    if(name==='react/jsx-runtime')return require(name);
+    if(name==='react-native')return {Platform:{},StyleSheet:{create:value=>value},AppState:{currentState:'active',addEventListener:()=>({remove(){}})},Alert:{alert(){}},...Object.fromEntries(['Pressable','Text','View','ScrollView'].map(value=>[value,value]))};
+    if(name==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
+    if(name==='expo-router')return {useFocusEffect:fn=>focus=fn,router:{navigate:route=>routes.push(route),push:route=>routes.push(route)}};
+    if(name==='expo-sqlite')return {useSQLiteContext:()=>db};
+    if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:{}})};
+    if(name==='@/context/target-category-context')return {useTargetCategory:()=>({category,acceptPersistedCategory(){}})};
+    if(name==='@/hooks/use-translation')return {useTranslation:()=>({language:'pl',t:(value,args=[])=>value.replace(/\{(\d+)\}/g,(_,i)=>args[i])})};
+    if(name==='@/database/learning-insights')return {learningInsights:async()=>insights};
+    if(name==='@/database/bank-progress')return {bankProgress:async()=>({total:20,answered:6})};
+    if(name==='@/database/study-session')return {studyMastery:async()=>({total:20,mastered:1})};
+    if(name==='@/database/repository')return {hasCompletedOnboarding:async()=>true,examReadiness:async()=>null,resumeActiveExam:async()=>active,recentExams:async()=>[]};
+    if(name==='@/services/prepared-exam')return {};
+    if(name==='@/domain/media-error')return {};
+    if(name.startsWith('@/components/'))return new Proxy({},{get:(_target,key)=>key});
+    if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);
+    throw Error(name);
+  },exports);cache.set(file,exports);return exports;}
+const nodes=tree=>tree&&typeof tree==='object'?[tree,...[tree.props?.children].flat(Infinity).flatMap(nodes)]:[];
+const text=tree=>typeof tree==='string'||typeof tree==='number'?String(tree):tree&&typeof tree==='object'?[tree.props?.children].flat(Infinity).map(text).join(' '):'';
+const button=(tree,label)=>{const found=nodes(tree).find(node=>node.type==='Pressable'&&text(node).includes(label));assert(found,label);return found;};
+const tick=()=>new Promise(setImmediate);
+const reset=()=>{states=[];refs=[];routes=[];};
+const render=component=>{si=ri=0;return component();};
+(async()=>{
+  const Dashboard=load('src/components/dashboard-screen.tsx').default;
+  reset();render(Dashboard);let cleanup=focus();await tick();let tree=render(Dashboard);
+  button(tree,'5 pytań za 3 punkty').props.onPress();assert.equal(routes.at(-1).params.filter,'three');assert(!text(tree).includes('Pytania z historycznymi błędami'));cleanup();
+  insights={topics:[{topic:'Znaki i sygnały drogowe',total:20,answered:6,correct:2}],historicalMistakes:3};
+  reset();render(Dashboard);cleanup=focus();await tick();tree=render(Dashboard);
+  button(tree,'Ćwicz dział').props.onPress();assert.equal(routes.at(-1).params.topic,'Znaki i sygnały drogowe');assert.equal(routes.at(-1).params.start,'1');assert.equal(routes.at(-1).params.session,undefined);cleanup();
+  insights={topics:[],historicalMistakes:3};reset();render(Dashboard);cleanup=focus();await tick();tree=render(Dashboard);
+  button(tree,'Pytania z historycznymi błędami').props.onPress();assert.equal(routes.at(-1).params.filter,'mistakes');assert.equal(routes.at(-1).params.topic,undefined);cleanup();
+  active={id:'active-fixture'};reset();render(Dashboard);cleanup=focus();await tick();tree=render(Dashboard);
+  assert(!text(tree).includes('NAJLEPSZY KOLEJNY KROK'));await button(tree,'Wznów').props.onPress();assert.equal(routes.at(-1).params.id,'active-fixture');cleanup();active=null;
+  const Progress=load('src/app/progress.tsx').default;
+  insights={topics:[{topic:'Znaki i sygnały drogowe',total:20,answered:6,correct:2},{topic:'Pozostałe zagadnienia',total:10,answered:1,correct:0}],historicalMistakes:0};
+  reset();render(Progress);cleanup=focus();await tick();tree=render(Progress);
+  assert.match(text(tree),/Za mało danych/);assert.match(text(tree),/1 \/ 20/);assert.match(text(tree),/33%/);
+  button(tree,'Ćwicz ten dział').props.onPress();assert.equal(routes.at(-1).params.topic,'Znaki i sygnały drogowe');assert.equal(routes.at(-1).params.filter,'all');assert.equal(routes.at(-1).params.session,undefined);cleanup();
+  console.log('Learning guidance UI: new/weak-topic/history/exam-first recommendations, clean study routes, mastery and insufficient-sample topic actions passed.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -27,6 +27,8 @@ const pairs = [
   ['onPrimary', 'dangerSolid'], ['onGold', 'accentGold'],
   ['warning', 'warningSurface'], ['error', 'errorSurface'],
   ['success', 'successSurface'], ['brandMuted', 'brandSurface'],
+  ['textPrimary', 'disabledSurface'], ['textSecondary', 'background'],
+  ['error', 'background'], ['success', 'background'], ['warning', 'background'],
 ];
 for (const [mode, colors] of Object.entries(themeModule.exports.Colors)) {
   for (const [foreground, background] of pairs) {

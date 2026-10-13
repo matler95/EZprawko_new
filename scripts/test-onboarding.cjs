@@ -14,20 +14,21 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};c
     if(name==='react')return {...React,useCallback:f=>f,useContext:()=>({setIsTabBarHidden:v=>hidden=v}),useRef:v=>{const i=ri++;return refs[i]??(refs[i]={current:v});},useState:v=>{const i=si++;if(!(i in states))states[i]=v;return [states[i],x=>states[i]=typeof x==='function'?x(states[i]):x];}};
     if(name==='react/jsx-runtime')return require(name);
     if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
-    if(name==='react-native')return {Pressable:'Pressable',ScrollView:'ScrollView',Text:'Text',View:'View',StyleSheet:{create:s=>s},Platform:{select:s=>s.default}};
+    if(name==='react-native')return {Pressable:'Pressable',ScrollView:'ScrollView',Text:'Text',View:'View',ActivityIndicator:'ActivityIndicator',StyleSheet:{create:s=>s},Platform:{select:s=>s.default}};
     if(name==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
     if(name==='expo-router')return {useFocusEffect:f=>focus=f};
     if(name==='expo-sqlite')return {useSQLiteContext:()=>db};
     if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors[theme]})};
     if(name==='@/context/tab-bar-context')return {TabBarContext:{}};
     if(name==='@/components/skeleton')return {LoadingError:'LoadingError',LoadingSkeleton:'LoadingSkeleton'};
+    if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
     if(name==='@/global.css')return {};
     if(name.startsWith('@/assets/'))return require(path.join(root,name.slice(2)));
     if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);throw Error(name);
   },exports);return exports;}
-function nodes(t){if(!t||typeof t!=='object')return [];const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
-function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
-function button(tree,label){const translated=load('src/domain/ui-copy.ts').t(label);const node=nodes(tree).find(n=>n.type==='Pressable'&&text(n)===translated);assert(node,`Missing ${translated}: ${text(tree)}`);return node;}
+function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return nodes(t.type(t.props));const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
+function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
+function button(tree,label){const translated=load('src/domain/ui-copy.ts').t(label);const node=nodes(tree).find(n=>n.type==='Pressable'&&text(n).trim()===translated);assert(node,`Missing ${translated}: ${text(tree)}`);return node;}
 const tick=()=>new Promise(setImmediate),setting=key=>native.prepare('SELECT value FROM settings WHERE key=?').get(key)?.value;
 (async()=>{
   const r=load('src/database/onboarding.ts'),categories=load('src/domain/driving-categories.ts').drivingCategories;

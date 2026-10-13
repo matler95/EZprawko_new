@@ -11,6 +11,7 @@ import { questionLanguages } from '@/database/translations';
 import { setUiLanguage } from '@/domain/ui-language';
 import { emptyOnboarding, readOnboardingDraft, saveOnboardingDraft, finishOnboarding, type OnboardingDraft } from '@/database/onboarding';
 import { LoadingError, LoadingSkeleton } from '@/components/skeleton';
+import { AppButton, AppCard, AppStatus } from '@/components/ui/app-controls';
 
 export type OnboardingDestination = 'study' | 'dashboard' | 'settings';
 export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingCategory, destination: OnboardingDestination) => void }) {
@@ -61,13 +62,11 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
     finally { locked.current = false; if (focused.current) setBusy(false); }
   };
   const s = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background }, content: { padding: 24, gap: 16, flexGrow: 1 },
+    safe: { flex: 1, backgroundColor: colors.background }, content: { padding: 24, gap: 16, flexGrow: 1, maxWidth: 600, width: '100%', alignSelf: 'center' },
     title: { fontSize: 28, fontWeight: '700', color: colors.textPrimary }, copy: { fontSize: 16, lineHeight: 24, color: colors.textSecondary },
-    heading: { fontSize: 18, fontWeight: '700', color: colors.textPrimary }, card: { padding: 24, borderRadius: 20, gap: 8, backgroundColor: colors.surface },
+    heading: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, choice: { minHeight: 64, minWidth: 72, padding: 16, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primarySurface },
     chosen: { backgroundColor: colors.primary }, choiceText: { fontSize: 16, fontWeight: '700', color: colors.primaryText }, chosenText: { color: colors.onPrimary },
-    cta: { minHeight: 56, padding: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary }, ctaText: { color: colors.onPrimary, fontSize: 16, fontWeight: '700', textAlign: 'center' },
-    secondary: { minHeight: 48, justifyContent: 'center', alignItems: 'center' }, link: { color: colors.primaryText, fontSize: 16, fontWeight: '700', textAlign: 'center' }, disabled: { opacity: 0.5 }, error: { color: colors.error, fontSize: 16, lineHeight: 24 },
   });
   return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
     <Text style={s.copy}>{t("EZprawko · Krok")} {draft.step + 1} {t("z 4")}</Text>
@@ -82,21 +81,21 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
         <Text style={s.copy}>{t('Ten język będzie używany w aplikacji i domyślnie w pytaniach. Język pytań możesz później ustawić osobno.')}</Text>
       </> : draft.step === 2 ? <>
         <Text accessibilityRole="header" style={s.title}>{t("Ucz się, potem sprawdź wynik")}</Text>
-        <View style={s.card}><Text style={s.heading}>{t("Nauka — bez presji czasu")}</Text><Text style={s.copy}>{t("Po odpowiedzi zobaczysz poprawny wybór i dostępne wyjaśnienie. Wracaj do pytań i powtarzaj błędy.")}</Text></View>
-        <View style={s.card}><Text style={s.heading}>{t("Egzamin próbny — jak w WORD")}</Text><Text style={s.copy}>{t("32 pytania, 25 minut, próg 68/74. Nie wracasz do poprzednich pytań; wynik i odpowiedzi zobaczysz na końcu.")}</Text></View>
+        <AppCard><Text style={s.heading}>{t("Nauka — bez presji czasu")}</Text><Text style={s.copy}>{t("Po odpowiedzi zobaczysz poprawny wybór i dostępne wyjaśnienie. Wracaj do pytań i powtarzaj błędy.")}</Text></AppCard>
+        <AppCard><Text style={s.heading}>{t("Egzamin próbny — jak w WORD")}</Text><Text style={s.copy}>{t("32 pytania, 25 minut, próg 68/74. Nie wracasz do poprzednich pytań; wynik i odpowiedzi zobaczysz na końcu.")}</Text></AppCard>
         <Text style={s.copy}>{t("Zdjęcia i filmy pobierzesz po zalogowaniu w Ustawieniach. Już zapisane materiały mogą działać offline, dopóki pozostają w cache.")}</Text>
         <Text style={s.copy}>{t("Postępy zapisują się tylko na tym urządzeniu. Logowanie nie tworzy kopii ani synchronizacji w chmurze.")}</Text>
       </> : <>
         <Text accessibilityRole="header" style={s.title}>{t("Zacznij od pięciu pytań")}</Text>
-        <View style={s.card}><Text style={s.heading}>{categoryLabel(draft.category ?? '')}</Text><Text style={s.copy}>{t("Pytania:")} {questionLanguages.find(value => value.code === draft.language)?.label}{t(". Krótka sesja pytań za 3 punkty — bez zegara.")}</Text></View>
+        <AppCard><Text style={s.heading}>{categoryLabel(draft.category ?? '')}</Text><Text style={s.copy}>{t("Pytania:")} {questionLanguages.find(value => value.code === draft.language)?.label}{t(". Krótka sesja pytań za 3 punkty — bez zegara.")}</Text></AppCard>
         <Text style={s.copy}>{t("Przypomnienia są opcjonalne. Możesz ustawić godzinę w Ustawieniach i dopiero wtedy zdecydować o zgodzie na powiadomienia.")}</Text>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void finish('study')} style={[s.cta, busy && s.disabled]}><Text style={s.ctaText}>{busy ? t("Zapisywanie…") : t("Zacznij pierwsze 5 pytań")}</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void finish('dashboard')} style={s.secondary}><Text style={s.link}>{t("Na razie przejdź do panelu")}</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void finish('settings')} style={s.secondary}><Text style={s.link}>{t("Ustaw konto lub przypomnienie")}</Text></Pressable>
+        <AppButton busy={busy} label={busy ? t("Zapisywanie…") : t("Zacznij pierwsze 5 pytań")} onPress={() => void finish('study')} />
+        <AppButton variant="link" disabled={busy} label={t("Na razie przejdź do panelu")} onPress={() => void finish('dashboard')} />
+        <AppButton variant="link" disabled={busy} label={t("Ustaw konto lub przypomnienie")} onPress={() => void finish('settings')} />
       </>}
-      {error ? <Text accessibilityRole="alert" style={s.error}>{t(error)}</Text> : null}
-      {draft.step < 3 ? <Pressable accessibilityRole="button" disabled={busy || (draft.step === 1 && !draft.category)} onPress={() => void changeStep(draft.step + 1)} style={[s.cta, (busy || (draft.step === 1 && !draft.category)) && s.disabled]}><Text style={s.ctaText}>{busy ? t("Zapisywanie…") : t("Dalej")}</Text></Pressable> : null}
-      {draft.step > 0 ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void changeStep(draft.step - 1)} style={s.secondary}><Text style={s.link}>{t("Wstecz")}</Text></Pressable> : null}
+      {error ? <AppStatus tone="error" message={t(error)} /> : null}
+      {draft.step < 3 ? <AppButton busy={busy} disabled={draft.step === 1 && !draft.category} label={busy ? t("Zapisywanie…") : t("Dalej")} onPress={() => void changeStep(draft.step + 1)} /> : null}
+      {draft.step > 0 ? <AppButton variant="link" disabled={busy} label={t("Wstecz")} onPress={() => void changeStep(draft.step - 1)} /> : null}
     </>}
   </ScrollView></SafeAreaView>;
 }

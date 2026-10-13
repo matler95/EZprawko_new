@@ -15,3 +15,19 @@ export function mediaErrorMessage(reason: unknown) {
   }
   return 'Nie udało się pobrać materiału. Sprawdź połączenie i spróbuj ponownie.';
 }
+
+export type MediaFailure = {
+  kind: 'account' | 'access' | 'storage' | 'unavailable' | 'download';
+  message: string;
+  retryable: boolean;
+};
+
+/** Unknown transport errors do not prove the device is offline. */
+export function mediaFailure(reason: unknown): MediaFailure {
+  const message = mediaErrorMessage(reason);
+  if (reason instanceof MediaAccountRequiredError) return { kind: 'account', message, retryable: false };
+  if (message === 'Dostęp do materiału nie został przyznany.') return { kind: 'access', message, retryable: false };
+  if (message === 'Brak miejsca na przygotowanie materiałów. Usuń pobrane materiały i spróbuj ponownie.') return { kind: 'storage', message, retryable: false };
+  if (message === 'Zdjęcie lub film jest teraz niedostępny. Spróbuj później.') return { kind: 'unavailable', message, retryable: true };
+  return { kind: 'download', message, retryable: true };
+}

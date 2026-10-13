@@ -30,13 +30,30 @@ new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(ro
     if(uiFailure)throw Error('failed');if(uiCancel||!proceed())return {completed:1,total:2};return {completed:2,total:2};
   }};
   if(name==='@/global.css')return {};
+  if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
   if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);throw Error(name);
 },exports);return exports;}
-function nodes(t){if(!t||typeof t!=='object')return [];const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
-function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
+function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return nodes(t.type(t.props));const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
+function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
 function button(t,label){return nodes(t).find(n=>n.type==='Pressable'&&text(n).includes(label));}
 (async()=>{
   const media=load('src/services/media-cache.ts'),preload=load('src/services/media-preload.ts');
+  const {createStudyPreparation}=load('src/services/study-preparation.ts');
+  files.clear();failName='two.mp4';
+  const studyPool=[{id:1,media_filename:'one.jpg'},{id:2,media_filename:'two.wmv'}];
+  const study=createStudyPreparation(studyPool);studyPool[0].media_filename='changed.jpg';
+  await assert.rejects(()=>study.run(()=>{}));assert(files.has(dir+'one.jpg'));
+  failName=null;assert.equal(await study.run(()=>{}),true);assert(!files.has(dir+'changed.jpg'),'retry uses the frozen study pool');
+  files.clear();let studyRelease;delay=new Promise(resolve=>studyRelease=resolve);
+  const cancelledStudy=createStudyPreparation(studyPool);let studyEvents=0;
+  const studyRun=cancelledStudy.run(()=>studyEvents++);await new Promise(setImmediate);
+  assert.equal(await cancelledStudy.run(()=>{}),false,'double start cannot launch another preparation');
+  cancelledStudy.cancel();const countBeforeCancel=studyEvents;studyRelease();assert.equal(await studyRun,false);
+  assert.equal(studyEvents,countBeforeCancel,'cancel suppresses delayed progress');delay=null;
+  files.clear();const obsoleteStudy=createStudyPreparation(studyPool);
+  await load('src/domain/data-maintenance.ts').withDataMaintenance(async()=>{});
+  assert.equal(await obsoleteStudy.run(()=>{}),false,'reset invalidates a selected study batch');
+  files.clear();downloadCalls=0;grantCalls=0;
   const pool=[{mediaFilename:'one.jpg'},{mediaFilename:'one.jpg'},{mediaFilename:'two.wmv'},{mediaFilename:null}];
   const events=[];await preload.prepareExamMedia(pool,p=>events.push(p));assert.equal(downloadCalls,2);assert.equal(events[0].completed,0);assert.equal(events.at(-1).completed,2);
   assert.equal(await media.cacheSizeBytes(),246);readFailure=true;await assert.rejects(()=>media.cacheSizeBytes(),/FS unavailable/);readFailure=false;

@@ -17,6 +17,7 @@ import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { questionLanguages, selectedQuestionLanguage, setQuestionLanguage, translationCoverage, type QuestionLanguage } from "@/database/translations";
 import { saveUiLanguage } from '@/database/ui-language';
 import { useUiLanguage } from '@/hooks/use-ui-language';
+import { AppButton, AppCard, AppStatus } from '@/components/ui/app-controls';
 
 export default function SettingsScreen() {
   const { t, language: interfaceLanguage } = useTranslation();
@@ -129,7 +130,7 @@ export default function SettingsScreen() {
         <Text accessibilityRole="header" style={s.title}>{t("Ustawienia")}</Text>
         <Text style={s.sub}>{t("Dostosuj naukę i korzystanie z aplikacji na tym urządzeniu.")}</Text>
         <Text accessibilityRole="header" style={s.heading}>{t("Nauka")}</Text>
-        <View style={s.card}>
+        <AppCard>
           <Text style={s.label}>{t('Język aplikacji')}</Text>
           <View style={s.options}>{questionLanguages.map(item => <Pressable key={item.code} disabled={disabled}
             accessibilityRole="radio" accessibilityLabel={`${t('Język aplikacji')}: ${item.label}`} accessibilityState={{ checked: locale === item.code, disabled }}
@@ -146,9 +147,9 @@ export default function SettingsScreen() {
             <Text style={category === item ? s.activeText : s.optionText}>{item}</Text>
           </Pressable>)}</View>
           <Text style={s.sub}>{categoryLabel(category)}{t(". Jedna kategoria dla Nauki i nowych egzaminów. PT to pozwolenie na tramwaj. Rozpoczęty egzamin zachowuje swoją kategorię.")}</Text>
-          {categoryError && <Text accessibilityRole="alert" style={s.error}>{t(categoryError)}</Text>}
+          {categoryError && <AppStatus tone="error" message={t(categoryError)} />}
           <Text style={s.label}>{t("Język pytań")}</Text>
-          {languageError ? <><Text accessibilityRole="alert" style={s.error}>{t(languageError)}</Text><Pressable accessibilityRole="button" style={s.button} onPress={() => void refreshLanguage()}><Text style={s.action}>{t("Ponów odczyt języka")}</Text></Pressable></> : language === null ? <Text style={s.sub}>{t("Odczytywanie języka…")}</Text> : <>
+          {languageError ? <><AppStatus tone="error" message={t(languageError)} /><AppButton variant="link" label={t("Ponów odczyt języka")} onPress={() => void refreshLanguage()} /></> : language === null ? <AppStatus message={t("Odczytywanie języka…")} /> : <>
             <View style={s.options}>{questionLanguages.map(item => <Pressable key={item.code} disabled={disabled}
               accessibilityRole="radio" accessibilityState={{ checked: language === item.code, disabled }}
               onPress={() => void changeLanguage(item.code)} style={[s.option, language === item.code && s.active, disabled && s.disabled]}>
@@ -156,34 +157,32 @@ export default function SettingsScreen() {
             </Pressable>)}</View>
             <Text style={s.sub}>{language === "pl" ? t("Pełny oficjalny katalog po polsku.") : t("Oficjalne tłumaczenia: {0}/3518 pytań. Brakujące pokażemy po polsku z oznaczeniem.", [translationCoverage[language]])} {t("Język rozpoczętego egzaminu pozostaje bez zmian.")}</Text>
           </>}
-        </View>
+        </AppCard>
         <Text accessibilityRole="header" style={s.heading}>{t("Wygląd")}</Text>
-        <View style={s.card}>
+        <AppCard>
           <View style={s.options}>{(["system", "light", "dark"] as const).map(item => <Pressable key={item} disabled={disabled}
             accessibilityRole="radio" accessibilityState={{ checked: preference === item, disabled }}
             onPress={() => void save("Wygląd", () => setPreference(item))} style={[s.option, preference === item && s.active, disabled && s.disabled]}>
             <Text style={preference === item ? s.activeText : s.optionText}>{item === "system" ? t("Systemowy") : item === "light" ? t("Jasny") : t("Ciemny")}</Text>
           </Pressable>)}</View>
           <Text style={s.sub}>{t("Systemowy dopasowuje wygląd do ustawień telefonu.")}</Text>
-        </View>
-        {saving && <Text accessibilityLiveRegion="polite" style={s.sub}>{t("Zapisywanie:")} {t(saving).toLowerCase()}…</Text>}
-        {saveStatus && <Text accessibilityLiveRegion="polite" style={s.sub}>{t('{0}: zapisano.', [t(saveStatus)])}</Text>}
-        {saveError && <Text accessibilityRole="alert" style={s.error}>{t('Nie udało się zapisać: {0}. Wybierz opcję ponownie, aby spróbować jeszcze raz.', [t(saveError).toLowerCase()])}</Text>}
+        </AppCard>
+        {saving && <AppStatus message={`${t("Zapisywanie:")} ${t(saving).toLowerCase()}…`} />}
+        {saveStatus && <AppStatus tone="success" message={t('{0}: zapisano.', [t(saveStatus)])} />}
+        {saveError && <AppStatus tone="error" message={t('Nie udało się zapisać: {0}. Wybierz opcję ponownie, aby spróbować jeszcze raz.', [t(saveError).toLowerCase()])} />}
         <Text accessibilityRole="header" style={s.heading}>{t("Konto")}</Text>
         <MediaAccountCard />
         <Text accessibilityRole="header" style={s.heading}>{t("Multimedia")}</Text>
         <MediaDownloadCard disabled={clearing} canStart={() => !clearLock.current} onBusyChange={downloadChanged} />
-        <View style={s.card}>
+        <AppCard>
           <Text style={s.label}>{t("Pobrane materiały")}</Text>
           <Text style={s.sub}>{cacheReading ? t("Sprawdzanie zajętości…") : cacheError ? t("Zajętość aktualnie niedostępna.") : cache === null ? t("Zajętość nieznana.") : t("{0} MB · limit 1 GB", [(cache / 1024 / 1024).toFixed(1)])}</Text>
           <Text style={s.sub}>{t("Usunięcie zwolni miejsce. Do kolejnego pobrania zdjęć i filmów będzie potrzebne połączenie z internetem.")}</Text>
-          {cacheError && <Text accessibilityRole="alert" style={s.error}>{t(cacheError)}</Text>}
-          <Pressable accessibilityRole="button" disabled={clearing} accessibilityState={{ disabled: clearing }} style={s.button} onPress={() => void refreshCache()}><Text style={s.action}>{t("Odśwież zajętość")}</Text></Pressable>
-          <Pressable accessibilityRole="button" disabled={clearing || downloading} accessibilityState={{ disabled: clearing || downloading, busy: clearing }} style={[s.button, (clearing || downloading) && s.disabled]} onPress={confirmClear}>
-            <Text style={s.danger}>{clearing ? t("Czyszczenie materiałów…") : t("Usuń pobrane materiały")}</Text>
-          </Pressable>
+          {cacheError && <AppStatus tone="error" message={t(cacheError)} />}
+          <AppButton variant="link" disabled={clearing} label={t("Odśwież zajętość")} onPress={() => void refreshCache()} />
+          <AppButton variant="danger" disabled={downloading} busy={clearing} label={clearing ? t("Czyszczenie materiałów…") : t("Usuń pobrane materiały")} onPress={confirmClear} />
           {downloading && <Text style={s.sub}>{t("Czyszczenie będzie dostępne po zakończeniu lub przerwaniu pobierania.")}</Text>}
-        </View>
+        </AppCard>
         <Text accessibilityRole="header" style={s.heading}>{t("Przypomnienia")}</Text>
         <ReminderCard />
         <Text accessibilityRole="header" style={s.heading}>{t("Dane")}</Text>
@@ -201,7 +200,6 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
   heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 16 },
   label: { color: colors.textPrimary, fontSize: 16, fontWeight: "700" },
-  card: { backgroundColor: colors.surface, padding: 24, borderRadius: 24, gap: 12 },
   options: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   option: { backgroundColor: colors.primarySurface, padding: 12, borderRadius: 12, minHeight: 48, minWidth: 48, justifyContent: "center", alignItems: "center" },
   active: { backgroundColor: colors.primary },
@@ -209,8 +207,4 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   optionText: { color: colors.primaryText, fontSize: 16, fontWeight: "700" },
   activeText: { color: colors.onPrimary, fontSize: 16, fontWeight: "700" },
   sub: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
-  error: { color: colors.error, fontSize: 14, lineHeight: 20 },
-  button: { minHeight: 48, paddingVertical: 12, justifyContent: "center" },
-  action: { color: colors.primaryText, fontSize: 16, fontWeight: "700" },
-  danger: { color: colors.error, fontSize: 16, fontWeight: "700" },
 });

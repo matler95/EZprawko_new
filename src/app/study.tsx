@@ -1,6 +1,6 @@
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useSQLiteContext } from "expo-sqlite";
@@ -15,25 +15,19 @@ import {
 import { QuestionMedia } from "@/components/question-media";
 import { BasicAnswerButtons, basicAnswerText } from "@/components/basic-answer-buttons";
 import { questionContent, selectedQuestionLanguage, type QuestionLanguage } from "@/database/translations";
-import { getQuestionExplanation, type QuestionExplanation } from "@/database/explanations";
-import { isStudyFilter, studyFilterSql, type StudyFilter } from "@/database/study-filters";
-import { ExplanationCard } from "@/components/explanation-card";
+import { isStudyFilter, type StudyFilter } from "@/database/study-filters";
+import { readStudyBatch, type StudyQuestion } from '@/database/study-batch';
+import { QuestionExplanation } from '@/components/question-explanation';
 import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 import { useTargetCategory } from "@/context/target-category-context";
-import { categoryClause, categoryLabel as baseCategoryLabel } from "@/domain/driving-categories";
+import { categoryLabel as baseCategoryLabel } from "@/domain/driving-categories";
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { studySummary, type StudyAnswers } from '@/domain/study-session';
 import { studyMastery, type MasterySnapshot } from '@/database/study-session';
+import { StudyPreparation } from '@/components/study-preparation';
+import { protectMedia, releaseProtectedMedia } from '@/services/media-cache';
+import { AppButton, AppCard, AppStatus } from '@/components/ui/app-controls';
 
-type StudyQuestion = {
-  id: number;
-  question: string;
-  points: number;
-  scope: string;
-  correct_answer: string;
-  media_filename: string | null;
-  contentLanguage: QuestionLanguage;
-};
 type Answer = { label: string; answer: string };
 export default function StudyScreen() {
   const { category } = useTargetCategory();
@@ -62,16 +56,22 @@ function StudySession() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [flagged, setFlagged] = useState(false);
-  const [explanation, setExplanation] = useState<QuestionExplanation | null>(null);
-  const [explanationLoading, setExplanationLoading] = useState(false);
-  const [explanationFailed, setExplanationFailed] = useState(false);
   const openRequest = useRef(0);
   const autoOpened = useRef<string | null>(null);
   const ledger = useRef<StudyAnswers>({});
   const writing = useRef(false);
+  const batchLock = useRef(false);
+  const nextCancelled = useRef(false);
+  const [repeatedCount, setRepeatedCount] = useState(0);
   const flagLock = useRef(false);
   const baseline = useRef<MasterySnapshot | null>(null);
   const [roundItems, setRoundItems] = useState<StudyQuestion[] | null>(null);
+  const [preparing, setPreparing] = useState<{ questions: StudyQuestion[]; item: StudyQuestion; index: number } | null>(null);
+  const mediaGroup = useId();
+  useEffect(() => {
+    protectMedia(mediaGroup, (roundItems ?? []).flatMap(item => item.media_filename ? [item.media_filename] : []));
+    return () => releaseProtectedMedia(mediaGroup);
+  }, [mediaGroup, roundItems]);
   const [summary, setSummary] = useState<ReturnType<typeof studySummary> | null>(null);
   const [masteryAfter, setMasteryAfter] = useState<MasterySnapshot | null>(null);
   const [masteryDelta, setMasteryDelta] = useState<number | null>(null);
@@ -81,6 +81,8 @@ function StudySession() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StudyFilter>("all");
   const [search, setSearch] = useState("");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [topicsExpanded, setTopicsExpanded] = useState(false);
   const [topics, setTopics] = useState<TopicProgress[]>([]);
   const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
   const [failedQuery, setFailedQuery] = useState<string | null>(null);
@@ -94,15 +96,25 @@ function StudySession() {
     void selectedQuestionLanguage(db).then((value) => {
       if (current) {
         if (previousLanguage.current !== null && previousLanguage.current !== value) {
-          openRequest.current++; setActive(null); setSummary(null); setRoundItems(null); ledger.current = {}; baseline.current = null;
+          openRequest.current++; setPreparing(null); setActive(null); setSummary(null); setRoundItems(null); ledger.current = {}; baseline.current = null;
         }
         previousLanguage.current = value;
-        setLanguage(value); setBusy(writing.current); setActionError(null); setLanguageReady(true);
+        setLanguage(value); setBusy(writing.current || batchLock.current); setActionError(null); setLanguageReady(true);
       }
     }).catch(() => { if (current) setFailedQuery(`language:${reload}`); });
-    return () => { current = false; };
+    return () => { current = false; nextCancelled.current = true; if (batchLock.current) openRequest.current++; };
   }, [db, reload, setActive]));
   const activeFilter = isStudyFilter(requestedFilter) ? requestedFilter : filter;
+  const filterOptions = [
+    ['all', t('Wszystkie')], ['three', t('3 punkty')], ['hardest', t('Najtrudniejsze')],
+    ['basic', t('Podstawowe')], ['specialist', t('Specjalistyczne')],
+    ['mistakes', t('Błędy')], ['flags', t('Zapisane')],
+  ] as const;
+  const hasConstraints = activeFilter !== 'all' || Boolean(requestedTopic || requestedSign || requestedSession || requestedCount || search.trim());
+  const clearFilters = () => {
+    setSearch(''); setFilter('all');
+    router.setParams({ filter: 'all', topic: undefined, sign: undefined, session: undefined, count: undefined, start: undefined });
+  };
   const sessionLimit = requestedCount === "5" ? 5 : 12;
   const queryKey = JSON.stringify([activeFilter, category, language, reload, requestedSign, requestedTopic, requestedSession, search, sessionLimit]);
   const loading = !languageReady || loadedQuery !== queryKey;
@@ -110,17 +122,9 @@ function StudySession() {
   useEffect(() => {
     if (!languageReady) return;
     let current = true;
-    const { joins, where, order } = studyFilterSql(activeFilter);
-
-    const trimmedSearch = search.trim();
-    const topicClause = requestedTopic ? " AND EXISTS (SELECT 1 FROM question_topics t WHERE t.question_id = q.id AND t.topic = ?)" : "";
-    const signClause = requestedSign ? " AND EXISTS (SELECT 1 FROM question_signs s WHERE s.question_id = q.id AND s.sign_code = ?)" : "";
-    const sessionClause = requestedSession ? " AND EXISTS (SELECT 1 FROM exam_answers e WHERE e.question_id = q.id AND e.session_id = ? AND e.is_correct = 0)" : "";
-    const searchClause = trimmedSearch ? " AND COALESCE(tr.question, q.question) LIKE ?" : "";
-    const query = `SELECT DISTINCT q.id, COALESCE(tr.question, q.question) AS question, CASE WHEN tr.question IS NULL THEN 'pl' ELSE tr.language END AS contentLanguage, q.points, q.scope, q.correct_answer, q.media_filename FROM questions q LEFT JOIN question_translations tr ON tr.question_id = q.id AND tr.language = ? ${joins} WHERE (${where}) AND ${categoryClause}${topicClause}${signClause}${sessionClause}${searchClause} ORDER BY ${order} LIMIT ${requestedSession ? 32 : sessionLimit}`;
-    const params = [language, category, ...(requestedTopic ? [requestedTopic] : []), ...(requestedSign ? [requestedSign] : []), ...(requestedSession ? [requestedSession] : []), ...(trimmedSearch ? [`%${trimmedSearch}%`] : [])];
-    void Promise.all([db.getAllAsync<StudyQuestion>(query, params), topicProgress(db, category)]).then(([rows, nextTopics]) => {
-      if (current) { setItems(rows); setTopics(nextTopics); setFailedQuery(null); }
+    void Promise.all([readStudyBatch(db, { filter: activeFilter, category, language, limit: sessionLimit,
+      topic: requestedTopic, sign: requestedSign, session: requestedSession, search }), topicProgress(db, category)]).then(([result, nextTopics]) => {
+      if (current) { setItems(result.questions); setTopics(nextTopics); setFailedQuery(null); }
     }).catch(() => { if (current) setFailedQuery(queryKey); })
       .finally(() => { if (current) setLoadedQuery(queryKey); });
     return () => { current = false; };
@@ -147,9 +151,6 @@ function StudySession() {
     setActiveIndex(itemIndex);
     setMediaReady(!item.media_filename);
     setActive({ ...item, question: content.question, contentLanguage: content.contentLanguage });
-    setExplanation(null);
-    setExplanationLoading(true);
-    setExplanationFailed(false);
     setAnswers(content.answers);
     setSelected(ledger.current[item.id]?.label ?? null);
     setFlagged(false);
@@ -157,20 +158,22 @@ function StudySession() {
       const flag = await db.getFirstAsync("SELECT question_id FROM flags WHERE question_id = ?", item.id);
       if (request !== openRequest.current) return;
       setFlagged(Boolean(flag));
-      const details = await getQuestionExplanation(db, item.id);
-      if (request === openRequest.current) setExplanation(details);
     } catch {
-      if (request === openRequest.current) setExplanationFailed(true);
-    } finally {
-      if (request === openRequest.current) setExplanationLoading(false);
+      if (request === openRequest.current) setActionError(t('Nie udało się odczytać oznaczenia pytania. Spróbuj otworzyć je ponownie.'));
     }
   }, [batch, category, db, language, setActive, t]);
+  const begin = useCallback((item: StudyQuestion, index = batch.findIndex(value => value.id === item.id), questions = batch) => {
+    if (writing.current) return;
+    if (questions.some(value => value.media_filename)) {
+      setPreparing({ questions: [...questions], item, index });
+    } else return open(item, index);
+  }, [batch, open]);
   useEffect(() => {
     if (requestedStart !== '1' || loading || readError || !items.length || autoOpened.current === queryKey) return;
     autoOpened.current = queryKey;
-    void open(items[0], 0);
+    begin(items[0], 0);
     router.setParams({ start: undefined });
-  }, [items, loading, open, queryKey, readError, requestedStart]);
+  }, [items, loading, begin, queryKey, readError, requestedStart]);
   const move = (direction: -1 | 1) => {
     const nextIndex = activeIndex + direction;
     if (nextIndex >= 0 && nextIndex < batch.length) void open(batch[nextIndex], nextIndex);
@@ -213,7 +216,8 @@ function StudySession() {
     openRequest.current++;
     ledger.current = {};
     baseline.current = null;
-    setSummary(null); setActive(null); setRoundItems(null); setActionError(null);
+    nextCancelled.current = true;
+    setRepeatedCount(0); setPreparing(null); setSummary(null); setActive(null); setRoundItems(null); setActionError(null);
     setReload((value) => value + 1);
   };
   const replay = async () => {
@@ -228,30 +232,61 @@ function StudySession() {
       baseline.current = snapshot;
       ledger.current = {};
       setRoundItems(mistakes); setSummary(null);
-      await open(mistakes[0], 0);
+      await begin(mistakes[0], 0, mistakes);
     } catch { if (request === openRequest.current) setActionError(t("Nie udało się rozpocząć powtórki. Spróbuj ponownie.")); }
     finally { if (request === openRequest.current) setBusy(false); }
   };
+  const nextBatch = async () => {
+    if (!summary || busy || writing.current || batchLock.current || requestedSession) return;
+    batchLock.current = true; nextCancelled.current = false;
+    const request = ++openRequest.current;
+    const revision = userDataRevision();
+    const valid = () => request === openRequest.current && !nextCancelled.current && userDataWritable(revision);
+    setBusy(true); setActionError(null);
+    try {
+      const [result, snapshot] = await Promise.all([
+        readStudyBatch(db, { filter: activeFilter, category, language, limit: sessionLimit,
+          topic: requestedTopic, sign: requestedSign, search }, [...items, ...batch].map(item => item.id)),
+        studyMastery(db, category),
+      ]);
+      if (!valid()) return;
+      if (!result.questions.length) { setActionError(t('W tym zakresie nie ma już dostępnych pytań. Zmień filtry w menu Nauki.')); return; }
+      baseline.current = snapshot; ledger.current = {};
+      setItems(result.questions); setRoundItems(result.questions); setSummary(null); setRepeatedCount(result.repeated);
+      await begin(result.questions[0], 0, result.questions);
+    } catch {
+      if (valid()) setActionError(t('Nie udało się przygotować kolejnej partii. Spróbuj ponownie.'));
+    } finally { batchLock.current = false; setBusy(false); }
+  };
+  if (preparing) return <StudyPreparation questions={preparing.questions} category={category}
+    onCancel={() => { openRequest.current++; setPreparing(null); setBusy(false); }}
+    onReady={() => {
+      const pending = preparing;
+      setRoundItems(pending.questions);
+      setPreparing(null);
+      void open(pending.item, pending.index);
+    }} />;
   if (summary) return (
     <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
       <Text style={s.title}>{t("Podsumowanie nauki")}</Text>
       <Text style={s.sub}>{categoryLabel(category)} · {summary.total} {t("pytań w tej partii")}</Text>
-      <View style={s.card}>
+      <AppCard>
         <Text style={s.topicTitle}>{summary.unanswered ? t("Sesja zakończona wcześniej") : t("Partia ukończona!")}</Text>
         <Text style={s.question}>{t("Poprawne:")} {summary.correct} {t("· Błędne:")} {summary.incorrect}</Text>
         <Text style={s.sub}>{t("Bez odpowiedzi:")} {summary.unanswered}{t(". Samo obejrzenie pytania nie liczy się jako rozwiązanie.")}</Text>
-      </View>
-      <View style={s.card}>
+      </AppCard>
+      <AppCard>
         <Text style={s.topicTitle}>{t("Opanowanie materiału kategorii")}</Text>
         {masteryAfter && masteryDelta !== null ? <>
           <Text style={s.question}>{masteryAfter.mastered}/{masteryAfter.total} {t("opanowanych pytań")}</Text>
           <Text style={s.sub}>{t("Zmiana w tej sesji:")} {masteryDelta > 0 ? '+' : ''}{masteryDelta} {t("pytań.")}</Text>
         </> : masteryFailed ? <LoadingError onRetry={() => void finish()} /> : <Text style={s.sub}>{t("Odczyt postępu…")}</Text>}
         <Text style={s.sub}>{t("Opanowanie wymaga 3 poprawnych powtórek zaliczanych nie częściej niż co 24 godziny. Błąd zeruje serię danego pytania.")}</Text>
-      </View>
-      {actionError ? <Text accessibilityRole="alert" style={s.sub}>{t(actionError)}</Text> : null}
-      {summary.incorrect ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void replay()} style={s.navButton}><Text style={s.navButtonText}>{busy ? t("Przygotowanie…") : t("Powtórz błędy ({0})", [summary.incorrect])}</Text></Pressable> : <Text style={s.sub}>{t("Brak błędnych odpowiedzi w tej sesji.")}</Text>}
-      <Pressable accessibilityRole="button" disabled={busy} onPress={exit} style={s.navButton}><Text style={s.navButtonText}>{t("Wróć do menu Nauki")}</Text></Pressable>
+      </AppCard>
+      {actionError ? <AppStatus tone="error" message={t(actionError)} /> : null}
+      {summary.incorrect ? <AppButton disabled={busy} label={busy ? t("Przygotowanie…") : t("Powtórz błędy ({0})", [summary.incorrect])} onPress={() => void replay()} /> : <Text style={s.sub}>{t("Brak błędnych odpowiedzi w tej sesji.")}</Text>}
+      {!requestedSession && <AppButton variant={summary.incorrect ? 'secondary' : 'primary'} disabled={busy} label={busy ? t('Przygotowanie…') : t('Kolejna partia w tym zakresie')} onPress={() => void nextBatch()} />}
+      <AppButton variant="link" disabled={busy} label={t("Wróć do menu Nauki")} onPress={exit} />
     </ScrollView></SafeAreaView>
   );
   if (active)
@@ -279,8 +314,9 @@ function StudySession() {
             </Pressable>
           </View>
           <Text style={s.cardPosition}>{activeIndex + 1} {t("z")} {batch.length}</Text>
+          {repeatedCount > 0 && <Text style={s.sub}>{t('Mała pula pytań: {0} z tej partii powtarza poprzedni zestaw.', [repeatedCount])}</Text>}
           <QuestionMedia filename={active.media_filename} onReadyChange={setMediaReady} />
-          {!mediaReady && <Text style={s.sub}>{t("Poczekaj na materiał albo pomiń pytanie przyciskiem „Następne”.")}</Text>}
+          {!mediaReady && <Text style={s.sub}>{t('Poczekaj na materiał lub pomiń pytanie bez zapisywania odpowiedzi.')}</Text>}
           <Text style={s.question}>{active.question}</Text>
           {active.contentLanguage !== language ? <Text style={s.sub}>{t("Brak oficjalnego tłumaczenia — pytanie w języku polskim.")}</Text> : null}
           {actionError ? <Text accessibilityRole="alert" style={s.sub}>{t(actionError)}</Text> : null}
@@ -312,7 +348,7 @@ function StudySession() {
               </Text>
               <Text style={s.sub}>{t("Poprawna odpowiedź:")}{' '}{active.scope === "PODSTAWOWY" ? basicAnswerText(answers, active.correct_answer) : active.correct_answer}
               </Text>
-              <ExplanationCard explanation={explanation} loading={explanationLoading} failed={explanationFailed} />
+              <QuestionExplanation key={active.id} questionId={active.id} />
             </View>
           )}
           <View style={s.navigator}>
@@ -320,7 +356,7 @@ function StudySession() {
               <Text style={s.navButtonText}>{t("← Poprzednie")}</Text>
             </Pressable>
             <Pressable disabled={busy} onPress={() => activeIndex >= batch.length - 1 ? void finish() : move(1)} style={s.navButton}>
-              <Text style={s.navButtonText}>{activeIndex >= batch.length - 1 ? t("Podsumowanie") : t("Następne →")}</Text>
+              <Text style={s.navButtonText}>{activeIndex >= batch.length - 1 ? selected ? t("Podsumowanie") : t('Zakończ bez odpowiedzi') : selected ? t("Następne →") : t('Pomiń →')}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -330,29 +366,53 @@ function StudySession() {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
         <Text style={s.title}>{t("Nauka")}</Text>
+        {repeatedCount > 0 && <Text style={s.sub}>{t('Mała pula pytań: {0} z tej partii powtarza poprzedni zestaw.', [repeatedCount])}</Text>}
         {actionError ? <Text accessibilityRole="alert" style={s.sub}>{t(actionError)}</Text> : null}
         <Text style={s.sub}>{categoryLabel(category)} {t("· wspólna z egzaminem")}</Text>
         {requestedTopic && <Text style={s.topicTitle}>{t(requestedTopic)}</Text>}
         {requestedSession && <View style={s.row}><Text style={s.badge}>{t("Błędy wybranego egzaminu")}</Text><Pressable accessibilityRole="button" style={s.endButton} onPress={() => router.setParams({ session: undefined })}><Text style={s.link}>{t("Wszystkie błędy")}</Text></Pressable></View>}
         {requestedSign ? <View style={s.row}><Text style={s.badge}>{t("Znak")} {requestedSign}</Text><Pressable onPress={() => { setActive(null); router.setParams({ sign: undefined }); }}><Text style={s.link}>{t("Usuń filtr znaku")}</Text></Pressable></View> : null}
         <Text style={s.sub}>
-          {sessionLimit === 5
-            ? t("Krótka sesja: 5 pytań o największej wadze.")
-            : requestedSession ? t("Powtórz błędne i pominięte pytania tej próby.") : t("Losowa partia: do 12 pytań z wybranego zakresu.")}
+          {requestedSession ? t("Powtórz błędne i pominięte pytania tej próby.") : sessionLimit === 5
+            ? activeFilter === 'three' ? t("Krótka sesja: 5 pytań o największej wadze.") : t('Krótka partia: do 5 pytań z wybranego zakresu.')
+            : t('Partia: do 12 pytań z wybranego zakresu.')}
         </Text>
-        {!loading && !readError && !requestedTopic && !requestedSign ? (
+        {!loading && !readError && items.length > 0 && <AppCard>
+          <Text style={s.topicName}>{t('Partia: {0} pytań', [items.length])}</Text>
+          <Text style={s.sub}>{t('To pytania tej partii, nie całego działu.')}</Text>
+          <AppButton label={t('Rozpocznij naukę')} onPress={() => { void begin(items[0], 0); }} />
+        </AppCard>}
+        <View style={s.filters}>
+          <Pressable accessibilityRole="button" style={s.endButton} onPress={() => {
+            setSearch(''); setFilter('mistakes');
+            router.setParams({ filter: 'mistakes', topic: undefined, sign: undefined, session: undefined, count: undefined, start: undefined });
+          }}><Text style={s.link}>{t('Powtórz błędne odpowiedzi')}</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.endButton} onPress={() => router.navigate('/signs')}><Text style={s.link}>{t('Znaki')}</Text></Pressable>
+        </View>
+        <View style={s.card}>
+          <Text style={s.topicName}>{t('Zakres nauki')}</Text>
+          <Text style={s.sub}>{filterOptions.find(([key]) => key === activeFilter)?.[1]}</Text>
+          {search.trim() && <Text style={s.sub}>{t('Wyszukiwanie: {0}', [search.trim()])}</Text>}
+          {hasConstraints && <Pressable accessibilityRole="button" style={s.endButton} onPress={clearFilters}><Text style={s.link}>{t('Wyczyść filtry')}</Text></Pressable>}
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: filtersExpanded }} style={s.endButton} onPress={() => setFiltersExpanded(value => !value)}><Text style={s.link}>{filtersExpanded ? t('Ukryj filtry i wyszukiwanie') : t('Filtry i wyszukiwanie')}</Text></Pressable>
+        </View>
+        {!requestedTopic && !requestedSign && !requestedSession && <Pressable accessibilityRole="button" accessibilityState={{ expanded: topicsExpanded }} style={s.endButton} onPress={() => setTopicsExpanded(value => !value)}><Text style={s.link}>{t('Ucz się według działów')}</Text></Pressable>}
+        {!loading && !readError && topicsExpanded && !requestedTopic && !requestedSign && !requestedSession ? (
           <View style={s.topicSection}>
-            <Text style={s.topicTitle}>{t("Ucz się według działów")}</Text>
             {topics.map((topic) => (
-              <Pressable key={topic.topic} onPress={() => router.setParams({ topic: topic.topic })} style={s.topicCard}>
+              <Pressable accessibilityRole="button" key={topic.topic} onPress={() => {
+                setSearch(''); setFilter('all');
+                router.setParams({ topic: topic.topic, filter: 'all', sign: undefined, session: undefined, count: undefined, start: undefined });
+              }} style={s.topicCard}>
                 <View style={{ flex: 1 }}><Text style={s.topicName}>{t(topic.topic)}</Text><Text style={s.topicMeta}>{t("Opanowane")} {topic.mastered}/{topic.total} {t("· przerobione")} {topic.practiced}</Text></View>
                 <Text style={s.link}>›</Text>
               </Pressable>
             ))}
           </View>
         ) : requestedTopic ? (
-          <Pressable onPress={() => router.setParams({ topic: undefined })}><Text style={s.link}>{t("← Wszystkie działy")}</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.endButton} onPress={() => { setTopicsExpanded(true); router.setParams({ topic: undefined }); }}><Text style={s.link}>{t("← Wszystkie działy")}</Text></Pressable>
         ) : null}
+        {filtersExpanded && <>
         <TextInput
           accessibilityLabel={t("Szukaj w pytaniach")}
           onChangeText={setSearch}
@@ -362,17 +422,7 @@ function StudySession() {
           value={search}
         />
         <View style={s.filters}>
-          {(
-            [
-              ["all", t("Wszystkie")],
-              ["three", t("3 punkty")],
-              ["hardest", t("Najtrudniejsze")],
-              ["basic", t("Podstawowe")],
-              ["specialist", t("Specjalistyczne")],
-              ["mistakes", t("Błędy")],
-              ["flags", t("Zapisane")],
-            ] as const
-          ).map(([key, label]) => (
+          {filterOptions.map(([key, label]) => (
             <Pressable
               key={key}
               accessibilityRole="button"
@@ -389,10 +439,11 @@ function StudySession() {
             </Pressable>
           ))}
         </View>
+        </>}
         {activeFilter === "hardest" ? <Text style={s.sub}>{t("Najpierw pytania z największą liczbą pomyłek w nauce (co najmniej 2), następnie pozostałe pytania za 3 punkty.")}</Text> : null}
         {readError ? <LoadingError onRetry={() => setReload((value) => value + 1)} /> : loading ? <LoadingSkeleton variant="study" label={t("Wczytywanie działów i pytań")} /> : items.length ? (
           items.map((item) => (
-            <Pressable key={item.id} onPress={() => open(item)} style={s.card}>
+            <Pressable key={item.id} onPress={() => begin(item)} style={s.card}>
               <View style={s.row}>
                 <Text style={s.badge}>{item.points} {t("pkt")}</Text>
                 <Text style={s.scope}>{t(item.scope === 'PODSTAWOWY' ? 'Wiedza podstawowa' : 'Wiedza specjalistyczna')}</Text>
@@ -403,7 +454,7 @@ function StudySession() {
           ))
         ) : (
           <View><Text style={s.empty}>{activeFilter === 'flags' ? t("Nie masz zapisanych pytań w tym zakresie.") : activeFilter === 'mistakes' ? t("Brak pytań do powtórki w tym zakresie.") : t("Brak pytań pasujących do wybranych filtrów.")}</Text>
-          <Pressable accessibilityRole="button" style={s.endButton} onPress={() => { setSearch(''); setFilter('all'); router.setParams({ filter: 'all', topic: undefined, sign: undefined, session: undefined, count: undefined }); }}><Text style={s.link}>{t("Pokaż pytania kategorii")} {category}</Text></Pressable></View>
+          <Pressable accessibilityRole="button" style={s.endButton} onPress={clearFilters}><Text style={s.link}>{t("Pokaż pytania kategorii")} {category}</Text></Pressable></View>
         )}
       </ScrollView>
     </SafeAreaView>

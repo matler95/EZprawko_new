@@ -1,5 +1,177 @@
 # Implementation progress
 
+## Improvement plan — checkpoint F5.1 onboarding/settings (2026-10-13)
+
+- Onboarding uses shared cards, primary/link actions and error status. Its content
+  is centered at max 600px like the main screens. Category/language choices retain
+  radio semantics, explicit selection and existing draft/atomic-completion logic.
+- Settings Learning/Appearance/downloaded-media sections use shared cards and
+  read/save/error statuses. Retry/refresh use common link actions. Added a danger
+  text-action variant (48px minimum) for cache removal, retaining confirmation,
+  download exclusion, cancellation and maintenance generation guards.
+- Busy/disabled actions keep readable labels without opacity reduction in shared
+  controls; onboarding save shows an indicator while secondary actions are blocked.
+  No new preference, account operation or change to persisted data contracts.
+- Adapted existing onboarding/settings test renderers to inspect actual shared
+  controls. Regression passed: 12 categories × 4 languages, draft reopen, duplicate
+  clicks, atomic failure/reset, settings write failures/retry, foreground return,
+  unavailable cache readings and confirmation/download-clear exclusion in both themes.
+  Shared briefing controls, 34 contrast pairs, final Expo lint and TypeScript passed.
+- This checkpoint covers onboarding and the Settings screen's own sections.
+  Account/download/reminder/user-data/about child cards still have local controls;
+  their incremental migration and physical layout/keyboard/screen-reader QA remain.
+
+## Improvement plan — checkpoint F5.1 shared controls (2026-10-13)
+
+- Added ui-tokens.ts and reusable AppButton/AppCard/AppStatus controls. Buttons share
+  primary/secondary/gold/link variants, minimum 56px main / 48px link targets,
+  multiline labels, pressed feedback and explicit disabled/busy accessibility state.
+  Busy blocks the action, retains its label and shows a decorative spinner.
+- Disabled filled controls use readable primary text on neutral surfaces; links use
+  secondary text without reduced opacity. Expanded contrast checks to 34 pairs,
+  including disabled surfaces and status colors on the app background (>=4.5:1).
+- Migrated Study start/summary actions and cards, Study preparation recovery/status,
+  exam briefing cards/actions/errors and the Dashboard exam CTA. Summary separates
+  primary mistake replay, secondary continuation and a link back to the menu.
+  Native exam answer controls/navigation keep their purpose-specific layout.
+- Existing preparation cancellation/commit and question-answer guards remain in
+  handlers. Shared controls do not introduce data writes, dependencies or cloud changes.
+- Full local regression scripts were exercised. The older briefing test loader was
+  updated to resolve shared TSX controls and inspect their rendered native children;
+  its final rerun passed, as did other regression scripts. Added busy/minimum-target/
+  alert assertions to that existing test. Final lint/TypeScript and contrast passed.
+- This is an incremental migration, not completion of F5. Settings/onboarding,
+  remaining repeated controls and physical large-font/screen-reader/layout QA remain.
+
+## Improvement plan — checkpoint F4 learning guidance (2026-10-13)
+
+- Dashboard replaces the fixed recommendation with a deterministic selected-category
+  rule: a weak topic with >=5 distinct tested questions, otherwise explicit historical
+  mistake review when available, otherwise five three-point questions. Active exam
+  resume takes priority; the learning recommendation is suppressed while it exists.
+  The exam CTA remains available independently; no pass/readiness guarantee is added.
+- Added read-only learningInsights: last result per question combines practice with
+  completed exams of the selected category. Repeat attempts cannot inflate the sample;
+  skipped exam answers count as incorrect tested questions. Timestamp ties resolve
+  deterministically in favor of practice, then event order. Practice has no stored
+  attempt category, so shared questions apply wherever the bank includes that question.
+- Progress shows topic results, distinct sample/total, a direct clean topic route and
+  insufficient-data labels below 5 questions. Topic ordering puts comparable weak
+  topics first. Five is a product display threshold, not statistical confidence.
+  Added separate mastery count alongside coverage and retained exam trends/history.
+- Historical mistake count deliberately matches the existing Mistakes filter. Its
+  labels explain that correct later responses do not erase old mistakes. Zero-history
+  actions are hidden. An active due-review queue/new meaning of Mistakes is not introduced.
+- Dashboard refresh requests are ordered so an older asynchronous refresh cannot
+  overwrite newer data. Existing focus/category cleanup remains in effect.
+- Tests passed: real SQLite latest outcomes/category/unfinished exam/skip/ties/history
+  semantics, pure recommendation/ranking, actual Dashboard/Progress actions and sample
+  labels; existing bank-progress/category tests, UI languages, final lint/TypeScript.
+- Device layout and screen-reader acceptance remain open. Durable or shared active
+  Study resume, due-review policy F4.1 and cloud account decisions remain separate.
+
+## Improvement plan — checkpoint F3.6 next-batch continuation (2026-10-13)
+
+- Study summary offers the next existing-length batch in the current scope.
+  Shared readStudyBatch SQL preserves category, language/fallback, filter, topic,
+  sign and search. Exact failed-exam replay retains its separate retry path and
+  does not offer general continuation.
+- A single parameterized query prioritizes IDs outside the prior source batch
+  (including its mistake replay), then fills a small pool with previous IDs.
+  DISTINCT prevents within-batch duplicates; repeated-count notice explains small
+  pools. Preference is about the previous batch, not lifetime uniqueness/mastery.
+- Failure/empty result leaves summary/answer ledger intact. Successful continuation
+  starts a fresh ledger/baseline and uses existing media preparation for that pool.
+  A synchronous lock prevents duplicate starts; blur, reset and stale requests
+  prevent delayed continuation. Prior answers remain in database history.
+- Real SQLite tests cover fresh/partial/full-repeat pools, ranking filters,
+  category/topic/sign/search/exam scope, fallback, limits and parameter safety.
+  Screen tests cover failure recovery, duplicate taps, ledger reset, repeat notice,
+  cancellation/reset and exam-specific exclusion. UI language, lint/typecheck passed.
+- Device layout/media/navigation acceptance remains open; no new session lengths,
+  persistent session history or cloud operations were introduced.
+
+## Improvement plan — checkpoint F3.1–F3.3 / skip clarity (2026-10-13)
+
+- Study menu leads with actual batch count and Start, without requiring users to
+  choose a question or scroll through every topic first. Mistake review and Signs
+  remain direct entries; topics and advanced filters/search expand on demand.
+- Current topic/sign/exam source and selected filter remain visible. Search is
+  summarized even when its panel is collapsed. Clear removes search/filter and
+  all route constraints including session/count/start, preserving target category.
+  Choosing a topic or generic mistake review explicitly clears unrelated scopes.
+- Corrected scope descriptions: exam-specific replay takes precedence over a
+  supplied count; deterministic mistake/saved batches are not called random.
+  Five-question labels only claim high weight with the three-point filter.
+- Unanswered navigation says Skip (or Finish without answering on the last item);
+  answered navigation retains Next/Summary. Skips do not record answers and remain
+  visible in existing summaries. Added PL/EN/DE/UK messages.
+- Study handler tests cover collapsed search, expand semantics, complete scope
+  clearing, topic/mistake entry, explicit start, zero implicit writes and skip,
+  in addition to prior session/media paths. UI language, lint and typecheck passed.
+- Small-screen layout/screen-reader acceptance remains open. F3.6 next-batch
+  continuation/exclusion and further F3 ergonomics remain upcoming.
+
+## Improvement plan — checkpoint F2.4 explanation recovery (2026-10-13)
+
+- Added shared read-only QuestionExplanation loader to Study answer feedback and
+  completed exam review. Read errors have an inline accessible Retry button; missing
+  reviewed content remains an honest separate state without ineffective retries.
+- Retry preserves question, answer, batch and review selection. It only reads
+  explanations, does not reload the question/media and imports no answer writer.
+  Duplicate retries are locked synchronously; changed question, closed view and
+  data reset fence delayed responses. Explanation reads no longer depend on flag
+  reads in Study, so a flag failure cannot be mislabeled as an explanation failure.
+- Added PL/EN/DE/UK copy and tests covering read failure/success/null, duplicate taps,
+  stale question result, view cleanup, reset and accessible recovery. Existing
+  explanation/database, Study and language tests passed; final lint/typecheck passed.
+- Read-only editorial report: 3,518 questions, 1,699 three-point questions, 1,882
+  priority questions, 0 packaged explanations. F2 editorial coverage remains open;
+  no unreviewed teaching/legal content was generated or imported.
+- Physical device feedback/review, font and screen-reader acceptance remains open.
+
+## Improvement plan — checkpoint F1.2 (2026-10-13)
+
+- Study opens media-bearing batches through a preparation screen with exact question
+  count/category, unique-media progress, retry, cancellation and explicit start.
+  The selected pool is copied before preparation and remains unchanged after errors,
+  login and return from Settings. Text-only batches open directly.
+- Added an isolated Study preparation controller reusing serial download and final
+  cache-only verification. It performs no question draw or answer writes, suppresses
+  obsolete progress, rejects duplicate runs and fences reset by data revision.
+- Inline existing-account login retries that same pool. Access/storage errors lead
+  to Settings; blur cancels work and refocus waits for it before starting a fresh
+  preparation of the retained pool. Cancellation leaves partial downloads reusable.
+- Prepared/active Study files are protected from automatic cache eviction for the
+  mounted batch lifetime. Explicit removal still requires reloading media; decoding
+  remains checked at the question rather than claimed by preparation.
+- Added seven PL/EN/DE/UK messages. Tests passed: actual preparation/cache integration
+  (frozen pool, partial retry, duplicate run, cancellation/reset), preparation UI
+  (login/start/cancel/blur-refocus/access), Study handlers including media gate,
+  decoder readiness and UI language; final Expo lint/TypeScript passed.
+- Physical device network/decoder/layout/navigation QA remains open. No registration,
+  server access policy, cloud changes or durable Study session storage was added.
+
+## Improvement plan — checkpoint F0 / F1.1 (2026-10-13)
+
+- Added docs/UX_BASELINE.md with source-confirmed starting conditions, timing
+  definitions and physical measurement matrix. Physical screenshots/timings are
+  still open; F0 is not claimed complete. Added device scenarios to QA_CHECKLIST.md.
+- Study media readiness now requires successful image onLoad or video readyToPlay,
+  rather than the presence of a URI. Loading/buffering/error blocks unanswered
+  selections. Video status is observed through the SDK 57 event hook; a source
+  change/retry remounts the decoder. Existing exam timers and engine are unchanged.
+- Missing URI is a recoverable error instead of an indefinite loading spinner.
+  Known account/access/storage errors have distinct recovery actions: login for
+  missing session, Settings for access/storage, retry for transient download errors.
+  Unknown errors are still sanitized and are not asserted to prove offline status.
+- Validated new decoder/readiness tests, existing media preparation and UI-language
+  tests, 5,000 seeded exam engine draws, final Expo lint and TypeScript (passed).
+  Decoder/platform behavior remains subject to physical Android/iPhone QA.
+- Next checkpoint: F1.2 exact Study batch preparation with progress/cancellation
+  and return to the same batch after login. Registration/access policy and reviewed
+  explanation content remain external dependencies, not implemented by this step.
+
 ## Checkpoint — simplification: gamification removed (2026-10-13)
 
 - Owner feedback supersedes earlier reward/challenge plans. Removed Dashboard
