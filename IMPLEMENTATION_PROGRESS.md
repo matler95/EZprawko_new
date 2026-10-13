@@ -1,5 +1,28 @@
 # Implementation progress
 
+## Improvement plan — checkpoint F5.1 headings / locale (2026-10-13)
+
+- Added screen/detail tokens and AppHeading with semantic header role, shared section
+  or screen typography and no fixed height/truncation/font-scale override. Settings
+  and Progress screen/section headings use it; redundant heading styles were removed.
+- Account/download/reminder/data/About cards use common heading/detail tokens. Progress
+  body/detail text is larger and content centered within 600px. Specialized question,
+  score and exam/timer hierarchies are not flattened into generic headings.
+- Shared UI-only formatter uses explicit PL/EN/DE/UK locales. Progress coverage counts
+  no longer force Polish grouping; cache MB uses locale decimal separator. History dates
+  use interface calendar format, current local device zone and a 24-hour clock. Date
+  formatter is not retained across zone changes; number formats are cached in 8 variants.
+- Invalid numeric/date input displays a dash. Progressbar text no longer has a hardcoded
+  Polish percent word. No timestamps, SQL, exam timing, scoring or reminder schedules
+  changed; compact chart dates and HH:mm reminder/exam clocks intentionally stay stable.
+- All 34 test scripts and 34 contrast pairs passed. Formatter tests cover four locales,
+  grouping/precision, explicit/live language, midnight, invalid input and zone changes.
+  Heading contracts cover role, line height and native font scaling. Settings verifies
+  live Polish/English decimal formatting. Final lint/typecheck passed without warnings.
+- Mobile UI skill guided hierarchy and readable detail text. Remaining token adoption
+  on Dashboard/Study/onboarding and native large-font/layout QA remain separate work;
+  this checkpoint does not claim that every visual element or device is audited.
+
 ## Improvement plan — checkpoint F5.3 contextual setup (2026-10-13)
 
 - Study menu now offers a 12-category chooser with a local draft, explicit Save/Cancel,

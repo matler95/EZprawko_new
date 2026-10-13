@@ -34,7 +34,7 @@ new Function('require', 'exports', ts.transpileModule(fs.readFileSync(path.join(
   if (name === '@/components/media-account-card') return { MediaAccountCard: 'Account' };
   throw Error(name);
 }, exportsForUi);
-const expand = tree => tree && typeof tree.type === 'function' && /^App(Button|Card|Status)$/.test(tree.type.name) ? tree.type(tree.props) : tree;
+const expand = tree => tree && typeof tree.type === 'function' && /^App(Button|Card|Status|Heading)$/.test(tree.type.name) ? tree.type(tree.props) : tree;
 const nodes = input => { const tree = expand(input); return tree && typeof tree === 'object' ? [tree, ...[tree.props?.children].flat(Infinity).flatMap(nodes)] : []; };
 const text = input => { const tree = expand(input); return typeof tree === 'string' ? tree : tree && typeof tree === 'object' ? [tree.props?.children].flat(Infinity).map(text).join(' ') : ''; };
 const button = (tree, label) => { const found = nodes(tree).find(node => node.type === 'Pressable' && text(node).includes(label)); assert(found, label); return found; };

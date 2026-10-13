@@ -21,8 +21,8 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
     if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);throw Error(name);
   },exports);cache.set(file,exports);return exports;}
-function nodes(tree,fn){if(!tree||typeof tree!=='object')return [];if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return nodes(tree.type(tree.props),fn);const c=tree.props?.children;return [...(fn(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>nodes(v,fn))];}
-function text(tree){if(typeof tree==='string')return tree;if(!tree||typeof tree!=='object')return '';if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return text(tree.type(tree.props));const c=tree.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ');}
+function nodes(tree,fn){if(!tree||typeof tree!=='object')return [];if(typeof tree.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(tree.type.name))return nodes(tree.type(tree.props),fn);const c=tree.props?.children;return [...(fn(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>nodes(v,fn))];}
+function text(tree){if(typeof tree==='string')return tree;if(!tree||typeof tree!=='object')return '';if(typeof tree.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(tree.type.name))return text(tree.type(tree.props));const c=tree.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ');}
 const Card=load('src/components/reminder-card.tsx').ReminderCard;
 function render(){si=0;ri=0;return Card();}
 function button(tree,label){return nodes(tree,n=>n.type==='Pressable'&&text(n).includes(label))[0];}

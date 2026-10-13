@@ -31,8 +31,8 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);
     throw Error(name);
   },exports);cache.set(file,exports);return exports;}
-function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return nodes(t.type(t.props));const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
-function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
+function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(t.type.name))return nodes(t.type(t.props));const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
+function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
 function button(t,label){const n=nodes(t).find(n=>n.type==='Pressable'&&text(n).includes(label));assert(n,`Missing ${label}: ${text(t)}`);return n;}
 const tick=()=>new Promise(setImmediate);
 const Screen=load('src/app/study.tsx').default().type;

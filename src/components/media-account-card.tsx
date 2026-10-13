@@ -1,4 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
+import { UiTokens } from '@/constants/ui-tokens';
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Keyboard, StyleSheet, Text, TextInput } from 'react-native';
@@ -82,7 +83,7 @@ export function MediaAccountCard({ onAuthenticated }: { onAuthenticated?: () => 
     finally { lock.current = false; if (mounted.current) setBusy(false); }
   };
   const s = StyleSheet.create({
-    title: { fontSize: 18, fontWeight: '700', color: colors.textPrimary }, copy: { fontSize: 16, lineHeight: 24, color: colors.textSecondary },
+    title: { ...UiTokens.text.heading, color: colors.textPrimary }, copy: { fontSize: 16, lineHeight: 24, color: colors.textSecondary },
     input: { borderRadius: 12, borderWidth: 1, borderColor: colors.border, color: colors.textPrimary, minHeight: 52, padding: 16, fontSize: 16 },
   });
   return <AppCard>

@@ -1,4 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
+import { UiTokens } from '@/constants/ui-tokens';
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
@@ -104,8 +105,8 @@ export function ReminderCard() {
   </AppCard>;
 }
 const styles = (colors: AppTheme) => StyleSheet.create({
-  heading: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
-  detail: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  heading: { color: colors.textPrimary, ...UiTokens.text.heading },
+  detail: { color: colors.textSecondary, ...UiTokens.text.detail },
   safe: { flex: 1, backgroundColor: colors.background },
   modal: { padding: 24, gap: 16 },
 });

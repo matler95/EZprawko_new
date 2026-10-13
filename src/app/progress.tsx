@@ -8,7 +8,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 import { ExamScoreChart } from "@/components/exam-score-chart";
 import { bankProgress, type BankProgress } from "@/database/bank-progress";
-import { coveragePercent, examDateLabels } from "@/domain/progress-presentation";
+import { coveragePercent } from "@/domain/progress-presentation";
+import { formatUiNumber, formatUiDateTime } from '@/domain/ui-format';
+import { AppHeading } from '@/components/ui/app-controls';
+import { UiTokens } from '@/constants/ui-tokens';
 import {
   recentExams,
   type ExamHistoryItem,
@@ -20,7 +23,7 @@ import { MIN_TOPIC_SAMPLE, rankTopicInsights, type TopicInsight } from '@/domain
 import { studyMastery, type MasterySnapshot } from '@/database/study-session';
 
 export default function ProgressScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { colors } = useAppTheme();
   const s = createStyles(colors);
   const db = useSQLiteContext();
@@ -48,25 +51,25 @@ export default function ProgressScreen() {
     return () => { current = false; };
   }, [category, db, reload]));
   if (loading || readError) return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
-    <Text style={s.title}>{t("Postęp")}</Text>
+    <AppHeading level='screen'>{t("Postęp")}</AppHeading>
     {loading ? <LoadingSkeleton variant="progress" label={t("Wczytywanie wyników i historii")} /> : <LoadingError onRetry={() => setReload((value) => value + 1)} />}
   </ScrollView></SafeAreaView>;
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
-        <Text style={s.title}>{t("Postęp")}</Text>
+        <AppHeading level='screen'>{t("Postęp")}</AppHeading>
         <Text style={s.sub}>{t("Wyniki i obszary do powtórki · kategoria")} {category}.</Text>
         <View style={s.coverage}>
-          <Text style={s.heading}>{t("Przerobiona baza")}</Text>
+          <AppHeading style={s.heading}>{t("Przerobiona baza")}</AppHeading>
           <Text style={s.coverageNumber}>{coveragePercent(coverage.answered, coverage.total)}%</Text>
-          <Text style={{ color: colors.textPrimary }}>{t("Przerobiono")} {coverage.answered.toLocaleString("pl-PL")} {t("z")} {coverage.total.toLocaleString("pl-PL")} {t("pytań")}</Text>
-          <View accessible accessibilityRole="progressbar" accessibilityLabel={t("Przerobiona baza pytań")} accessibilityValue={{ min: 0, max: coverage.total, now: coverage.answered, text: `${coveragePercent(coverage.answered, coverage.total)} procent` }} style={s.coverageTrack}>
+          <Text style={{ color: colors.textPrimary, ...UiTokens.text.body }}>{t("Przerobiono")} {formatUiNumber(coverage.answered, language)} {t("z")} {formatUiNumber(coverage.total, language)} {t("pytań")}</Text>
+          <View accessible accessibilityRole="progressbar" accessibilityLabel={t("Przerobiona baza pytań")} accessibilityValue={{ min: 0, max: coverage.total, now: coverage.answered, text: `${coveragePercent(coverage.answered, coverage.total)}%` }} style={s.coverageTrack}>
             <View style={[s.coverageFill, { width: `${coveragePercent(coverage.answered, coverage.total)}%` }]} />
           </View>
           <Text style={s.cardDetail}>{t("Pytania kategorii")} {category}{t(". Unikalne pytania z odpowiedzią w Nauce lub ukończonym egzaminie — nie oznacza opanowania materiału.")}</Text>
         </View>
         <View style={s.coverage}>
-          <Text style={s.heading}>{t('Opanowanie materiału kategorii')}</Text>
+          <AppHeading style={s.heading}>{t('Opanowanie materiału kategorii')}</AppHeading>
           <Text style={s.coverageNumber}>{mastery.mastered}/{mastery.total}</Text>
           <Text style={s.cardDetail}>{t('Opanowanie wymaga 3 poprawnych powtórek zaliczanych nie częściej niż co 24 godziny. Błąd zeruje serię danego pytania.')}</Text>
         </View>
@@ -81,13 +84,13 @@ export default function ProgressScreen() {
           </Text>
           <Text style={{ color: colors.onPrimary }}>{t("średni wynik z ostatnich")} {history.length} {t("egzaminów kategorii")} {category}</Text>
         </View>
-        <Text style={s.heading}>{t("Trend wyników")}</Text>
+        <AppHeading style={s.heading}>{t("Trend wyników")}</AppHeading>
         {history.length ? (
           <ExamScoreChart history={history} />
         ) : (
           <Text style={s.empty}>{t("Wykres pojawi się po pierwszym egzaminie.")}</Text>
         )}
-        <Text style={s.heading}>{t("Słabsze obszary")}</Text>
+        <AppHeading style={s.heading}>{t("Słabsze obszary")}</AppHeading>
         <Text style={s.sub}>{t('Działy: ostatni wynik każdego pytania w Nauce lub ukończonym egzaminie tej kategorii. Minimum 5 pytań do porównania.')}</Text>
         {weak.map((item) => (
           <Pressable accessibilityRole="button" key={item.topic} style={s.card} onPress={() => router.navigate({ pathname: '/study', params: { topic: item.topic, filter: 'all', sign: undefined, session: undefined, count: undefined } })}>
@@ -99,13 +102,13 @@ export default function ProgressScreen() {
         ))}
         {!weak.length && <Text style={s.empty}>{t("Obszary do powtórki pojawią się po egzaminie kategorii")} {category}.</Text>}
         {historicalMistakes > 0 && <Pressable accessibilityRole="button" style={s.card} onPress={() => router.navigate({ pathname: '/study', params: { filter: 'mistakes', topic: undefined, sign: undefined, session: undefined, count: undefined } })}><Text style={s.score}>{t('Pytania z historycznymi błędami: {0}', [historicalMistakes])}</Text></Pressable>}
-        <Text style={s.heading}>{t("Historia · wszystkie kategorie")}</Text>
+        <AppHeading style={s.heading}>{t("Historia · wszystkie kategorie")}</AppHeading>
         {allHistory.length ? (
           allHistory.map((item) => (
             <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={t("Egzamin kategorii {0}, {1} z 74 punktów. Otwórz odpowiedzi.", [item.category, item.score])} onPress={() => router.push({ pathname: "/exam/review", params: { sessionId: item.id } })} style={s.card}>
               <View style={s.historyDetail}>
                 <Text style={{ color: colors.textPrimary }}>{t("Kat.")} {item.category}</Text>
-                <Text style={s.cardDetail}>{examDateLabels(item.completedAt).date}.{examDateLabels(item.completedAt).year} · {examDateLabels(item.completedAt).time}</Text>
+                <Text style={s.cardDetail}>{formatUiDateTime(item.completedAt, language)}</Text>
               </View>
               <Text style={s.score}>
                 {item.score}/74 {item.passed ? t("Zdany") : t("Niezdany")}
@@ -121,9 +124,8 @@ export default function ProgressScreen() {
 }
 const createStyles = (colors: AppTheme) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 12 },
-  title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
-  sub: { color: colors.textSecondary },
+  content: { padding: 24, gap: 12, width: '100%', maxWidth: 600, alignSelf: 'center' },
+  sub: { color: colors.textSecondary, ...UiTokens.text.body },
   metric: {
     backgroundColor: colors.primary,
     padding: 24,
@@ -131,7 +133,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
     marginVertical: 12,
   },
   big: { fontSize: 40, color: colors.onPrimary, fontWeight: "800" },
-  heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 12 },
+  heading: { marginTop: 12 },
   coverage: { backgroundColor: colors.surface, padding: 24, borderRadius: 24, gap: 12 },
   coverageNumber: { fontSize: 40, color: colors.primaryText, fontWeight: "700", fontVariant: ["tabular-nums"] },
   coverageTrack: { height: 8, backgroundColor: colors.background, borderRadius: 4, overflow: "hidden" },
@@ -147,6 +149,6 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
     justifyContent: "space-between",
   },
   score: { fontWeight: "700", color: colors.primaryText },
-  cardDetail: { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
+  cardDetail: { color: colors.textSecondary, ...UiTokens.text.detail, marginTop: 4 },
   empty: { color: colors.textSecondary, paddingVertical: 16 },
 });

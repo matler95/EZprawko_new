@@ -33,8 +33,8 @@ new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(ro
   if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
   if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);throw Error(name);
 },exports);return exports;}
-function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return nodes(t.type(t.props));const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
-function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
+function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(t.type.name))return nodes(t.type(t.props));const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
+function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
 function button(t,label){return nodes(t).find(n=>n.type==='Pressable'&&text(n).includes(label));}
 (async()=>{
   const media=load('src/services/media-cache.ts'),preload=load('src/services/media-preload.ts');

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, Text, View, type AccessibilityRole, type AccessibilityState, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, type AccessibilityRole, type AccessibilityState, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { useAppTheme } from '@/context/app-theme-context';
 import { UiTokens } from '@/constants/ui-tokens';
 
@@ -47,4 +47,12 @@ export function AppStatus({ message, tone = 'info' }: {
   const color = tone === 'error' ? colors.error : tone === 'success' ? colors.success : tone === 'warning' ? colors.warning : colors.textSecondary;
   return <Text accessibilityRole={tone === 'error' ? 'alert' : 'text'} accessibilityLiveRegion="polite"
     style={{ ...UiTokens.text.body, color }}>{message}</Text>;
+}
+
+/** Semantic heading without fixed height or truncation; inherits font scaling. */
+export function AppHeading({ children, level = 'section', style }: {
+  children: ReactNode; level?: 'screen' | 'section'; style?: StyleProp<TextStyle>;
+}) {
+  const { colors } = useAppTheme();
+  return <Text accessibilityRole='header' style={[UiTokens.text[level === 'screen' ? 'screen' : 'heading'], { color: colors.textPrimary }, style]}>{children}</Text>;
 }

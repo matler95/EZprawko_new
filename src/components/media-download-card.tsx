@@ -1,4 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
+import { UiTokens } from '@/constants/ui-tokens';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -88,5 +89,5 @@ function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBus
 const createStyles = (colors: AppTheme) => StyleSheet.create({
   copy: { gap: 5 },
   title: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  detail: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
+  detail: { color: colors.textSecondary, ...UiTokens.text.detail },
 });

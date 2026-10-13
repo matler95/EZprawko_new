@@ -1,4 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
+import { UiTokens } from '@/constants/ui-tokens';
 import { useRef, useState } from "react";
 import { Alert, StyleSheet, Text } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
@@ -51,6 +52,6 @@ export function UserDataCard() {
   </AppCard>;
 }
 const styles = (colors: AppTheme) => StyleSheet.create({
-  heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700" },
-  detail: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  heading: { color: colors.textPrimary, ...UiTokens.text.heading },
+  detail: { color: colors.textSecondary, ...UiTokens.text.detail },
 });

@@ -17,7 +17,9 @@ import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { questionLanguages, selectedQuestionLanguage, setQuestionLanguage, translationCoverage, type QuestionLanguage } from "@/database/translations";
 import { saveUiLanguage } from '@/database/ui-language';
 import { useUiLanguage } from '@/hooks/use-ui-language';
-import { AppButton, AppCard, AppStatus } from '@/components/ui/app-controls';
+import { AppButton, AppCard, AppStatus, AppHeading } from '@/components/ui/app-controls';
+import { formatUiNumber } from '@/domain/ui-format';
+import { UiTokens } from '@/constants/ui-tokens';
 
 export default function SettingsScreen() {
   const { t, language: interfaceLanguage } = useTranslation();
@@ -128,9 +130,9 @@ export default function SettingsScreen() {
   return <SafeAreaView style={s.safe}>
     <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        <Text accessibilityRole="header" style={s.title}>{t("Ustawienia")}</Text>
+        <AppHeading level='screen'>{t("Ustawienia")}</AppHeading>
         <Text style={s.sub}>{t("Dostosuj naukę i korzystanie z aplikacji na tym urządzeniu.")}</Text>
-        <Text accessibilityRole="header" style={s.heading}>{t("Nauka")}</Text>
+        <AppHeading style={s.heading}>{t("Nauka")}</AppHeading>
         <AppCard>
           <Text style={s.label}>{t('Język aplikacji')}</Text>
           <View style={s.options}>{questionLanguages.map(item => <Pressable key={item.code} disabled={disabled}
@@ -159,7 +161,7 @@ export default function SettingsScreen() {
             <Text style={s.sub}>{language === "pl" ? t("Pełny oficjalny katalog po polsku.") : t("Oficjalne tłumaczenia: {0}/3518 pytań. Brakujące pokażemy po polsku z oznaczeniem.", [translationCoverage[language]])} {t("Język rozpoczętego egzaminu pozostaje bez zmian.")}</Text>
           </>}
         </AppCard>
-        <Text accessibilityRole="header" style={s.heading}>{t("Wygląd")}</Text>
+        <AppHeading style={s.heading}>{t("Wygląd")}</AppHeading>
         <AppCard>
           <View style={s.options}>{(["system", "light", "dark"] as const).map(item => <Pressable key={item} disabled={disabled}
             accessibilityRole="radio" accessibilityState={{ checked: preference === item, disabled }}
@@ -171,13 +173,13 @@ export default function SettingsScreen() {
         {saving && <AppStatus message={`${t("Zapisywanie:")} ${t(saving).toLowerCase()}…`} />}
         {saveStatus && <AppStatus tone="success" message={t('{0}: zapisano.', [t(saveStatus)])} />}
         {saveError && <AppStatus tone="error" message={t('Nie udało się zapisać: {0}. Wybierz opcję ponownie, aby spróbować jeszcze raz.', [t(saveError).toLowerCase()])} />}
-        <Text accessibilityRole="header" style={s.heading}>{t("Konto")}</Text>
+        <AppHeading style={s.heading}>{t("Konto")}</AppHeading>
         <MediaAccountCard />
-        <Text accessibilityRole="header" style={s.heading}>{t("Multimedia")}</Text>
+        <AppHeading style={s.heading}>{t("Multimedia")}</AppHeading>
         <MediaDownloadCard disabled={clearing} canStart={() => !clearLock.current} onBusyChange={downloadChanged} />
         <AppCard>
           <Text style={s.label}>{t("Pobrane materiały")}</Text>
-          <Text style={s.sub}>{cacheReading ? t("Sprawdzanie zajętości…") : cacheError ? t("Zajętość aktualnie niedostępna.") : cache === null ? t("Zajętość nieznana.") : t("{0} MB · limit 1 GB", [(cache / 1024 / 1024).toFixed(1)])}</Text>
+          <Text style={s.sub}>{cacheReading ? t("Sprawdzanie zajętości…") : cacheError ? t("Zajętość aktualnie niedostępna.") : cache === null ? t("Zajętość nieznana.") : t("{0} MB · limit 1 GB", [formatUiNumber(cache / 1024 / 1024, interfaceLanguage, 1)])}</Text>
           <AppButton variant='link' label={t(cacheDetails ? 'Ukryj informacje o materiałach offline' : 'Jak działają materiały offline?')}
             accessibilityState={{ expanded: cacheDetails }} onPress={() => setCacheDetails(value => !value)} />
           {cacheDetails && <Text style={s.sub}>{t('Pobrane materiały działają offline, dopóki są w pamięci podręcznej. Mogą zostać usunięte, aby zwolnić miejsce; wtedy wymagają ponownego pobrania.')}</Text>}
@@ -186,11 +188,11 @@ export default function SettingsScreen() {
           <AppButton variant="danger" disabled={downloading} busy={clearing} label={clearing ? t("Czyszczenie materiałów…") : t("Usuń pobrane materiały")} onPress={confirmClear} />
           {downloading && <Text style={s.sub}>{t("Czyszczenie będzie dostępne po zakończeniu lub przerwaniu pobierania.")}</Text>}
         </AppCard>
-        <Text accessibilityRole="header" style={s.heading}>{t("Przypomnienia")}</Text>
+        <AppHeading style={s.heading}>{t("Przypomnienia")}</AppHeading>
         <ReminderCard />
-        <Text accessibilityRole="header" style={s.heading}>{t("Dane")}</Text>
+        <AppHeading style={s.heading}>{t("Dane")}</AppHeading>
         <UserDataCard />
-        <Text accessibilityRole="header" style={s.heading}>{t("Informacje")}</Text>
+        <AppHeading style={s.heading}>{t("Informacje")}</AppHeading>
         <AppAboutCard />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -200,8 +202,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, paddingBottom: 48, gap: 12, width: "100%", maxWidth: 600, alignSelf: "center" },
-  title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
-  heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 16 },
+  heading: { marginTop: 16 },
   label: { color: colors.textPrimary, fontSize: 16, fontWeight: "700" },
   options: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   option: { backgroundColor: colors.primarySurface, padding: 12, borderRadius: 12, minHeight: 48, minWidth: 48, justifyContent: "center", alignItems: "center" },
@@ -209,5 +210,5 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   disabled: { opacity: 0.6 },
   optionText: { color: colors.primaryText, fontSize: 16, fontWeight: "700" },
   activeText: { color: colors.onPrimary, fontSize: 16, fontWeight: "700" },
-  sub: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  sub: { color: colors.textSecondary, ...UiTokens.text.detail },
 });

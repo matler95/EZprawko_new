@@ -14,7 +14,7 @@ Historia checkpointów pozostaje w `IMPLEMENTATION_PROGRESS.md`.
 | F2 | F2.4 retry odczytu; F2.5 wyjaśnienie od razu i rozwijane szczegóły; F2.6 raport globalny, per kategoria i punktacja z kontrolą źródła | F2.2–F2.3 kwalifikowana redakcja/import; odbiór urządzeniowy. Pakiet nadal ma 0 wyjaśnień |
 | F3 | Czytelny start i zakres, rozwijane filtry, reset, jawne pomijanie, F3.6 kolejna partia z informacją o powtórkach | Odbiór ergonomii na telefonach; kontrola wszystkich informacji zakresu i dolnych CTA |
 | F4 | Rekomendacje z danych, ostatnie wyniki per dział i próbka, osobne opanowanie, akcje ćwiczenia | F4.1 uzgodniona definicja kolejki powtórek; część F4.2 dotycząca wznowienia Nauki |
-| F5 | Wspólne tokeny i kontrolki; F5.3 krótszy onboarding, rozwijane informacje i wybór kategorii przed partią Nauki; F5.4 role, oznaczenia, cele dotykowe, modal review i retry znaków | Pozostała typografia/nagłówki/formatowanie; F5.2 porównanie nawigacji; fizyczna dostępność i odbiór F5.3 |
+| F5 | Wspólne tokeny i kontrolki; F5.1 nagłówki Ustawień/Postępu, tokeny kart i formatowanie locale; F5.3 krótszy onboarding i wybór kategorii przed partią; F5.4 dostępność ekranów | Pozostała migracja tokenów na Start/Nauka/onboarding; F5.2 porównanie nawigacji; fizyczna dostępność i odbiór |
 | F6 | Nie rozpoczęto — opcjonalne rozszerzenie | Trwałe wznowienie jednej sesji wymaga osobnej decyzji; bez nowej historii/trybów |
 | F7 | 32 dotychczasowe skrypty regresji i nowy test F2.6, 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, rzeczywiste dekodowanie/cache |
 

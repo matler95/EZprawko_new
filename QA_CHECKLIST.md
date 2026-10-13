@@ -2,6 +2,13 @@
 
 ## New improvement plan — F0 / F1.1 (2026-10-13)
 
+- [ ] F5.1 headings/locale: Settings and Progress headings are announced and wrap at
+  largest font; five Settings child cards retain readable metadata in both themes.
+  Postęp stays centered on tablets without clipping numbers or section headings.
+- [ ] F5.1 locale: PL/EN/DE/UK show intended grouping and MB decimal separator; history
+  dates use interface locale and local 24-hour time. Change device zone and reopen:
+  dates refresh without changing saved attempts. Unknown/invalid values show a dash.
+
 - [ ] F5.3 Study menu: open category chooser, change draft, cancel with no setting write;
   save/retry updates Study and new exams, not an active exam. Route filters remain;
   search resets as explained. Double taps/old Start cannot launch a stale category batch.

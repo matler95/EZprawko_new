@@ -1,4 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
+import { UiTokens } from '@/constants/ui-tokens';
 import * as Application from "expo-application";
 import Constants from "expo-constants";
 import { Link } from "expo-router";
@@ -27,9 +28,9 @@ export function AppAboutCard() {
   </AppCard>;
 }
 const styles = (colors: AppTheme) => StyleSheet.create({
-  heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700" },
+  heading: { color: colors.textPrimary, ...UiTokens.text.heading },
   body: { color: colors.textPrimary, fontSize: 16 },
-  detail: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  detail: { color: colors.textSecondary, ...UiTokens.text.detail },
   link: { minHeight: 48, paddingVertical: 12, justifyContent: "center" },
   action: { color: colors.primaryText, fontSize: 16, fontWeight: "700" },
 });

@@ -38,13 +38,13 @@ function load(relative) {
 }
 const nodes = (element) => {
   if (!React.isValidElement(element)) return [];
-  if (typeof element.type === 'function' && /^(App(Button|Card|Status)|ReviewedExplanation)$/.test(element.type.name)) return nodes(element.type(element.props));
+  if (typeof element.type === 'function' && /^(App(Button|Card|Status|Heading)|ReviewedExplanation)$/.test(element.type.name)) return nodes(element.type(element.props));
   return [element,...React.Children.toArray(element.props.children).flatMap(nodes)];
 };
 const text = (element) => {
   if (typeof element === 'string' || typeof element === 'number') return String(element);
   if (!React.isValidElement(element)) return '';
-  if (typeof element.type === 'function' && /^(App(Button|Card|Status)|ReviewedExplanation)$/.test(element.type.name)) return text(element.type(element.props));
+  if (typeof element.type === 'function' && /^(App(Button|Card|Status|Heading)|ReviewedExplanation)$/.test(element.type.name)) return text(element.type(element.props));
   return React.Children.toArray(element.props.children).map(text).join(' ');
 };
 const { BasicAnswerButtons, basicAnswerText } = load('src/components/basic-answer-buttons.tsx');
@@ -70,6 +70,12 @@ for (const [yes,no] of [['Tak','Nie'],['Yes','No'],['Ja','Nein'],['Так','Ні
 }
 const { ExamBriefing } = load('src/components/exam-briefing.tsx');
 const { AppButton, AppStatus } = load('src/components/ui/app-controls.tsx');
+const { AppHeading } = load('src/components/ui/app-controls.tsx');
+const heading = AppHeading({children:'Section'});
+assert.equal(heading.props.accessibilityRole,'header');
+assert.equal(heading.props.style[0].fontSize,18);assert.equal(heading.props.style[0].lineHeight,24);
+assert.equal(heading.props.numberOfLines,undefined);assert.equal(heading.props.allowFontScaling,undefined);
+assert.equal(AppHeading({children:'Screen',level:'screen'}).props.style[0].lineHeight,36);
 const busyButton = AppButton({ label: 'Preparing', onPress() {}, busy: true });
 assert(busyButton.props.disabled && busyButton.props.accessibilityState.busy);
 assert.equal(busyButton.props.style({ pressed: false })[0].minHeight,56);

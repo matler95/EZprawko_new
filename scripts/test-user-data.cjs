@@ -42,7 +42,7 @@ native.exec(`CREATE TABLE settings(key TEXT PRIMARY KEY,value TEXT); CREATE TABL
 function seed(){for(const table of data.userProgressTables)native.exec(`INSERT OR REPLACE INTO ${table} VALUES (1,'learning fixture')`);
   for(const key of ['target-category','question-language','theme-preference','onboarding-complete','daily-reminder-id','exam-language:fixture','translations-version','question-signs-version','explanations-version','unknown-secret'])native.prepare('INSERT OR REPLACE INTO settings VALUES (?,?)').run(key,key==='unknown-secret'?'never-export-this':key);}
 function count(table){return native.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;}
-function find(tree,predicate){if(!tree||typeof tree!=='object')return [];if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return find(tree.type(tree.props),predicate);const c=tree.props?.children;return [...(predicate(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>find(v,predicate))];}
+function find(tree,predicate){if(!tree||typeof tree!=='object')return [];if(typeof tree.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(tree.type.name))return find(tree.type(tree.props),predicate);const c=tree.props?.children;return [...(predicate(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>find(v,predicate))];}
 (async()=>{
   seed();const exported=await data.exportUserData(db);
   assert.equal(exported.schemaVersion,1);assert.equal(exported.data.practice_attempts.length,1);
