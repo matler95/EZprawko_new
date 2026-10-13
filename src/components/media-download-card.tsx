@@ -2,7 +2,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 
 import { mediaConfig } from '@/config/media';
@@ -10,6 +10,7 @@ import { mediaFilenamesForCategory } from '@/database/repository';
 import { useTargetCategory } from '@/context/target-category-context';
 import { preloadMedia } from '@/services/media-preload';
 import type { DrivingCategory } from '@/domain/driving-categories';
+import { AppButton, AppCard, AppStatus } from '@/components/ui/app-controls';
 
 type DownloadControls = { disabled?: boolean; canStart?: () => boolean; onBusyChange?: (busy: boolean) => void };
 export function MediaDownloadCard(controls: DownloadControls = {}) {
@@ -71,38 +72,21 @@ function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBus
       : t("Pobierz do 250 materiałów dla kategorii {0}.", [category]);
 
   return (
-    <View style={styles.card}>
+    <AppCard>
       <View style={styles.copy}>
         <Text style={styles.title}>{t("Materiały offline")}</Text>
         <Text style={styles.detail}>{t(detail)}</Text>
         <Text style={styles.detail}>{t('To część materiałów kategorii. Zapisane pliki mogą zostać usunięte przez system lub po przekroczeniu limitu 1 GB.')}</Text>
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{t(error)}</Text> : null}
+        {error ? <AppStatus tone="error" message={t(error)} /> : null}
       </View>
-      <Pressable
-        accessibilityRole="button"
-        disabled={!mediaConfig.enabled || busy || disabled}
-        accessibilityState={{ disabled: !mediaConfig.enabled || busy || disabled, busy }}
-        onPress={preload}
-        style={({ pressed }) => [
-          styles.button,
-          (!mediaConfig.enabled || busy || disabled) && styles.buttonDisabled,
-          pressed && styles.buttonPressed,
-        ]}>
-        {busy ? <ActivityIndicator color={colors.onGold} /> : <Text style={styles.buttonText}>{error ? t("Spróbuj ponownie") : t("Pobierz")}</Text>}
-      </Pressable>
-      {busy ? <Pressable accessibilityRole="button" onPress={() => { cancelled.current = true; }} style={styles.button}><Text style={styles.buttonText}>{t("Przerwij po bieżącym pliku")}</Text></Pressable> : null}
-    </View>
+      <AppButton variant="gold" disabled={!mediaConfig.enabled || disabled} busy={busy} label={busy ? t('Przygotowujemy…') : error ? t("Spróbuj ponownie") : t("Pobierz")} onPress={preload} />
+      {busy ? <AppButton variant="link" label={t("Przerwij po bieżącym pliku")} onPress={() => { cancelled.current = true; }} /> : null}
+    </AppCard>
   );
 }
 
 const createStyles = (colors: AppTheme) => StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 14 },
   copy: { gap: 5 },
   title: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
   detail: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
-  error: { color: colors.error, fontSize: 13, lineHeight: 19 },
-  button: { alignItems: 'center', backgroundColor: colors.accentGold, borderRadius: 10, minHeight: 48, justifyContent: 'center', paddingHorizontal: 14 },
-  buttonDisabled: { backgroundColor: colors.disabledSurface },
-  buttonPressed: { opacity: 0.82 },
-  buttonText: { color: colors.onGold, fontSize: 14, fontWeight: '800' },
 });

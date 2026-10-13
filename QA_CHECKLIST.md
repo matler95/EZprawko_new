@@ -2,6 +2,25 @@
 
 ## New improvement plan — F0 / F1.1 (2026-10-13)
 
+- [ ] F5.4 Study: reader announces A/B/C answer text, selected/correct markers and
+  disabled navigation; visible markers remain understandable without color. T/N
+  controls wrap on narrow screens, with largest fonts and readable letter badges.
+- [ ] F5.4 Review: opening a question hides background from reader; labelled close
+  and accessibility escape work, focus enters/returns correctly, bottom safe area
+  is respected. Number tiles/answers grow with large fonts without clipping.
+- [ ] F5.4 Signs: 48px filters, category-scoped count loading/retry without leaving
+  selected sign, no stale count after category/foreground change. Practice action
+  clears previous exam-session filters and retains current category.
+
+- [ ] F5 Settings cards: account/download/reminder/data actions share layout and
+  readable labels in both themes and all UI languages at large fonts.
+- [ ] F5 account: keyboard/autofill, show/hide password and login -> same material
+  return work; logout doesn't clear local progress/cache. Validate with a real account.
+- [ ] F5 reminder: switch announces checked/busy, time action announces current time;
+  iOS cancel doesn't save, Android dialog respects 24-hour time. Verify actual delivery.
+- [ ] F5 download/data: busy label remains visible, cancellation usable, export locks
+  reset actions; destructive actions still require confirmation. About legal links work.
+
 - [ ] F5 onboarding/settings: both themes, PL/EN/DE/UK and large font; shared buttons
   wrap and onboarding stays centered on larger devices without restricting scrolling.
 - [ ] F5 onboarding: language/category radios keep selected state; busy save blocks

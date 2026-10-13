@@ -1,5 +1,51 @@
 # Implementation progress
 
+## Improvement plan — checkpoint F5.4 Study/signs/review accessibility (2026-10-13)
+
+- Specialist Study answers now expose button/disabled/selected semantics and both
+  visible and accessible selected/correct markers. Feedback has a polite live region;
+  success uses success color. Navigation/end/flag/list-question actions expose roles.
+  Answer letter badges use minimum sizes instead of fixed heights; marks sit below
+  answer text rather than consuming horizontal answer width.
+- T/N answer rows may wrap at narrow widths, retaining 80px minimum targets and
+  official keys. No question timer, scoring or answer-write rules changed.
+- Completed-exam review has a labelled >=48px close action, accessible escape,
+  modal isolation and hidden background accessibility descendants while open.
+  Safe bottom inset is retained. Number tiles grow vertically with text rather
+  than imposing fixed height; review answer names include selection and correctness.
+- Signs and review use centered <=600px content; sign filters are >=48px.
+  Related-question read errors retry in-place. Ordered focus/request guards suppress
+  obsolete counts; counts are hidden while loading/failed. Sign -> Study clears old
+  session/start and unrelated scopes, avoiding accidental failed-exam filtering.
+- Passed existing Study/T-N/sign/content regressions and new actual-screen contracts
+  for sign retry/routes and result modal/answer semantics. UI languages, final lint
+  and TypeScript passed. No live screen-reader behavior or physical layout is claimed.
+- Physical VoiceOver/TalkBack focus ordering, escape/back, largest fonts, keyboard,
+  media decoding and cross-platform geometry remain explicit acceptance tasks.
+
+## Improvement plan — checkpoint F5.1 Settings child cards (2026-10-13)
+
+- Migrated account, media download, reminder, user-data and About containers to
+  shared AppCard. Account/download/reminder errors and loading messages use AppStatus;
+  actions use shared AppButton variants. Offline download now retains a visible busy
+  label alongside the spinner, with an independent link to cancel after current file.
+- Extended AppButton to preserve switch/link roles, custom accessible names and
+  checked/expanded states while always deriving disabled/busy from operation props.
+  Reminder enable/disable remains a switch and password visibility keeps its state.
+- User-data export is a secondary action; progress/full-local resets are danger
+  text actions. Existing confirmations, export lock, maintenance/reset fencing and
+  account/media download locks are unchanged. Native legal Link children are kept
+  directly ref-compatible rather than routing them through a custom button wrapper.
+- Updated relevant existing test renderers to inspect rendered shared controls and
+  dynamic styles. Account tests cover validation, password visibility/clearing,
+  double taps, session races, logout and return to the same media. Reminder tests
+  cover iOS draft/cancel/save, switch permission intent, Android time selection and
+  late callbacks. Download, reset/export, legal links and Settings regressions passed.
+- Final lint/TypeScript, UI-language tests and 34 contrast pairs passed. No live
+  login, real notification permissions/delivery, data deletion or cloud mutations
+  were performed by these development checks. Physical keyboard/layout/screen-reader
+  acceptance and broader F5 ergonomics remain open.
+
 ## Improvement plan — checkpoint F5.1 onboarding/settings (2026-10-13)
 
 - Onboarding uses shared cards, primary/link actions and error status. Its content

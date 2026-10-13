@@ -37,12 +37,14 @@ function load(file) {
 }
 function nodes(tree,predicate) {
   if(!tree || typeof tree!=='object') return [];
+  if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return nodes(tree.type(tree.props),predicate);
   const children=tree.props?.children;
   return [...(predicate(tree)?[tree]:[]),...(Array.isArray(children)?children.flat(Infinity):[children]).flatMap((child)=>nodes(child,predicate))];
 }
 function text(tree) {
   if(typeof tree==='string' || typeof tree==='number')return String(tree);
   if(!tree || typeof tree!=='object')return '';
+  if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return text(tree.type(tree.props));
   const children=tree.props?.children;
   return (Array.isArray(children)?children.flat(Infinity):[children]).map(text).join(' ');
 }

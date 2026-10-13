@@ -44,6 +44,17 @@ role wyborów, zapis szkicu, potwierdzenia i blokady usuwania materiałów.
 Karty podrzędne konta, pobierania, przypomnień i danych czekają na migrację;
 fizyczny odbiór nadal otwarty.
 
+Aktualizacja F5.1 — karty podrzędne: konto, pobieranie, przypomnienia, dane
+i kontener informacji korzystają ze wspólnych komponentów. Role switch/link,
+stany wyboru, powrót po logowaniu i potwierdzenia zachowane. Lokalne testy,
+lint, TypeScript i kontrast zaliczone; fizyczny odbiór nadal otwarty.
+
+Aktualizacja F5.4: role/stany i tekstowe oznaczenia odpowiedzi, większe pola
+dotykowe, rosnące kafelki wyników, izolacja podglądu dla czytnika oraz retry
+powiązań znaków wdrożone lokalnie. Przejście Znaki → Nauka czyści obcy filtr
+egzaminu. Kontrakty ekranów i statyczne kontrole zaliczone; zachowanie focusu,
+duże fonty i gesty wymagają fizycznego odbioru.
+
 ## 1. Cel i ustalony zakres
 
 Cel: użytkownik potrafi rozpocząć naukę, wrócić do niej, zrozumieć błąd,

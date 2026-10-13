@@ -1,19 +1,21 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, type AccessibilityRole, type AccessibilityState, type StyleProp, type ViewStyle } from 'react-native';
 import { useAppTheme } from '@/context/app-theme-context';
 import { UiTokens } from '@/constants/ui-tokens';
 
-export function AppButton({ label, onPress, variant = 'primary', disabled = false, busy = false, style }: {
+export function AppButton({ label, onPress, variant = 'primary', disabled = false, busy = false, style,
+  accessibilityRole = 'button', accessibilityLabel, accessibilityState }: {
   label: string; onPress: () => void; variant?: 'primary' | 'secondary' | 'gold' | 'link' | 'danger';
   disabled?: boolean; busy?: boolean; style?: StyleProp<ViewStyle>;
+  accessibilityRole?: AccessibilityRole; accessibilityLabel?: string; accessibilityState?: AccessibilityState;
 }) {
   const { colors } = useAppTheme();
   const blocked = disabled || busy;
   const textOnly = variant === 'link' || variant === 'danger';
   const foreground = blocked ? textOnly ? colors.textSecondary : colors.textPrimary : variant === 'primary' ? colors.onPrimary : variant === 'gold' ? colors.onGold : variant === 'danger' ? colors.error : colors.primaryText;
   const background = blocked && !textOnly ? colors.disabledSurface : variant === 'primary' ? colors.primary : variant === 'gold' ? colors.accentGold : variant === 'secondary' ? colors.primarySurface : 'transparent';
-  return <Pressable accessibilityRole="button" accessibilityLabel={label}
-    accessibilityState={{ disabled: blocked, busy }} disabled={blocked} onPress={onPress}
+  return <Pressable accessibilityRole={accessibilityRole} accessibilityLabel={accessibilityLabel ?? label}
+    accessibilityState={{ ...accessibilityState, disabled: blocked, busy }} disabled={blocked} onPress={onPress}
     style={({ pressed }) => [{
       minHeight: textOnly ? UiTokens.target.minimum : UiTokens.target.primary,
       paddingHorizontal: UiTokens.space.medium, paddingVertical: textOnly ? UiTokens.space.small : UiTokens.space.medium,

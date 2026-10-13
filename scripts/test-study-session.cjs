@@ -45,7 +45,9 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
     states=[];refs=[];effects=[];pending=[];writes=mastered=0;
     render();const cleanup=focus();await tick();render();await tick();let t=render();
     await button(t,'Otwórz pytanie').props.onPress();await tick();t=render();
-    const wrong=button(t,'Druga');await Promise.all([wrong.props.onPress(),wrong.props.onPress()]);t=render();assert.equal(writes,1,'double tap writes once');
+    const wrong=button(t,'Druga');assert.equal(wrong.props.accessibilityRole,'button');await Promise.all([wrong.props.onPress(),wrong.props.onPress()]);t=render();assert.equal(writes,1,'double tap writes once');
+    assert(button(t,'Druga').props.accessibilityState.selected);assert(button(t,'Druga').props.accessibilityLabel.includes('Twój wybór'));
+    assert(button(t,'Pierwsza').props.accessibilityLabel.includes('Klucz MI'),'correctness is not conveyed by color alone');
     button(t,'Następne').props.onPress();await tick();t=render();
     failWrite=true;await button(t,'Pierwsza').props.onPress();t=render();assert.match(text(t),/Nie zapisano/);assert.equal(writes,1);failWrite=false;
     await button(t,'Pierwsza').props.onPress();t=render();assert.equal(writes,2);assert.match(text(t),/Dobra odpowiedź/,'haptic failure cannot lose answer');

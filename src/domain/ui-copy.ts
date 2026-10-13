@@ -3,6 +3,9 @@ import { uiLanguage, type UiLanguage } from '@/domain/ui-language';
 // remain separately sourced. Placeholder values are not translated implicitly.
 type Row = readonly [string, string, string, string];
 export const uiCopy: readonly Row[] = [
+  ['Sprawdzanie powiązanych pytań…', 'Checking related questions…', 'Zugehörige Fragen werden geprüft…', 'Перевірка пов’язаних запитань…'],
+  ['Zamknij podgląd pytania', 'Close question preview', 'Fragenvorschau schließen', 'Закрити перегляд запитання'],
+  ['Nie udało się odczytać powiązanych pytań. Spróbuj ponownie.', 'Could not load related questions. Try again.', 'Zugehörige Fragen konnten nicht geladen werden. Versuche es erneut.', 'Не вдалося завантажити пов’язані запитання. Спробуйте ще раз.'],
   ['Wróć do pytań, w których zdarzyła się pomyłka. Historia pozostaje także po poprawieniu odpowiedzi.', 'Review questions where you made a mistake. History remains even after you correct an answer.', 'Wiederhole Fragen mit früheren Fehlern. Der Verlauf bleibt auch nach einer richtigen Antwort erhalten.', 'Повторіть запитання, у яких трапилася помилка. Історія зберігається навіть після виправлення відповіді.'],
   ['Ćwicz dział: {0}', 'Practice topic: {0}', 'Thema üben: {0}', 'Тренуйте розділ: {0}'],
   ['Ostatnie odpowiedzi: {0}/{1} poprawnych. Zacznij krótką powtórkę.', 'Latest answers: {0}/{1} correct. Start a short review.', 'Letzte Antworten: {0}/{1} richtig. Starte eine kurze Wiederholung.', 'Останні відповіді: {0}/{1} правильних. Почніть коротке повторення.'],

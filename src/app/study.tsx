@@ -293,13 +293,14 @@ function StudySession() {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView contentContainerStyle={s.content}>
-          <Pressable disabled={busy} onPress={() => void finish()} style={s.endButton}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void finish()} style={s.endButton}>
             <Text style={s.link}>{t("Zakończ sesję i zobacz podsumowanie")}</Text>
           </Pressable>
           <View style={s.row}>
             <Text style={s.badge}>{active.points} {t("pkt")}</Text>
             <Pressable
               accessibilityRole="button"
+              accessibilityState={{ selected: flagged }}
               style={s.endButton}
               onPress={() => {
                 if (flagLock.current) return;
@@ -323,6 +324,9 @@ function StudySession() {
           {busy ? <Text style={s.sub}>{t("Zapisywanie lub wczytywanie…")}</Text> : null}
           {active.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={answers} disabled={Boolean(selected) || busy || !mediaReady} selectedAnswer={selected} correctAnswer={selected ? active.correct_answer : undefined} onAnswer={(key) => void answer(key)} /> : answers.map((item) => (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={[item.label, item.answer, selected === item.label ? t('Twój wybór') : '', selected && item.label === active.correct_answer ? t('✓ Klucz MI') : ''].filter(Boolean).join(', ')}
+              accessibilityState={{ selected: selected === item.label, disabled: Boolean(selected) || busy || !mediaReady }}
               key={item.label}
               disabled={Boolean(selected) || busy || !mediaReady}
               onPress={() => answer(item.label)}
@@ -336,12 +340,16 @@ function StudySession() {
               ]}
             >
               <Text style={s.letter}>{item.label}</Text>
-              <Text style={s.answerText}>{item.answer}</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.answerText}>{item.answer}</Text>
+                {selected === item.label && <Text style={s.answerMark}>{t('Twój wybór')}</Text>}
+                {selected && item.label === active.correct_answer && <Text style={s.answerMark}>{t('✓ Klucz MI')}</Text>}
+              </View>
             </Pressable>
           ))}
           {selected && (
             <View style={s.feedback}>
-              <Text style={s.feedbackTitle}>
+              <Text accessibilityLiveRegion="polite" style={[s.feedbackTitle, { color: selected === active.correct_answer ? colors.success : colors.warning }]}>
                 {selected === active.correct_answer
                   ? t("Dobra odpowiedź!")
                   : t("Sprawdź tę zasadę ponownie.")}
@@ -352,10 +360,10 @@ function StudySession() {
             </View>
           )}
           <View style={s.navigator}>
-            <Pressable disabled={activeIndex <= 0 || busy} onPress={() => move(-1)} style={[s.navButton, activeIndex <= 0 && s.navButtonDisabled]}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: activeIndex <= 0 || busy }} disabled={activeIndex <= 0 || busy} onPress={() => move(-1)} style={[s.navButton, activeIndex <= 0 && s.navButtonDisabled]}>
               <Text style={s.navButtonText}>{t("← Poprzednie")}</Text>
             </Pressable>
-            <Pressable disabled={busy} onPress={() => activeIndex >= batch.length - 1 ? void finish() : move(1)} style={s.navButton}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => activeIndex >= batch.length - 1 ? void finish() : move(1)} style={s.navButton}>
               <Text style={s.navButtonText}>{activeIndex >= batch.length - 1 ? selected ? t("Podsumowanie") : t('Zakończ bez odpowiedzi') : selected ? t("Następne →") : t('Pomiń →')}</Text>
             </Pressable>
           </View>
@@ -443,7 +451,7 @@ function StudySession() {
         {activeFilter === "hardest" ? <Text style={s.sub}>{t("Najpierw pytania z największą liczbą pomyłek w nauce (co najmniej 2), następnie pozostałe pytania za 3 punkty.")}</Text> : null}
         {readError ? <LoadingError onRetry={() => setReload((value) => value + 1)} /> : loading ? <LoadingSkeleton variant="study" label={t("Wczytywanie działów i pytań")} /> : items.length ? (
           items.map((item) => (
-            <Pressable key={item.id} onPress={() => begin(item)} style={s.card}>
+            <Pressable accessibilityRole="button" key={item.id} onPress={() => begin(item)} style={s.card}>
               <View style={s.row}>
                 <Text style={s.badge}>{item.points} {t("pkt")}</Text>
                 <Text style={s.scope}>{t(item.scope === 'PODSTAWOWY' ? 'Wiedza podstawowa' : 'Wiedza specjalistyczna')}</Text>
@@ -513,8 +521,9 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
     gap: 12,
   },
   letter: {
-    width: 28,
-    height: 28,
+    minWidth: 32,
+    minHeight: 32,
+    padding: 4,
     borderRadius: 14,
     backgroundColor: colors.primarySurface,
     textAlign: "center",
@@ -522,7 +531,8 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
     color: colors.primaryText,
     fontWeight: "700",
   },
-  answerText: { flex: 1, lineHeight: 20, color: colors.textPrimary },
+  answerText: { lineHeight: 20, color: colors.textPrimary },
+  answerMark: { color: colors.textPrimary, fontSize: 12, lineHeight: 18 },
   selected: { borderColor: colors.primaryText },
   correct: { backgroundColor: colors.successSurface, borderColor: colors.success },
   wrong: { backgroundColor: colors.errorSurface, borderColor: colors.error },

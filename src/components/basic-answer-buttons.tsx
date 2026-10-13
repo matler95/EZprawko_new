@@ -43,9 +43,9 @@ export function BasicAnswerButtons({ answers, disabled = false, locked = false, 
   </View>;
 }
 const styles = (colors: AppTheme) => StyleSheet.create({
-  container: { gap: 12 }, row: { flexDirection: "row", gap: 12 },
+  container: { gap: 12 }, row: { flexDirection: "row", flexWrap: 'wrap', gap: 12 },
   notice: { color: colors.textSecondary, lineHeight: 20 },
-  button: { flex: 1, minHeight: 80, padding: 16, alignItems: "center", justifyContent: "center", borderWidth: 2, borderRadius: 16, gap: 8 },
+  button: { flex: 1, flexBasis: 120, minWidth: 120, minHeight: 80, padding: 16, alignItems: "center", justifyContent: "center", borderWidth: 2, borderRadius: 16, gap: 8 },
   yes: { backgroundColor: colors.successSurface, borderColor: colors.success },
   no: { backgroundColor: colors.errorSurface, borderColor: colors.error },
   label: { fontSize: 24, fontWeight: "700", textAlign: "center" },

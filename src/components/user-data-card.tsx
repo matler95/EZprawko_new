@@ -1,11 +1,12 @@
 import { useTranslation } from '@/hooks/use-translation';
 import { useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useDataMaintenance } from "@/context/data-maintenance-context";
 import { resetUserProgress } from "@/database/user-data";
 import { deleteLocalUserData, shareUserData } from "@/services/user-data";
+import { AppButton, AppCard } from '@/components/ui/app-controls';
 
 export function UserDataCard() {
   const { t } = useTranslation();
@@ -30,25 +31,21 @@ export function UserDataCard() {
       } },
     ]);
   };
-  return <View style={s.card}>
+  return <AppCard>
     <Text accessibilityRole="header" style={s.heading}>{t("Twoje dane")}</Text>
     <Text style={s.detail}>{t("Eksport dotyczy danych lokalnych, bez haseł, tokenów, konta w chmurze i multimediów. Plik zawiera historię odpowiedzi — udostępniaj go świadomie. Nie służy do przywracania kopii w aplikacji.")}</Text>
-    <Pressable disabled={exporting} accessibilityRole="button" accessibilityState={{ disabled: exporting, busy: exporting }} style={s.button} onPress={() => {
+    <AppButton variant="secondary" busy={exporting} label={exporting ? t("Przygotowywanie eksportu…") : t("Eksportuj moje dane")} onPress={() => {
       if (lock.current) return;
       lock.current = true; setExporting(true);
       void shareUserData(db).catch((error: unknown) => Alert.alert(t("Eksport nieudany"), error instanceof Error ? error.message : t("Spróbuj ponownie.")))
         .finally(() => { lock.current = false; setExporting(false); });
-    }}><Text style={s.action}>{exporting ? t("Przygotowywanie eksportu…") : t("Eksportuj moje dane")}</Text></Pressable>
-    <Pressable disabled={exporting} accessibilityRole="button" style={s.button} onPress={() => confirm(false)}><Text style={s.action}>{t("Resetuj postępy")}</Text></Pressable>
-    <Pressable disabled={exporting} accessibilityRole="button" style={s.button} onPress={() => confirm(true)}><Text style={s.danger}>{t("Usuń wszystkie dane lokalne")}</Text></Pressable>
+    }} />
+    <AppButton variant="danger" disabled={exporting} label={t("Resetuj postępy")} onPress={() => confirm(false)} />
+    <AppButton variant="danger" disabled={exporting} label={t("Usuń wszystkie dane lokalne")} onPress={() => confirm(true)} />
     <Text style={s.detail}>{t("Usunięcie konta Supabase wymaga odrębnej procedury u operatora. Lokalny reset nie usuwa konta, logów usług ani kopii systemowych.")}</Text>
-  </View>;
+  </AppCard>;
 }
 const styles = (colors: AppTheme) => StyleSheet.create({
-  card: { padding: 24, gap: 12, borderRadius: 24, backgroundColor: colors.surface },
   heading: { color: colors.textPrimary, fontSize: 18, fontWeight: "700" },
   detail: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
-  button: { minHeight: 48, justifyContent: "center", paddingVertical: 12 },
-  action: { color: colors.primaryText, fontSize: 16, fontWeight: "700" },
-  danger: { color: colors.error, fontSize: 16, fontWeight: "700" },
 });

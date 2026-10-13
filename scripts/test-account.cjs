@@ -27,9 +27,9 @@ new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(ro
   if(name==='@/global.css')return {};
   if(name.startsWith('@/')){const base=`src/${name.slice(2)}`;return load(fs.existsSync(path.join(root,base+'.tsx'))?base+'.tsx':base+'.ts');}throw Error(name);
 },exports);return exports;}
-function nodes(t){if(!t||typeof t!=='object')return [];const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
-function text(t){if(typeof t==='string')return t;if(!t||typeof t!=='object')return '';const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
-function button(t,label){const n=nodes(t).find(n=>n.type==='Pressable'&&text(n)===label);assert(n,`Missing ${label}: ${text(t)}`);return n;}
+function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return nodes(t.type(t.props));const c=t.props?.children;return [t,...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(nodes)];}
+function text(t){if(typeof t==='string')return t;if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
+function button(t,label){const n=nodes(t).find(n=>n.type==='Pressable'&&text(n).trim()===label);assert(n,`Missing ${label}: ${text(t)}`);return n;}
 function input(t,label){return nodes(t).find(n=>n.type==='TextInput'&&n.props.accessibilityLabel===label);}
 function resetHooks(){states=[];refs=[];memo=[];effects=[];pending=[];cleanups=[];}
 function render(Component,props){si=ri=ci=ei=0;const tree=Component(props);const run=pending;pending=[];for(const f of run){const cleanup=f();if(cleanup)cleanups.push(cleanup);}return tree;}

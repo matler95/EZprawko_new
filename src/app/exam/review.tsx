@@ -64,9 +64,9 @@ export default function ExamReviewScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable onPress={() => router.replace("/")}><Text style={styles.back}>{t("← Panel główny")}</Text></Pressable>
-        <Text style={styles.kicker}>{t("PODSUMOWANIE EGZAMINU")}</Text>
+      <ScrollView accessibilityElementsHidden={Boolean(selected)} importantForAccessibility={selected ? 'no-hide-descendants' : 'auto'} contentContainerStyle={styles.content}>
+        <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => router.replace("/")}><Text style={styles.back}>{t("← Panel główny")}</Text></Pressable>
+        <Text accessibilityRole="header" style={styles.kicker}>{t("PODSUMOWANIE EGZAMINU")}</Text>
         <View style={[styles.hero, review.passed ? styles.heroPassed : styles.heroFailed]}>
           <Text style={styles.verdict}>{review.passed ? t("POZYTYWNY") : t("NEGATYWNY")}</Text>
           <Text accessibilityLabel={t('Wynik egzaminu: {0} z 74 punktów', [review.score])} style={styles.score}>{review.score}/74</Text>
@@ -85,7 +85,7 @@ export default function ExamReviewScreen() {
           </View>
         ) : null}
 
-        <Text style={styles.section}>{t("Twoje odpowiedzi")}</Text>
+        <Text accessibilityRole="header" style={styles.section}>{t("Twoje odpowiedzi")}</Text>
         <Text style={styles.muted}>{t("Dotknij numeru, aby zobaczyć treść i porównać odpowiedzi.")}</Text>
         <View style={styles.grid}>
           {review.questions.map((item) => (
@@ -121,8 +121,8 @@ export default function ExamReviewScreen() {
 
       <Modal animationType="slide" onRequestClose={() => setSelected(null)} transparent visible={Boolean(selected)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.sheet}>
-            <Pressable onPress={() => setSelected(null)} style={styles.closeButton}><Text style={styles.close}>×</Text></Pressable>
+          <SafeAreaView edges={['bottom']} accessibilityViewIsModal onAccessibilityEscape={() => setSelected(null)} style={styles.sheet}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('Zamknij podgląd pytania')} onPress={() => setSelected(null)} style={styles.closeButton}><Text style={styles.close}>×</Text></Pressable>
             {selected ? (
               <ScrollView contentContainerStyle={styles.sheetContent}>
                 <Text style={styles.kicker}>{t("PYTANIE")} {selected.position + 1} · {selected.points} {t("PKT")}</Text>
@@ -133,10 +133,13 @@ export default function ExamReviewScreen() {
                   const wasSelected = selected.selectedAnswer === answer.label;
                   const isCorrect = selected.correctAnswer === answer.label;
                   return (
-                    <View key={answer.label} style={[styles.answer, isCorrect && styles.answerCorrect, wasSelected && !isCorrect && styles.answerWrong]}>
+                    <View accessible accessibilityLabel={[answer.label, answer.answer, wasSelected ? t('Twój wybór') : '', isCorrect ? t('✓ Klucz MI') : ''].filter(Boolean).join(', ')} key={answer.label} style={[styles.answer, isCorrect && styles.answerCorrect, wasSelected && !isCorrect && styles.answerWrong]}>
                       <Text style={styles.answerLetter}>{answer.label}</Text>
-                      <Text style={styles.answerText}>{answer.answer}</Text>
-                      {isCorrect ? <Text style={styles.answerMark}>✓</Text> : null}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.answerText}>{answer.answer}</Text>
+                        {isCorrect ? <Text style={styles.answerMark}>{t('✓ Klucz MI')}</Text> : null}
+                        {wasSelected ? <Text style={styles.muted}>{t('Twój wybór')}</Text> : null}
+                      </View>
                     </View>
                   );
                 })}
@@ -146,7 +149,7 @@ export default function ExamReviewScreen() {
                 <QuestionExplanation key={selected.id} questionId={selected.id} />
               </ScrollView>
             ) : null}
-          </View>
+          </SafeAreaView>
         </View>
       </Modal>
     </SafeAreaView>
@@ -156,8 +159,9 @@ export default function ExamReviewScreen() {
 const createStyles = (colors: AppTheme) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   loading: { alignItems: "center", flex: 1, justifyContent: "center" },
-  content: { padding: 24, paddingBottom: 48 },
-  back: { color: colors.primaryText, fontWeight: "800", marginBottom: 28 },
+  content: { padding: 24, paddingBottom: 48, maxWidth: 600, width: '100%', alignSelf: 'center' },
+  back: { color: colors.primaryText, fontWeight: "800" },
+  backButton: { minHeight: 48, justifyContent: 'center', marginBottom: 16 },
   kicker: { color: colors.primaryText, fontSize: 11, fontWeight: "800", letterSpacing: 0.9 },
   hero: { borderRadius: 24, marginTop: 12, padding: 24 },
   heroPassed: { backgroundColor: colors.brandSurface }, heroFailed: { backgroundColor: colors.dangerSolid },
@@ -170,7 +174,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   section: { color: colors.textPrimary, fontSize: 20, fontWeight: "800", marginTop: 32 },
   muted: { color: colors.textSecondary, lineHeight: 20, marginTop: 6 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 20 },
-  tile: { alignItems: "center", borderRadius: 12, height: 48, justifyContent: "center", width: "21%" },
+  tile: { alignItems: "center", borderRadius: 12, minHeight: 48, minWidth: 64, paddingVertical: 12, paddingHorizontal: 4, justifyContent: "center", width: "21%" },
   tileCorrect: { backgroundColor: colors.successSurface }, tileWrong: { backgroundColor: colors.errorSurface }, tileSkipped: { backgroundColor: colors.disabledSurface },
   tileText: { color: colors.textPrimary, fontVariant: ["tabular-nums"], fontWeight: "800" },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 18 },
@@ -179,12 +183,12 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   primaryButtonText: { color: colors.onPrimary, fontWeight: "800" },
   modalBackdrop: { backgroundColor: colors.scrim, flex: 1, justifyContent: "flex-end" },
   sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "88%" },
-  closeButton: { alignSelf: "flex-end", paddingHorizontal: 24, paddingTop: 14 }, close: { color: colors.textPrimary, fontSize: 30 },
+  closeButton: { alignSelf: "flex-end", minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }, close: { color: colors.textPrimary, fontSize: 30 },
   sheetContent: { padding: 24, paddingTop: 0 },
   question: { color: colors.textPrimary, fontSize: 21, fontWeight: "800", lineHeight: 29, marginBottom: 20, marginTop: 14 },
   answer: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: "row", marginBottom: 10, minHeight: 60, padding: 14 },
   answerCorrect: { backgroundColor: colors.successSurface, borderColor: colors.success }, answerWrong: { backgroundColor: colors.errorSurface, borderColor: colors.error },
-  answerLetter: { backgroundColor: colors.primarySurface, borderRadius: 14, color: colors.primaryText, fontWeight: "800", height: 28, marginRight: 12, paddingTop: 5, textAlign: "center", width: 28 },
-  answerText: { color: colors.textPrimary, flex: 1, lineHeight: 20 }, answerMark: { color: colors.primaryText, fontSize: 20, fontWeight: "800" },
+  answerLetter: { backgroundColor: colors.primarySurface, borderRadius: 14, color: colors.primaryText, fontWeight: "800", minHeight: 32, marginRight: 12, padding: 4, textAlign: "center", minWidth: 32 },
+  answerText: { color: colors.textPrimary, lineHeight: 20 }, answerMark: { color: colors.primaryText, fontSize: 14, fontWeight: "700" },
   answerSummary: { color: colors.textSecondary, lineHeight: 20, marginTop: 12 },
 });

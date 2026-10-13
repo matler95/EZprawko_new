@@ -24,6 +24,7 @@ function load(file){
     if(name==='@/context/data-maintenance-context')return {useDataMaintenance:()=>fn=>{operation=fn;}};
     if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors.light})};
     if(name==='@/global.css')return {};
+    if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
     if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);
     throw Error(`Unexpected dependency ${name}`);
   },exports);return exports;
@@ -41,7 +42,7 @@ native.exec(`CREATE TABLE settings(key TEXT PRIMARY KEY,value TEXT); CREATE TABL
 function seed(){for(const table of data.userProgressTables)native.exec(`INSERT OR REPLACE INTO ${table} VALUES (1,'learning fixture')`);
   for(const key of ['target-category','question-language','theme-preference','onboarding-complete','daily-reminder-id','exam-language:fixture','translations-version','question-signs-version','explanations-version','unknown-secret'])native.prepare('INSERT OR REPLACE INTO settings VALUES (?,?)').run(key,key==='unknown-secret'?'never-export-this':key);}
 function count(table){return native.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;}
-function find(tree,predicate){if(!tree||typeof tree!=='object')return [];const c=tree.props?.children;return [...(predicate(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>find(v,predicate))];}
+function find(tree,predicate){if(!tree||typeof tree!=='object')return [];if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return find(tree.type(tree.props),predicate);const c=tree.props?.children;return [...(predicate(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>find(v,predicate))];}
 (async()=>{
   seed();const exported=await data.exportUserData(db);
   assert.equal(exported.schemaVersion,1);assert.equal(exported.data.practice_attempts.length,1);
@@ -65,7 +66,7 @@ function find(tree,predicate){if(!tree||typeof tree!=='object')return [];const c
   assert(!guard.userDataWritable(revision));assert(guard.userDataWritable());
   await assert.rejects(()=>guard.withDataMaintenance(async()=>{throw Error('test');}),/test/);assert(guard.userDataWritable(),'failure releases maintenance guard');
   seed();const card=load('src/components/user-data-card.tsx').UserDataCard();
-  const buttons=find(card,n=>n.type==='Pressable');assert.equal(buttons.length,3);assert(buttons.every(n=>n.props.style.minHeight>=48));
+  const buttons=find(card,n=>n.type==='Pressable');assert.equal(buttons.length,3);assert(buttons.every(n=>n.props.style({pressed:false})[0].minHeight>=48));
   buttons[1].props.onPress();assert.equal(operation,null,'opening confirmation must not reset');assert.equal(dialog[2][0].style,'cancel');
   dialog[2][1].onPress();await operation();assert.equal(count('practice_attempts'),0);
   console.log('User data: versioned secret-free snapshot, transactional reset/rollback, settings/catalog preservation, scoped JSON cleanup/sheet failure, local-session/cache failure, remote-revocation warning, generation guard and confirmation-only 48px UI passed.');

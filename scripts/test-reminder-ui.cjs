@@ -18,10 +18,11 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name==='@/services/reminders')return {readDailyReminder:async()=>snapshot,updateDailyReminder:async(_db,time,enabled,ask)=>{updates.push({time,enabled,ask});snapshot={...snapshot,time,enabled};return snapshot;}};
     if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors[theme],preference:theme})};
     if(name==='@/global.css')return {};
+    if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
     if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);throw Error(name);
   },exports);cache.set(file,exports);return exports;}
-function nodes(tree,fn){if(!tree||typeof tree!=='object')return [];const c=tree.props?.children;return [...(fn(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>nodes(v,fn))];}
-function text(tree){if(typeof tree==='string')return tree;if(!tree||typeof tree!=='object')return '';const c=tree.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ');}
+function nodes(tree,fn){if(!tree||typeof tree!=='object')return [];if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return nodes(tree.type(tree.props),fn);const c=tree.props?.children;return [...(fn(tree)?[tree]:[]),...(Array.isArray(c)?c.flat(Infinity):[c]).flatMap(v=>nodes(v,fn))];}
+function text(tree){if(typeof tree==='string')return tree;if(!tree||typeof tree!=='object')return '';if(typeof tree.type==='function'&&/^App(Button|Card|Status)$/.test(tree.type.name))return text(tree.type(tree.props));const c=tree.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ');}
 const Card=load('src/components/reminder-card.tsx').ReminderCard;
 function render(){si=0;ri=0;return Card();}
 function button(tree,label){return nodes(tree,n=>n.type==='Pressable'&&text(n).includes(label))[0];}
@@ -39,7 +40,7 @@ const tick=()=>new Promise(setImmediate);
     assert.deepEqual(updates[0],{time:{hour:0,minute:1},enabled:false,ask:false});assert.match(text(tree),/00:01/);
     button(tree,'Włącz przypomnienie').props.onPress();await tick();tree=render();assert.equal(updates[1].ask,true);
     assert(nodes(tree,n=>n.type==='Pressable'&&n.props.accessibilityRole==='switch')[0].props.accessibilityState.checked);
-    assert(nodes(tree,n=>n.type==='Pressable').every(n=>n.props.style.minHeight>=48));
+    assert(nodes(tree,n=>n.type==='Pressable').every(n=>n.props.style({pressed:false})[0].minHeight>=48));
     snapshot={...snapshot,enabled:false,permissionGranted:false};appListener('active');await tick();tree=render();
     assert.match(text(tree),/Wyłączone/);settingsFail=true;button(tree,'Ustawienia powiadomień').props.onPress();await tick();tree=render();assert(nodes(tree,n=>n.props?.accessibilityRole==='alert').length);settingsFail=false;
     cleanup();
