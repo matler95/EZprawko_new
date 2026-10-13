@@ -39,6 +39,10 @@ function render(Screen) { si = ri = 0; return Screen(); }
     states = []; refs = []; writes = clears = 0; language = 'en'; preference = 'system'; cacheBytes = 5242880; cacheReadError = languageReadError = themeError = false;
     render(Screen); const blur = focus(); await tick(); let tree = render(Screen);
     assert.match(text(tree), /5.0 MB/); assert(button(tree, 'English').props.accessibilityState.checked);
+    assert(!text(tree).includes('Mogą zostać usunięte'));
+    const details=button(tree,'Jak działają materiały offline?');assert.equal(details.props.accessibilityState.expanded,false);
+    details.props.onPress();tree=render(Screen);assert(text(tree).includes('Mogą zostać usunięte'));
+    button(tree,'Ukryj informacje o materiałach offline').props.onPress();tree=render(Screen);
     languageSaveError = true; button(tree, 'Polski').props.onPress(); await tick(); tree = render(Screen);
     assert(button(tree, 'English').props.accessibilityState.checked); assert.match(text(tree), /Nie udało się zapisać/);
     languageSaveError = false; let release; saveDelay = new Promise(r => { release = r; });

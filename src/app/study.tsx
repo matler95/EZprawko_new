@@ -20,7 +20,7 @@ import { readStudyBatch, type StudyQuestion } from '@/database/study-batch';
 import { QuestionExplanation } from '@/components/question-explanation';
 import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 import { useTargetCategory } from "@/context/target-category-context";
-import { categoryLabel as baseCategoryLabel } from "@/domain/driving-categories";
+import { categoryLabel as baseCategoryLabel, drivingCategories, type DrivingCategory } from "@/domain/driving-categories";
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { studySummary, type StudyAnswers } from '@/domain/study-session';
 import { studyMastery, type MasterySnapshot } from '@/database/study-session';
@@ -41,7 +41,13 @@ function StudySession() {
   const { colors } = useAppTheme();
   const s = createStyles(colors);
   const db = useSQLiteContext();
-  const { category } = useTargetCategory();
+  const { category, setCategory, changing } = useTargetCategory();
+  const [categoryExpanded, setCategoryExpanded] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState<DrivingCategory>(category);
+  const [categoryBusy, setCategoryBusy] = useState(false);
+  const [categoryFailed, setCategoryFailed] = useState(false);
+  const categoryLock = useRef(false);
+  const categoryEpoch = useRef(0);
   const { filter: requestedFilter, count: requestedCount, topic: requestedTopic, sign: requestedSign, start: requestedStart, session: requestedSession } = useLocalSearchParams<{
     filter?: string;
     count?: string;
@@ -90,9 +96,10 @@ function StudySession() {
   const [languageReady, setLanguageReady] = useState(false);
   const [language, setLanguage] = useState<QuestionLanguage>('pl');
   const previousLanguage = useRef<QuestionLanguage | null>(null);
-  useEffect(() => () => { openRequest.current++; }, []);
+  useEffect(() => () => { openRequest.current++; categoryEpoch.current++; }, []);
   useFocusEffect(useCallback(() => {
     let current = true;
+    setCategoryBusy(categoryLock.current);
     void selectedQuestionLanguage(db).then((value) => {
       if (current) {
         if (previousLanguage.current !== null && previousLanguage.current !== value) {
@@ -102,8 +109,8 @@ function StudySession() {
         setLanguage(value); setBusy(writing.current || batchLock.current); setActionError(null); setLanguageReady(true);
       }
     }).catch(() => { if (current) setFailedQuery(`language:${reload}`); });
-    return () => { current = false; nextCancelled.current = true; if (batchLock.current) openRequest.current++; };
-  }, [db, reload, setActive]));
+    return () => { current = false; categoryEpoch.current++; setCategoryExpanded(false); nextCancelled.current = true; if (batchLock.current) openRequest.current++; };
+  }, [db, reload, setActive, setCategoryExpanded]));
   const activeFilter = isStudyFilter(requestedFilter) ? requestedFilter : filter;
   const filterOptions = [
     ['all', t('Wszystkie')], ['three', t('3 punkty')], ['hardest', t('Najtrudniejsze')],
@@ -131,7 +138,7 @@ function StudySession() {
   }, [activeFilter, category, db, language, languageReady, queryKey, requestedSign, requestedTopic, requestedSession, search, sessionLimit]);
   const batch = roundItems ?? items;
   const open = useCallback(async (item: StudyQuestion, itemIndex = batch.findIndex((value) => value.id === item.id)) => {
-    if (writing.current) return;
+    if (writing.current || categoryLock.current || changing) return;
     const request = ++openRequest.current;
     setBusy(true);
     setActionError(null);
@@ -161,19 +168,19 @@ function StudySession() {
     } catch {
       if (request === openRequest.current) setActionError(t('Nie udało się odczytać oznaczenia pytania. Spróbuj otworzyć je ponownie.'));
     }
-  }, [batch, category, db, language, setActive, t]);
+  }, [batch, category, changing, db, language, setActive, t]);
   const begin = useCallback((item: StudyQuestion, index = batch.findIndex(value => value.id === item.id), questions = batch) => {
-    if (writing.current) return;
+    if (writing.current || categoryLock.current || changing) return;
     if (questions.some(value => value.media_filename)) {
       setPreparing({ questions: [...questions], item, index });
     } else return open(item, index);
-  }, [batch, open]);
+  }, [batch, changing, open]);
   useEffect(() => {
-    if (requestedStart !== '1' || loading || readError || !items.length || autoOpened.current === queryKey) return;
+    if (categoryExpanded || categoryBusy || changing || requestedStart !== '1' || loading || readError || !items.length || autoOpened.current === queryKey) return;
     autoOpened.current = queryKey;
     begin(items[0], 0);
     router.setParams({ start: undefined });
-  }, [items, loading, begin, queryKey, readError, requestedStart]);
+  }, [categoryExpanded, categoryBusy, changing, items, loading, begin, queryKey, readError, requestedStart]);
   const move = (direction: -1 | 1) => {
     const nextIndex = activeIndex + direction;
     if (nextIndex >= 0 && nextIndex < batch.length) void open(batch[nextIndex], nextIndex);
@@ -258,6 +265,32 @@ function StudySession() {
       if (valid()) setActionError(t('Nie udało się przygotować kolejnej partii. Spróbuj ponownie.'));
     } finally { batchLock.current = false; setBusy(false); }
   };
+  const saveCategory = async () => {
+    if (categoryLock.current || changing || active || summary || preparing || roundItems || requestedSession) return;
+    categoryLock.current = true; setCategoryBusy(true); setCategoryFailed(false);
+    const request = categoryEpoch.current;
+    try {
+      const saved = await setCategory(categoryDraft);
+      if (request === categoryEpoch.current) {
+        if (saved) setCategoryExpanded(false); else setCategoryFailed(true);
+      }
+    } catch { if (request === categoryEpoch.current) setCategoryFailed(true); }
+    finally { categoryLock.current = false; if (request === categoryEpoch.current) setCategoryBusy(false); }
+  };
+  if (categoryExpanded && !active && !summary && !preparing && !roundItems && !requestedSession) return <SafeAreaView style={s.safe}>
+    <ScrollView contentContainerStyle={s.content}>
+      <Text accessibilityRole='header' style={s.title}>{t('Zmień kategorię')}</Text>
+      <Text style={s.sub}>{t('Zmiana dotyczy Nauki i nowych egzaminów. Rozpoczęty egzamin zachowuje swoją kategorię. Filtry zostają, wyszukiwanie zacznie się od nowa.')}</Text>
+      <View style={s.filters}>{drivingCategories.map(item => <AppButton key={item} variant={categoryDraft === item ? 'primary' : 'secondary'}
+        label={item} accessibilityRole='radio' accessibilityLabel={categoryLabel(item)}
+        accessibilityState={{ checked: categoryDraft === item }} disabled={categoryBusy || changing}
+        onPress={() => setCategoryDraft(item)} />)}</View>
+      <Text style={s.sub}>{categoryLabel(categoryDraft)}</Text>
+      {categoryFailed && <AppStatus tone='error' message={t('Nie udało się zapisać kategorii. Spróbuj ponownie.')} />}
+      <AppButton busy={categoryBusy || changing} label={t('Zapisz kategorię')} onPress={() => void saveCategory()} />
+      <AppButton variant='link' disabled={categoryBusy || changing} label={t('Anuluj')} onPress={() => setCategoryExpanded(false)} />
+    </ScrollView>
+  </SafeAreaView>;
   if (preparing) return <StudyPreparation questions={preparing.questions} category={category}
     onCancel={() => { openRequest.current++; setPreparing(null); setBusy(false); }}
     onReady={() => {
@@ -377,6 +410,8 @@ function StudySession() {
         {repeatedCount > 0 && <Text style={s.sub}>{t('Mała pula pytań: {0} z tej partii powtarza poprzedni zestaw.', [repeatedCount])}</Text>}
         {actionError ? <Text accessibilityRole="alert" style={s.sub}>{t(actionError)}</Text> : null}
         <Text style={s.sub}>{categoryLabel(category)} {t("· wspólna z egzaminem")}</Text>
+        {!roundItems && !requestedSession && <AppButton variant='link' disabled={busy || changing} label={t('Zmień kategorię')}
+          onPress={() => { if (categoryLock.current || writing.current || busy || changing) return; router.setParams({ start: undefined }); setCategoryDraft(category); setCategoryFailed(false); setCategoryExpanded(true); }} />}
         {requestedTopic && <Text style={s.topicTitle}>{t(requestedTopic)}</Text>}
         {requestedSession && <View style={s.row}><Text style={s.badge}>{t("Błędy wybranego egzaminu")}</Text><Pressable accessibilityRole="button" style={s.endButton} onPress={() => router.setParams({ session: undefined })}><Text style={s.link}>{t("Wszystkie błędy")}</Text></Pressable></View>}
         {requestedSign ? <View style={s.row}><Text style={s.badge}>{t("Znak")} {requestedSign}</Text><Pressable onPress={() => { setActive(null); router.setParams({ sign: undefined }); }}><Text style={s.link}>{t("Usuń filtr znaku")}</Text></Pressable></View> : null}

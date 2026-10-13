@@ -1,5 +1,66 @@
 # Implementation progress
 
+## Improvement plan — checkpoint F5.3 contextual setup (2026-10-13)
+
+- Study menu now offers a 12-category chooser with a local draft, explicit Save/Cancel,
+  radio labels/checked state and existing global category persistence. Cancel writes
+  nothing; errors retain the draft for retry; synchronous lock prevents duplicate saves
+  and stale start handlers. Choosing setup clears auto-start intent. Blur/unmount fences
+  local async feedback. Active Study, summaries/preparation and exact-exam replay do not
+  offer category changes, preserving the current batch and official exam scope.
+- A successful category change uses the existing category-keyed remount. Route filters
+  remain, local search starts fresh; the chooser explains both. Active exams keep their
+  own persisted category. No new mode, session history or data-reset operation was added.
+- Onboarding category copy is shorter; login prerequisite and local-only/no-sync notice
+  stay visible. Cache details expand on demand. Flexible spacers move actions toward
+  the bottom on short steps while preserving scroll on small screens/large fonts.
+- Settings cache details and local-data export details are collapsible. Export sensitivity,
+  lack of restore/sync and remote-account deletion boundary remain visible; destructive
+  confirmations and export/reset locks remain unchanged. Shared controls provide >=48px
+  disclosure targets. Added 11 unique rows in PL/EN/DE/UK (477 total).
+- Handler tests cover category cancellation, failed save/retry, duplicate/stale action,
+  category remount key, retained route filters and hidden active-session chooser in both
+  themes. Onboarding/cache disclosure tests and user-data action contracts were extended.
+- Mobile UI skill guided progressive disclosure and bottom-action layout. Physical
+  scrolling, keyboard, screen-reader focus/Back and safe-area behavior remain in QA.
+
+## Improvement plan — checkpoint F2.5 explanation disclosure (2026-10-13)
+
+- Study and completed-exam review retain immediate teaching text and Polish-language
+  notice. Legal basis and official-source link are now secondary, collapsed by default.
+  Nothing is truncated; all teaching text remains directly readable.
+- Shared link-style AppButton exposes translated Show/Hide labels and expanded state,
+  with >=48px target and wrapping text. The Expo Router source link uses a native
+  Pressable child, retaining link role and >=48px target. Collapsed details are not mounted.
+- Disclosure lives only in resolved-content child; loading/failure removes it. Card
+  is keyed by question ID, so new questions cannot inherit expansion. Legacy null legal
+  metadata remains explicit and no absent source link is invented. Retry is unchanged.
+- Component-handler tests cover both themes and PL/EN/DE/UK, toggle/collapse, direct
+  teaching, hidden source, legacy metadata and loading/failure precedence. Recovery,
+  Study sessions, review/sign accessibility, 466 translation rows, contrast, lint and
+  TypeScript passed. Native focus, largest fonts and external-link behavior need device QA.
+- Mobile UI skill guided hierarchy and touch targets; no gamification, dependencies,
+  content generation, answer writes or cloud changes were added. Pack remains empty.
+- Next local checkpoint: F5.3 onboarding/settings explanations and contextual category.
+
+## Improvement plan — full regression / F2.6 coverage (2026-10-13)
+
+- All 32 existing test scripts, 34 contrast pairs, Expo lint and TypeScript passed
+  before this checkpoint. New explanation coverage test and final lint/typecheck
+  passed after the CLI change. Tests do not certify physical device behavior.
+- Editorial report now includes total/covered/missing/percentage and priority gaps
+  globally, per each of 12 categories and per point value. Shared category questions
+  count once in each category and only once globally; category totals are not additive.
+- Report rejects unknown/stale question, answer or media references, rather than
+  counting a schema-valid but source-incompatible record as covered. No bank or
+  explanation content is written by reporting. Fixtures cover partial/empty coverage,
+  category deduplication, priority and source mismatch; integration reads the real bank.
+- Current content remains 0/3518 reviewed explanations, including 1882 priority gaps.
+  Qualified review and access-policy decisions remain open; no cloud/account mutations.
+- Replaced contradictory accumulated plan summaries with current phase status and
+  remaining priority order. Earlier checkpoint history remains below. Next local task
+  is F2.5 collapsible legal/source details; physical QA and optional F6 are not complete.
+
 ## Improvement plan — checkpoint F5.4 Study/signs/review accessibility (2026-10-13)
 
 - Specialist Study answers now expose button/disabled/selected semantics and both

@@ -445,6 +445,8 @@ export const uiCopy: readonly Row[] = [
   ['Wczytujemy wyjaśnienie…','Loading explanation…','Erklärung wird geladen…','Завантажуємо пояснення…'],
   ['Wyjaśnienie w języku polskim','Explanation in Polish','Erklärung auf Polnisch','Пояснення польською'],
   ['Podstawa prawna:','Legal basis:','Rechtsgrundlage:','Правова підстава:'],
+  ['Pokaż podstawę prawną i źródło','Show legal basis and source','Rechtsgrundlage und Quelle anzeigen','Показати правову підставу та джерело'],
+  ['Ukryj podstawę prawną i źródło','Hide legal basis and source','Rechtsgrundlage und Quelle ausblenden','Приховати правову підставу та джерело'],
   ['Otwórz źródło urzędowe ↗','Open official source ↗','Amtliche Quelle öffnen ↗','Відкрити офіційне джерело ↗'],
   ['Otwórz źródło w Dzienniku Ustaw ↗','Open the official legal source ↗','Quelle im Gesetzblatt öffnen ↗','Відкрити джерело в офіційному віснику ↗'],
   ['NAJLEPSZY KOLEJNY KROK','NEXT STEP','NÄCHSTER SCHRITT','НАСТУПНИЙ КРОК'],
@@ -467,6 +469,17 @@ export const uiCopy: readonly Row[] = [
   ['Ponów zapis','Retry saving','Speichern wiederholen','Повторити збереження'],
   ['Ponów odczyt','Retry loading','Erneut laden','Повторити завантаження'],
   ['Brak oficjalnego tłumaczenia — pytanie w języku polskim.','No official translation — this question is in Polish.','Keine amtliche Übersetzung — diese Frage ist auf Polnisch.','Немає офіційного перекладу — запитання польською.'],
+  ['Kategoria obowiązuje w Nauce i nowych egzaminach. Zmienisz ją później. PT to pozwolenie na tramwaj.','Your category applies to Study and new exams. You can change it later. PT is a tram permit.','Die Klasse gilt für Lernen und neue Prüfungen. Du kannst sie später ändern. PT ist eine Straßenbahnerlaubnis.','Категорія діє для навчання та нових іспитів. Її можна змінити пізніше. PT — дозвіл на керування трамваєм.'],
+  ['Pobieranie zdjęć i filmów wymaga logowania.','Downloading photos and videos requires login.','Zum Herunterladen von Fotos und Videos musst du dich anmelden.','Для завантаження фото та відео потрібно увійти.'],
+  ['Jak działają materiały offline?','How do offline materials work?','Wie funktionieren Offline-Materialien?','Як працюють офлайн-матеріали?'],
+  ['Ukryj informacje o materiałach offline','Hide offline material details','Details zu Offline-Materialien ausblenden','Приховати відомості про офлайн-матеріали'],
+  ['Pobrane materiały działają offline, dopóki są w pamięci podręcznej. Mogą zostać usunięte, aby zwolnić miejsce; wtedy wymagają ponownego pobrania.','Downloaded materials work offline while cached. They may be removed to free space and will then need downloading again.','Heruntergeladene Materialien funktionieren offline, solange sie im Cache sind. Sie können gelöscht werden, um Speicher freizugeben, und müssen dann erneut heruntergeladen werden.','Завантажені матеріали працюють офлайн, поки зберігаються в кеші. Їх можуть видалити для звільнення місця; тоді їх потрібно завантажити знову.'],
+  ['Postępy są lokalne. Konto nie tworzy kopii ani synchronizacji w chmurze.','Progress is local. Your account does not create a cloud backup or sync.','Fortschritte sind lokal. Dein Konto erstellt keine Cloud-Sicherung und synchronisiert sie nicht.','Прогрес зберігається локально. Обліковий запис не створює хмарної копії та не синхронізує його.'],
+  ['Eksport zawiera historię odpowiedzi. Udostępniaj go świadomie; nie służy do przywracania danych.','The export contains answer history. Share it carefully; it cannot restore data.','Der Export enthält deinen Antwortverlauf. Teile ihn bewusst; er kann keine Daten wiederherstellen.','Експорт містить історію відповідей. Діліться ним обачно; він не відновлює дані.'],
+  ['Szczegóły danych lokalnych','Local data details','Details zu lokalen Daten','Відомості про локальні дані'],
+  ['Ukryj szczegóły danych lokalnych','Hide local data details','Details zu lokalen Daten ausblenden','Приховати відомості про локальні дані'],
+  ['Zapisz kategorię','Save category','Klasse speichern','Зберегти категорію'],
+  ['Zmiana dotyczy Nauki i nowych egzaminów. Rozpoczęty egzamin zachowuje swoją kategorię. Filtry zostają, wyszukiwanie zacznie się od nowa.','This changes Study and new exams. An active exam keeps its category. Filters remain; search starts fresh.','Dies ändert Lernen und neue Prüfungen. Eine laufende Prüfung behält ihre Klasse. Filter bleiben; die Suche beginnt neu.','Зміна стосується навчання та нових іспитів. Поточний іспит зберігає свою категорію. Фільтри залишаються; пошук почнеться заново.'],
 ];
 const copy = new Map(uiCopy.map(row => [row[0], row]));
 export function t(key: string | null | undefined, values: readonly (string | number)[] = [], language: UiLanguage = uiLanguage()) {

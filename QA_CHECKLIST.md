@@ -2,6 +2,23 @@
 
 ## New improvement plan — F0 / F1.1 (2026-10-13)
 
+- [ ] F5.3 Study menu: open category chooser, change draft, cancel with no setting write;
+  save/retry updates Study and new exams, not an active exam. Route filters remain;
+  search resets as explained. Double taps/old Start cannot launch a stale category batch.
+- [ ] F5.3: no category chooser during active Study/preparation/summary or exact exam
+  replay. Background/return during save leaves no stale error, busy lock or auto-start.
+- [ ] F5.3 onboarding/settings/data: disclosure announces expanded state and hides
+  collapsed text from reader; local-only/no-sync and export privacy/restore limitations
+  remain visible. Verify PL/EN/DE/UK, both themes and largest fonts. Onboarding actions
+  sit low when content fits and remain scrollable/reachable when it does not.
+
+- [ ] F2.5: with a reviewed local explanation fixture in Study and exam review,
+  teaching and Polish notice are immediately visible; legal/source details start
+  collapsed. Reader announces Show/Hide and expanded state, cannot reach hidden link.
+- [ ] F2.5: expand/collapse works in both themes and PL/EN/DE/UK at largest fonts;
+  source target >=48px opens official URL. New question/reopened review starts collapsed;
+  retry retains selected answer and stats. Current shipped pack has no explanation entries.
+
 - [ ] F5.4 Study: reader announces A/B/C answer text, selected/correct markers and
   disabled navigation; visible markers remain understandable without color. T/N
   controls wrap on narrow screens, with largest fonts and readable letter badges.

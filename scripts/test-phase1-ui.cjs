@@ -12,6 +12,7 @@ const native = {
 };
 const loaded = new Map();
 let navigated = null;
+let disclosureExpanded = false, testTheme = 'light', testLanguage = 'pl';
 function load(relative) {
   if (loaded.has(relative)) return loaded.get(relative);
   const result = {};
@@ -19,14 +20,15 @@ function load(relative) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText;
   new Function('require','exports',compiled)((name) => {
-    if (name === 'react' || name === 'react/jsx-runtime') return require(name);
+    if (name === 'react') return { ...React, useState: initial => [disclosureExpanded, value => { disclosureExpanded = typeof value === 'function' ? value(disclosureExpanded) : value; }] };
+    if (name === 'react/jsx-runtime') return require(name);
     if (name === 'react-native') return native;
     if (name === 'react-native-safe-area-context') return { SafeAreaView: primitive('SafeAreaView') };
     if (name === 'expo-router') return { Link: primitive('Link'), router: { replace: (value) => { navigated = value; } } };
     if (name === 'expo-splash-screen') return { hideAsync: async () => {} };
     if (name === '@/global.css') return {};
-    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: load('src/domain/ui-copy.ts').t, language: load('src/domain/ui-language.ts').uiLanguage() }) };
-    if (name === '@/context/app-theme-context') return { useAppTheme: () => ({ colors: load('src/constants/theme.ts').Colors.light }) };
+    if (name === '@/hooks/use-translation') return { useTranslation: () => ({ t: (key, values) => load('src/domain/ui-copy.ts').t(key, values, testLanguage), language: testLanguage }) };
+    if (name === '@/context/app-theme-context') return { useAppTheme: () => ({ colors: load('src/constants/theme.ts').Colors[testTheme] }) };
     if (name === '@/components/ui/app-controls') return load('src/components/ui/app-controls.tsx');
     if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
     throw new Error(`Unexpected dependency ${name}`);
@@ -36,13 +38,13 @@ function load(relative) {
 }
 const nodes = (element) => {
   if (!React.isValidElement(element)) return [];
-  if (typeof element.type === 'function' && /^App(Button|Card|Status)$/.test(element.type.name)) return nodes(element.type(element.props));
+  if (typeof element.type === 'function' && /^(App(Button|Card|Status)|ReviewedExplanation)$/.test(element.type.name)) return nodes(element.type(element.props));
   return [element,...React.Children.toArray(element.props.children).flatMap(nodes)];
 };
 const text = (element) => {
   if (typeof element === 'string' || typeof element === 'number') return String(element);
   if (!React.isValidElement(element)) return '';
-  if (typeof element.type === 'function' && /^App(Button|Card|Status)$/.test(element.type.name)) return text(element.type(element.props));
+  if (typeof element.type === 'function' && /^(App(Button|Card|Status)|ReviewedExplanation)$/.test(element.type.name)) return text(element.type(element.props));
   return React.Children.toArray(element.props.children).map(text).join(' ');
 };
 const { BasicAnswerButtons, basicAnswerText } = load('src/components/basic-answer-buttons.tsx');
@@ -103,8 +105,39 @@ const { ExplanationCard } = load('src/components/explanation-card.tsx');
 assert(text(ExplanationCard({ explanation: null })).includes('nie ma jeszcze zweryfikowanego'));
 assert(text(ExplanationCard({ explanation: null, loading: true })).includes('Wczytujemy'));
 assert(text(ExplanationCard({ explanation: null, failed: true })).includes('Nie udało'));
-const teaching = ExplanationCard({ explanation: { explanationText: 'SYNTHETIC UI TEST', legalBasis: 'SYNTHETIC REFERENCE', sourceUrl: 'https://eli.gov.pl/', reviewedAt: 1, reviewedBy: 'fixture' } });
-assert(text(teaching).includes('SYNTHETIC REFERENCE'));
-assert(text(teaching).includes('języku polskim'));
-assert.equal(nodes(teaching).find((n) => n.type === 'Link').props.href,'https://eli.gov.pl/');
-console.log('Explanation card: missing/loading/error states, legal basis, source link and language notice passed.');
+const fixture = { explanationText: 'SYNTHETIC UI TEST', legalBasis: 'SYNTHETIC REFERENCE', sourceUrl: 'https://eli.gov.pl/', reviewedAt: 1, reviewedBy: 'fixture' };
+for (const theme of ['light', 'dark']) for (const language of ['pl', 'en', 'de', 'uk']) {
+  testTheme = theme; testLanguage = language; disclosureExpanded = false;
+  const teaching = ExplanationCard({ explanation: fixture });
+  assert(text(teaching).includes(fixture.explanationText), 'core teaching never requires disclosure');
+  assert(!text(teaching).includes(fixture.legalBasis));
+  assert(!nodes(teaching).some(n => n.type === 'Link'), 'collapsed source is absent from accessibility tree');
+  const localized = key => load('src/domain/ui-copy.ts').t(key, [], language);
+  assert(text(teaching).includes(localized('Wyjaśnienie w języku polskim')));
+  let toggle = nodes(teaching).find(n => n.type === 'Pressable');
+  assert.equal(toggle.props.accessibilityRole, 'button');
+  assert.equal(toggle.props.accessibilityState.expanded, false);
+  assert.equal(toggle.props.accessibilityLabel, localized('Pokaż podstawę prawną i źródło'));
+  assert.equal(toggle.props.style({ pressed: false })[0].minHeight, 48);
+  toggle.props.onPress();
+  assert(text(teaching).includes(fixture.legalBasis));
+  const link = nodes(teaching).find(n => n.type === 'Link');
+  assert.equal(link.props.href, 'https://eli.gov.pl/');
+  assert(link.props.asChild);
+  assert.equal(link.props.children.props.accessibilityRole, 'link');
+  assert.equal(link.props.children.props.style.minHeight, 48);
+  toggle = nodes(teaching).find(n => n.type === 'Pressable');
+  assert.equal(toggle.props.accessibilityState.expanded, true);
+  assert.equal(toggle.props.accessibilityLabel, localized('Ukryj podstawę prawną i źródło'));
+  toggle.props.onPress();
+  assert(!text(teaching).includes(fixture.legalBasis));
+  disclosureExpanded = true;
+  const legacy = ExplanationCard({ explanation: { ...fixture, legalBasis: null, sourceUrl: null } });
+  assert(text(legacy).includes(localized('nieuzupełniona w starszym rekordzie')));
+  assert(!nodes(legacy).some(n => n.type === 'Link'));
+  for (const props of [{ explanation: fixture, loading: true }, { explanation: fixture, failed: true }, { explanation: null }]) {
+    assert(!text(ExplanationCard(props)).includes(fixture.explanationText));
+    assert(!nodes(ExplanationCard(props)).some(n => n.type === 'Link'));
+  }
+}
+console.log('Explanation card: missing/loading/error, disclosure toggle, visible teaching/Polish notice, absent collapsed source, legacy metadata, 48px roles/states and both themes/four languages passed.');

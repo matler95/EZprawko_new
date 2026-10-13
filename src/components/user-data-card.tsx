@@ -15,6 +15,7 @@ export function UserDataCard() {
   const s = styles(colors);
   const run = useDataMaintenance();
   const [exporting, setExporting] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const lock = useRef(false);
   const confirm = (all: boolean) => {
     if (lock.current) return;
@@ -33,7 +34,11 @@ export function UserDataCard() {
   };
   return <AppCard>
     <Text accessibilityRole="header" style={s.heading}>{t("Twoje dane")}</Text>
-    <Text style={s.detail}>{t("Eksport dotyczy danych lokalnych, bez haseł, tokenów, konta w chmurze i multimediów. Plik zawiera historię odpowiedzi — udostępniaj go świadomie. Nie służy do przywracania kopii w aplikacji.")}</Text>
+    <Text style={s.detail}>{t('Postępy są lokalne. Konto nie tworzy kopii ani synchronizacji w chmurze.')}</Text>
+    <Text style={s.detail}>{t('Eksport zawiera historię odpowiedzi. Udostępniaj go świadomie; nie służy do przywracania danych.')}</Text>
+    <AppButton variant='link' label={t(detailsExpanded ? 'Ukryj szczegóły danych lokalnych' : 'Szczegóły danych lokalnych')}
+      accessibilityState={{ expanded: detailsExpanded }} onPress={() => setDetailsExpanded(value => !value)} />
+    {detailsExpanded && <Text style={s.detail}>{t("Eksport dotyczy danych lokalnych, bez haseł, tokenów, konta w chmurze i multimediów. Plik zawiera historię odpowiedzi — udostępniaj go świadomie. Nie służy do przywracania kopii w aplikacji.")}</Text>}
     <AppButton variant="secondary" busy={exporting} label={exporting ? t("Przygotowywanie eksportu…") : t("Eksportuj moje dane")} onPress={() => {
       if (lock.current) return;
       lock.current = true; setExporting(true);

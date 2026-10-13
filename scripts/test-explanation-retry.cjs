@@ -47,6 +47,7 @@ const nodes = tree => tree && typeof tree === 'object' ? [tree, ...[tree.props?.
   requests.shift().resolve(explanation); await tick();
   card = render(1); assert.equal(card.props.explanation,explanation); assert(!card.props.failed);
   card = render(2); assert.equal(card.props.explanation,null,'never flash previous question explanation');
+  assert.equal(card.key, '2', 'new question remounts the card, resetting disclosure state');
   const old = requests.shift(); render(3); const current = requests.shift();
   old.resolve(explanation); current.resolve(null); await tick();
   card = render(3); assert(!card.props.failed); assert(!card.props.loading); assert.equal(card.props.explanation,null);

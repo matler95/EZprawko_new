@@ -5,6 +5,7 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const ts = require('typescript');
+const { explanationCoverage } = require('./explanation-coverage.cjs');
 const root = path.resolve(__dirname, '..');
 const validator = {};
 const compiled = ts.transpileModule(fs.readFileSync(path.join(root,'src/domain/explanation-pack.ts'),'utf8'), {
@@ -14,7 +15,7 @@ new Function('exports',compiled)(validator);
 const args = process.argv.slice(2);
 const value = (flag) => args[args.indexOf(flag)+1];
 const db = new DatabaseSync(path.join(root,'assets/database/questions.db'),{ readOnly: true });
-const questions = db.prepare('SELECT id,question,correct_answer,media_filename,points FROM questions').all();
+const questions = db.prepare('SELECT id,question,correct_answer,media_filename,points,categories FROM questions').all();
 db.close();
 const priority = questions.filter((q) => q.points === 3 || /(skrzyż|pierwszeństw)/.test(q.question.toLocaleLowerCase('pl-PL')));
 function writeOutput(target, content) {
@@ -43,10 +44,7 @@ if (args.includes('--template')) {
 } else if (args.includes('--report')) {
   const pack = JSON.parse(fs.readFileSync(path.join(root,'assets/data/question-explanations.json'),'utf8'));
   validator.validateExplanationPack(pack);
-  const covered = new Set(pack.entries.map((e) => e.questionId));
-  console.log(JSON.stringify({ totalQuestions: questions.length, threePointQuestions: questions.filter((q) => q.points===3).length,
-    priorityQuestions: priority.length, packagedExplanations: pack.entries.length,
-    missingPriorityExplanations: priority.filter((q) => !covered.has(q.id)).length },null,2));
+  console.log(JSON.stringify(explanationCoverage(questions, pack.entries),null,2));
 } else {
   throw new Error('Use --report, --template .expo/explanations-review-template.json, or --input reviewed.json --confirm-reviewed [--output path]');
 }

@@ -66,8 +66,9 @@ function find(tree,predicate){if(!tree||typeof tree!=='object')return [];if(type
   assert(!guard.userDataWritable(revision));assert(guard.userDataWritable());
   await assert.rejects(()=>guard.withDataMaintenance(async()=>{throw Error('test');}),/test/);assert(guard.userDataWritable(),'failure releases maintenance guard');
   seed();const card=load('src/components/user-data-card.tsx').UserDataCard();
-  const buttons=find(card,n=>n.type==='Pressable');assert.equal(buttons.length,3);assert(buttons.every(n=>n.props.style({pressed:false})[0].minHeight>=48));
-  buttons[1].props.onPress();assert.equal(operation,null,'opening confirmation must not reset');assert.equal(dialog[2][0].style,'cancel');
+  const buttons=find(card,n=>n.type==='Pressable');assert.equal(buttons.length,4);assert(buttons.every(n=>n.props.style({pressed:false})[0].minHeight>=48));
+  assert.equal(buttons[0].props.accessibilityState.expanded,false);
+  buttons.find(n=>n.props.accessibilityLabel==='Resetuj postępy').props.onPress();assert.equal(operation,null,'opening confirmation must not reset');assert.equal(dialog[2][0].style,'cancel');
   dialog[2][1].onPress();await operation();assert.equal(count('practice_attempts'),0);
   console.log('User data: versioned secret-free snapshot, transactional reset/rollback, settings/catalog preservation, scoped JSON cleanup/sheet failure, local-session/cache failure, remote-revocation warning, generation guard and confirmation-only 48px UI passed.');
   native.close();

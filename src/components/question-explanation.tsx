@@ -24,7 +24,7 @@ export function QuestionExplanation({ questionId }: { questionId: number }) {
     return () => { current = false; };
   }, [db, questionId, attempt]);
   const resolved = result?.questionId === questionId && result.attempt === attempt;
-  return <ExplanationCard explanation={resolved ? result.value : null} loading={!resolved}
+  return <ExplanationCard key={questionId} explanation={resolved ? result.value : null} loading={!resolved}
     failed={resolved && result.failed} onRetry={() => {
       if (locked.current || !resolved || !result.failed) return;
       locked.current = true;

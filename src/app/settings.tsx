@@ -37,6 +37,7 @@ export default function SettingsScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [cacheDetails, setCacheDetails] = useState(false);
   const focused = useRef(false);
   const reads = useRef(0);
   const cacheReads = useRef(0);
@@ -177,7 +178,9 @@ export default function SettingsScreen() {
         <AppCard>
           <Text style={s.label}>{t("Pobrane materiały")}</Text>
           <Text style={s.sub}>{cacheReading ? t("Sprawdzanie zajętości…") : cacheError ? t("Zajętość aktualnie niedostępna.") : cache === null ? t("Zajętość nieznana.") : t("{0} MB · limit 1 GB", [(cache / 1024 / 1024).toFixed(1)])}</Text>
-          <Text style={s.sub}>{t("Usunięcie zwolni miejsce. Do kolejnego pobrania zdjęć i filmów będzie potrzebne połączenie z internetem.")}</Text>
+          <AppButton variant='link' label={t(cacheDetails ? 'Ukryj informacje o materiałach offline' : 'Jak działają materiały offline?')}
+            accessibilityState={{ expanded: cacheDetails }} onPress={() => setCacheDetails(value => !value)} />
+          {cacheDetails && <Text style={s.sub}>{t('Pobrane materiały działają offline, dopóki są w pamięci podręcznej. Mogą zostać usunięte, aby zwolnić miejsce; wtedy wymagają ponownego pobrania.')}</Text>}
           {cacheError && <AppStatus tone="error" message={t(cacheError)} />}
           <AppButton variant="link" disabled={clearing} label={t("Odśwież zajętość")} onPress={() => void refreshCache()} />
           <AppButton variant="danger" disabled={downloading} busy={clearing} label={clearing ? t("Czyszczenie materiałów…") : t("Usuń pobrane materiały")} onPress={confirmClear} />

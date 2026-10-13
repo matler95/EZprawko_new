@@ -1,59 +1,36 @@
 # EZprawko — plan usprawnień UI, UX i ścieżek użytkownika
 
-Data: 2026-10-13. Status: realizacja rozpoczęta; checkpointy zapisane poniżej.
+Data: 2026-10-13. Status: wdrożenie częściowe; lokalna regresja zaliczona.
 
-Aktualizacja realizacji: pierwszy checkpoint F0/F1.1 wdrożony lokalnie
-2026-10-13. F0 ma przygotowany baseline, lecz pomiary urządzeniowe pozostają
-otwarte. F1.1 obejmuje poprawność gotowości dekodera i rozróżnienie recovery;
-pełne przygotowanie partii F1.2 pozostaje kolejnym zadaniem.
+## Aktualny status realizacji
 
-Aktualizacja F1.2: przygotowanie dokładnej partii Nauki wdrożone lokalnie
-2026-10-13, z postępem, anulowaniem, retry i logowaniem do istniejącego konta
-w tym samym przepływie. Zestaw pozostaje stały; fizyczny odbiór nadal otwarty.
-F1.3/F1.4 wymagają wyboru polityki dostępu oraz konfiguracji kont i maili.
+Status lokalny nie oznacza odbioru na fizycznych urządzeniach ani gotowości publikacji.
+Historia checkpointów pozostaje w `IMPLEMENTATION_PROGRESS.md`.
 
-Aktualizacja F2.4: ponawianie odczytu wyjaśnienia w Nauce i przeglądzie egzaminu
-wdrożone lokalnie 2026-10-13. Odczyt nie zmienia odpowiedzi; brak treści różni
-się od błędu. Raport redakcyjny nadal wskazuje 0 dołączonych wyjaśnień oraz
-1882 brakujące wpisy priorytetowe. Pozostała redakcja i odbiór urządzeniowy otwarte.
+| Faza | Wdrożone lokalnie | Pozostały zakres |
+| --- | --- | --- |
+| F0 | Baseline i kontrakty regresji | Pomiary czasu oraz zadania na telefonach |
+| F1 | F1.1 gotowość dekodera i recovery; F1.2 dokładna partia multimediów, retry, cancel, powrót po loginie | F1.3 polityka dostępu; F1.4 rejestracja/odzyskiwanie po decyzji i konfiguracji serwera; odbiór urządzeniowy |
+| F2 | F2.4 retry odczytu; F2.5 wyjaśnienie od razu i rozwijane szczegóły; F2.6 raport globalny, per kategoria i punktacja z kontrolą źródła | F2.2–F2.3 kwalifikowana redakcja/import; odbiór urządzeniowy. Pakiet nadal ma 0 wyjaśnień |
+| F3 | Czytelny start i zakres, rozwijane filtry, reset, jawne pomijanie, F3.6 kolejna partia z informacją o powtórkach | Odbiór ergonomii na telefonach; kontrola wszystkich informacji zakresu i dolnych CTA |
+| F4 | Rekomendacje z danych, ostatnie wyniki per dział i próbka, osobne opanowanie, akcje ćwiczenia | F4.1 uzgodniona definicja kolejki powtórek; część F4.2 dotycząca wznowienia Nauki |
+| F5 | Wspólne tokeny i kontrolki; F5.3 krótszy onboarding, rozwijane informacje i wybór kategorii przed partią Nauki; F5.4 role, oznaczenia, cele dotykowe, modal review i retry znaków | Pozostała typografia/nagłówki/formatowanie; F5.2 porównanie nawigacji; fizyczna dostępność i odbiór F5.3 |
+| F6 | Nie rozpoczęto — opcjonalne rozszerzenie | Trwałe wznowienie jednej sesji wymaga osobnej decyzji; bez nowej historii/trybów |
+| F7 | 32 dotychczasowe skrypty regresji i nowy test F2.6, 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, rzeczywiste dekodowanie/cache |
 
-Aktualizacja F3: menu z głównym startem i rzeczywistą liczebnością partii,
-rozwijane filtry/działy, widoczny zakres i kompletny reset filtrów oraz jasne
-pomijanie wdrożone lokalnie. Kontynuacja kolejną partią F3.6 i fizyczny odbiór
-pozostają otwarte.
+### Kolejne zadania według priorytetu
 
-Aktualizacja F3.6: kontynuacja z podsumowania wdrożona lokalnie. Kolejna partia
-preferuje pytania spoza poprzedniego zestawu, zachowuje zakres i ujawnia powtórki
-przy małej puli. Powtórka konkretnego egzaminu nie przechodzi do ogólnej partii.
-Odbiór urządzeniowy pozostaje otwarty.
-
-Aktualizacja F4: rekomendacje według danych, statystyki ostatnich odpowiedzi
-per dział z wielkością próby, akcje ćwiczenia i osobny wskaźnik opanowania
-wdrożone lokalnie. Próg pięciu pytań jest regułą prezentacji, nie oceną pewności.
-Definicja historycznych błędów zachowana; kolejka terminowych powtórek F4.1
-i wznowienie aktywnej Nauki z Dashboardu pozostają osobnymi zadaniami.
-
-Aktualizacja F5.1: wspólne tokeny i komponenty przycisku/karty/statusu wdrożone
-w przygotowaniu sesji, odprawie, starcie/podsumowaniu Nauki oraz CTA egzaminu
-na Dashboardzie. Regresja i 34 pary kontrastów zaliczone lokalnie. Pozostałe
-ekrany oraz weryfikacja fizycznego layoutu/dostępności nadal otwarte.
-
-Aktualizacja F5.1 — onboarding/Ustawienia: wspólne karty, przyciski i statusy
-zastosowane w onboardingu oraz głównych sekcjach ekranu Ustawień. Zachowane
-role wyborów, zapis szkicu, potwierdzenia i blokady usuwania materiałów.
-Karty podrzędne konta, pobierania, przypomnień i danych czekają na migrację;
-fizyczny odbiór nadal otwarty.
-
-Aktualizacja F5.1 — karty podrzędne: konto, pobieranie, przypomnienia, dane
-i kontener informacji korzystają ze wspólnych komponentów. Role switch/link,
-stany wyboru, powrót po logowaniu i potwierdzenia zachowane. Lokalne testy,
-lint, TypeScript i kontrast zaliczone; fizyczny odbiór nadal otwarty.
-
-Aktualizacja F5.4: role/stany i tekstowe oznaczenia odpowiedzi, większe pola
-dotykowe, rosnące kafelki wyników, izolacja podglądu dla czytnika oraz retry
-powiązań znaków wdrożone lokalnie. Przejście Znaki → Nauka czyści obcy filtr
-egzaminu. Kontrakty ekranów i statyczne kontrole zaliczone; zachowanie focusu,
-duże fonty i gesty wymagają fizycznego odbioru.
+1. P0: uzgodnić politykę dostępu F1.3 oraz recenzenta/pilotaż treści F2.2.
+   Nie wykonywać zmian kont, maili ani chmury bez tej decyzji.
+2. P1: F2.5 wdrożone lokalnie; odbiór rozwijanych szczegółów na telefonach
+   z zatwierdzoną treścią lub oznaczoną lokalną próbką testową pozostaje otwarty.
+3. P1: F5.3 wdrożone lokalnie — odbiór układu, gestów i focusu na telefonach.
+   Kategoria zmieniana tylko przed partią; brak synchronizacji nadal widoczny.
+4. P1: fizyczny odbiór krytycznych ścieżek F0/F1/F3/F5/F7 według `QA_CHECKLIST.md`.
+   Testy z mockami nie zastępują sprawdzenia czytnika ani dekodera.
+5. P2: uzgodnić regułę powtórek F4.1; zakończyć ocenę nawigacji F5.2 oraz
+   pozostałe porządki typografii/formatów. Nie zmieniać historycznego filtra bez decyzji.
+6. Opcjonalnie: F6 po osobnej akceptacji. EAS/publikacja nadal odłożone.
 
 ## 1. Cel i ustalony zakres
 

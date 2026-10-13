@@ -56,6 +56,9 @@ const tick=()=>new Promise(setImmediate),setting=key=>native.prepare('SELECT val
     button(tree,'A1').props.onPress();tree=render();const next=button(tree,'Dalej');const before=writes;
     next.props.onPress();next.props.onPress();await tick();tree=render();assert.equal(writes-before,1,'double tap saves once');assert.equal(JSON.parse(setting('onboarding-draft')).step,2);
     assert.match(text(tree),/Progress is saved only on this device/);
+    assert(!text(tree).includes('They may be removed'));
+    button(tree,'Jak działają materiały offline?').props.onPress();tree=render();assert.match(text(tree),/They may be removed/);
+    button(tree,'Ukryj informacje o materiałach offline').props.onPress();tree=render();assert(!text(tree).includes('They may be removed'));
     cleanup();states=[];refs=[];render();cleanup=focus();await tick();tree=render();assert.equal(JSON.parse(setting('onboarding-draft')).step,2,'confirmed step survives reopening');
     button(tree,'Dalej').props.onPress();await tick();tree=render();assert.match(text(tree),/English/);assert.match(text(tree),/Reminders are optional/);
     failWrite=true;button(tree,'Zacznij pierwsze 5 pytań').props.onPress();await tick();tree=render();assert.match(text(tree),/Setup could not be completed/);assert.equal(completed.length,0);assert.equal(setting('onboarding-complete'),undefined);failWrite=false;

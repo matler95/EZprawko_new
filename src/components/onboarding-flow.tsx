@@ -26,6 +26,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const readFailed = failedRevision === reload;
   const locked = useRef(false);
   const epoch = useRef(0);
@@ -47,7 +48,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
     try {
       const next = { ...draft, step };
       await saveOnboardingDraft(db, next);
-      if (request === epoch.current) setDraft(next);
+      if (request === epoch.current) { setDraft(next); setDetailsExpanded(false); }
     } catch { if (request === epoch.current) setError(t("Nie zapisano tego kroku. Spróbuj ponownie.")); }
     finally { locked.current = false; if (focused.current) setBusy(false); }
   };
@@ -73,7 +74,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
     {readFailed ? <LoadingError onRetry={() => setReload(value => value + 1)} /> : !ready ? <LoadingSkeleton variant="study" label={t("Wczytywanie konfiguracji")} /> : <>
       {draft.step === 1 ? <>
         <Text accessibilityRole="header" style={s.title}>{t("Jaką kategorię zdajesz?")}</Text>
-        <Text style={s.copy}>{t("Wybierz jedną kategorię dla Nauki i nowych egzaminów. Możesz ją później zmienić w Ustawieniach. PT oznacza pozwolenie na tramwaj.")}</Text>
+        <Text style={s.copy}>{t('Kategoria obowiązuje w Nauce i nowych egzaminach. Zmienisz ją później. PT to pozwolenie na tramwaj.')}</Text>
         <View style={s.grid}>{drivingCategories.map(category => <Pressable key={category} accessibilityRole="radio" accessibilityLabel={categoryLabel(category)} accessibilityState={{ checked: draft.category === category, disabled: busy }} disabled={busy} onPress={() => setDraft(value => ({ ...value, category }))} style={[s.choice, draft.category === category && s.chosen]}><Text style={[s.choiceText, draft.category === category && s.chosenText]}>{category}</Text></Pressable>)}</View>
       </> : draft.step === 0 ? <>
         <Text accessibilityRole="header" style={s.title}>{t('Wybierz język aplikacji')}</Text>
@@ -83,16 +84,21 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
         <Text accessibilityRole="header" style={s.title}>{t("Ucz się, potem sprawdź wynik")}</Text>
         <AppCard><Text style={s.heading}>{t("Nauka — bez presji czasu")}</Text><Text style={s.copy}>{t("Po odpowiedzi zobaczysz poprawny wybór i dostępne wyjaśnienie. Wracaj do pytań i powtarzaj błędy.")}</Text></AppCard>
         <AppCard><Text style={s.heading}>{t("Egzamin próbny — jak w WORD")}</Text><Text style={s.copy}>{t("32 pytania, 25 minut, próg 68/74. Nie wracasz do poprzednich pytań; wynik i odpowiedzi zobaczysz na końcu.")}</Text></AppCard>
-        <Text style={s.copy}>{t("Zdjęcia i filmy pobierzesz po zalogowaniu w Ustawieniach. Już zapisane materiały mogą działać offline, dopóki pozostają w cache.")}</Text>
+        <Text style={s.copy}>{t('Pobieranie zdjęć i filmów wymaga logowania.')}</Text>
         <Text style={s.copy}>{t("Postępy zapisują się tylko na tym urządzeniu. Logowanie nie tworzy kopii ani synchronizacji w chmurze.")}</Text>
+        <AppButton variant='link' label={t(detailsExpanded ? 'Ukryj informacje o materiałach offline' : 'Jak działają materiały offline?')}
+          accessibilityState={{ expanded: detailsExpanded }} onPress={() => setDetailsExpanded(value => !value)} />
+        {detailsExpanded && <Text style={s.copy}>{t('Pobrane materiały działają offline, dopóki są w pamięci podręcznej. Mogą zostać usunięte, aby zwolnić miejsce; wtedy wymagają ponownego pobrania.')}</Text>}
       </> : <>
         <Text accessibilityRole="header" style={s.title}>{t("Zacznij od pięciu pytań")}</Text>
         <AppCard><Text style={s.heading}>{categoryLabel(draft.category ?? '')}</Text><Text style={s.copy}>{t("Pytania:")} {questionLanguages.find(value => value.code === draft.language)?.label}{t(". Krótka sesja pytań za 3 punkty — bez zegara.")}</Text></AppCard>
         <Text style={s.copy}>{t("Przypomnienia są opcjonalne. Możesz ustawić godzinę w Ustawieniach i dopiero wtedy zdecydować o zgodzie na powiadomienia.")}</Text>
+        <View style={{ flexGrow: 1 }} />
         <AppButton busy={busy} label={busy ? t("Zapisywanie…") : t("Zacznij pierwsze 5 pytań")} onPress={() => void finish('study')} />
         <AppButton variant="link" disabled={busy} label={t("Na razie przejdź do panelu")} onPress={() => void finish('dashboard')} />
         <AppButton variant="link" disabled={busy} label={t("Ustaw konto lub przypomnienie")} onPress={() => void finish('settings')} />
       </>}
+      {draft.step < 3 && <View style={{ flexGrow: 1 }} />}
       {error ? <AppStatus tone="error" message={t(error)} /> : null}
       {draft.step < 3 ? <AppButton busy={busy} disabled={draft.step === 1 && !draft.category} label={busy ? t("Zapisywanie…") : t("Dalej")} onPress={() => void changeStep(draft.step + 1)} /> : null}
       {draft.step > 0 ? <AppButton variant="link" disabled={busy} label={t("Wstecz")} onPress={() => void changeStep(draft.step - 1)} /> : null}

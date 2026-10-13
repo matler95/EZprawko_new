@@ -55,6 +55,40 @@ Until such a reviewed pack is supplied, Study continues to show the official cor
 
 ## Tools and quality gates
 
+### Coverage baseline — 2026-10-13
+
+`--report` returns global, `byCategory` and `byPoints` counts of total, covered,
+missing, coverage percentage, priority questions and missing priority explanations.
+It validates packaged source question, answer and media against the read-only bank.
+Category totals overlap: a shared question is counted once in each category, but
+once globally. Point-value totals partition the global bank.
+
+| Category | Questions | Covered | Missing priority |
+| --- | ---: | ---: | ---: |
+| A | 1425 | 0 | 824 |
+| A1 | 1411 | 0 | 824 |
+| A2 | 1409 | 0 | 824 |
+| AM | 1513 | 0 | 914 |
+| B | 2135 | 0 | 1178 |
+| B1 | 1421 | 0 | 821 |
+| C | 1472 | 0 | 827 |
+| C1 | 1439 | 0 | 818 |
+| D | 1488 | 0 | 831 |
+| D1 | 1475 | 0 | 829 |
+| PT | 438 | 0 | 238 |
+| T | 1305 | 0 | 778 |
+
+| Points | Questions | Covered | Missing priority |
+| --- | ---: | ---: | ---: |
+| 1 | 727 | 0 | 83 |
+| 2 | 1092 | 0 | 100 |
+| 3 | 1699 | 0 | 1699 |
+| Global | 3518 | 0 | 1882 |
+
+All groups currently have 0% coverage. Refresh this baseline with the report after
+each approved content import; automated tests cannot certify editorial correctness.
+Test reporting with `node scripts/test-explanation-coverage.cjs`.
+
 ```powershell
 node scripts/prepare-explanations.cjs --report
 node scripts/prepare-explanations.cjs --template .expo/explanations-review-template.json
