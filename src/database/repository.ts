@@ -5,8 +5,6 @@ import { installQuestionSigns } from "@/database/signs";
 import { getQuestionExplanation, installExplanations } from "@/database/explanations";
 import { categoryClause, isDrivingCategory, type DrivingCategory } from "@/domain/driving-categories";
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
-import { awardSignExpert, installLearningDays, learningDays } from "@/database/learning-progress";
-import { learningStreak, localDay } from "@/domain/learning-streak";
 import { newExamClock, type ExamClock } from '@/domain/exam-clock';
 import { validExamSelection } from '@/domain/exam-selection';
 
@@ -59,15 +57,12 @@ export async function initializeDatabase(db: SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS practice_attempts_question_correct ON practice_attempts(question_id, is_correct);
     CREATE TABLE IF NOT EXISTS active_exam (id TEXT PRIMARY KEY, category TEXT NOT NULL, expires_at INTEGER NOT NULL, current_index INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS active_exam_questions (session_id TEXT NOT NULL, position INTEGER NOT NULL, question_id INTEGER NOT NULL, selected_answer TEXT, PRIMARY KEY(session_id, position));
-    CREATE TABLE IF NOT EXISTS challenge_days (day TEXT PRIMARY KEY, correct_answers INTEGER NOT NULL DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS user_achievements (id TEXT NOT NULL, category TEXT NOT NULL DEFAULT '', earned_at INTEGER NOT NULL, PRIMARY KEY(id, category));
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS question_explanations (question_id INTEGER PRIMARY KEY, explanation TEXT NOT NULL, source_url TEXT, reviewed_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS question_topics (question_id INTEGER PRIMARY KEY, topic TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS practice_mastery (question_id INTEGER PRIMARY KEY, correct_streak INTEGER NOT NULL DEFAULT 0, last_correct_at INTEGER);
     CREATE TABLE IF NOT EXISTS question_translations (question_id INTEGER NOT NULL, language TEXT NOT NULL, question TEXT NOT NULL, answers_json TEXT NOT NULL, PRIMARY KEY(question_id, language));
   `);
-  await installLearningDays(db);
   await installTranslations(db);
   await installQuestionSigns(db);
   await installExplanations(db);
@@ -162,7 +157,7 @@ export async function saveCompletedExam(
     if (previous) { score = previous.score; return; }
     await transaction.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-language:${id}`, language);
     await transaction.runAsync(
-      "INSERT INTO exam_sessions (id, category, started_at, expires_at, completed_at, score, passed, local_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO exam_sessions (id, category, started_at, expires_at, completed_at, score, passed) VALUES (?, ?, ?, ?, ?, ?, ?)",
       id,
       category,
       startedAt,
@@ -170,7 +165,6 @@ export async function saveCompletedExam(
       completedAt,
       score,
       score >= 68 ? 1 : 0,
-      localDay(completedAt),
     );
     for (const question of questions)
       await transaction.runAsync(
@@ -391,12 +385,11 @@ export async function recordPracticeAnswer(
   if (!userDataWritable(revision)) return;
   const answeredAt = Date.now();
   await db.runAsync(
-    "INSERT INTO practice_attempts (question_id, selected_answer, is_correct, answered_at, local_day) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO practice_attempts (question_id, selected_answer, is_correct, answered_at) VALUES (?, ?, ?, ?)",
     questionId,
     selectedAnswer,
     correct ? 1 : 0,
     answeredAt,
-    localDay(answeredAt),
   );
   const mastery = await db.getFirstAsync<{ correct_streak: number; last_correct_at: number | null }>(
     "SELECT correct_streak, last_correct_at FROM practice_mastery WHERE question_id = ?",
@@ -410,17 +403,6 @@ export async function recordPracticeAnswer(
     correct ? (canIncrease ? (mastery?.correct_streak ?? 0) + 1 : (mastery?.correct_streak ?? 1)) : 0,
     correct ? (canIncrease ? answeredAt : mastery?.last_correct_at ?? answeredAt) : null,
   );
-  if (correct) {
-    const day = localDay(answeredAt);
-    await db.runAsync(
-      "INSERT INTO challenge_days (day, correct_answers) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET correct_answers = correct_answers + 1",
-      day,
-    );
-    if (canIncrease && (mastery?.correct_streak ?? 0) + 1 >= 3) {
-      const category = await selectedCategory(db);
-      await awardSignExpert(db, category, answeredAt);
-    }
-  }
   });
 }
 
@@ -711,17 +693,6 @@ export async function questionClock(db: SQLiteDatabase, sessionId: string, index
     await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-clock:${sessionId}`, JSON.stringify(clock));
   });
   return clock;
-}
-
-export async function challengeStatus(db: SQLiteDatabase) {
-  const rows = await learningDays(db);
-  const today = localDay();
-  const streak = learningStreak(rows.filter((row) => row.correct >= 5).map((row) => row.day), today);
-  return {
-    daysCompleted: Math.min(3, streak.current),
-    correctToday: rows.find((row) => row.day === today)?.correct ?? 0,
-    complete: streak.best >= 3,
-  };
 }
 
 export async function mediaFilenamesForCategory(

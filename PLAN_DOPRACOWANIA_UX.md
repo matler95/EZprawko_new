@@ -1,5 +1,14 @@
 # Dopracowanie istniejących funkcji EZprawko
 
+## Zmiana zakresu — 2026-10-13
+
+Na podstawie feedbacku właściciela usunięto gamifikację: odznaki, osiągnięcia,
+wyzwania, serie dni, dźwięki nagród i celebracje/naliczanie wyniku. Zachowane
+są podstawowe funkcje nauki, egzaminy, historia, oznaczanie pytań i statystyki
+opanowania. Dawne punkty planów dotyczące nagród nie wracają do backlogu.
+Stare dane nagród pozostają nieaktywne do jawnego resetu; świeża instalacja
+nie tworzy ich tabel. Testy obejmują oba warianty bazy i zachowanie historii.
+
 2026-10-12. Źródło: audyt flow/UI/UX i zgoda właściciela na samodzielną
 realizację do zakończenia lub krytycznego blokera. Zastępuje konieczność
 potwierdzania kolejnych lokalnych checkpointów. Rozbudowa UX-5 o nowe długości

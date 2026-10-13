@@ -128,9 +128,10 @@ const db={execAsync:async sql=>native.exec(sql),runAsync:async(sql,...values)=>n
   const last=native.prepare('SELECT q.id,q.correct_answer FROM questions q JOIN practice_mastery m ON m.question_id=q.id LIMIT 1').get();
   native.prepare('UPDATE practice_mastery SET correct_streak=2 WHERE question_id=?').run(last.id);
   await r.recordPracticeAnswer(db,last.id,last.correct_answer,true);
-  assert(native.prepare("SELECT earned_at FROM user_achievements WHERE id='signs' AND category='B'").get(),'last mastery update must grant expert inside the practice transaction');
-  assert.equal(native.prepare('SELECT local_day FROM practice_attempts').get().local_day,load('src/domain/learning-streak.ts').localDay());
-  console.log('Learning integration: positive practice records local day and awards category-B sign expert atomically on the last mastered question.');
+  assert.equal(native.prepare('SELECT correct_streak FROM practice_mastery WHERE question_id=?').get(last.id).correct_streak,3,'mastery remains a learning metric without awards');
+  assert.equal(native.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('challenge_days','user_achievements')").get().n,0,'fresh installs must not create reward tables');
+  assert(native.prepare('SELECT answered_at FROM practice_attempts').get().answered_at>0);
+  console.log('Learning integration: practice timestamps and category mastery remain, without reward tables or writes.');
   console.log('Session/categories: all 12 real-bank pools generate 32/74, one setting, exact category/topic filters, index-32 recovery, replacement, failed-hydration preservation, expired/invalid/missing questions and scoped active-data removal passed.');
   native.close();
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -4,8 +4,6 @@ import { router, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useRef, useState } from "react";
 import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { LearningRewards } from "@/components/learning-rewards";
-import { learningProgress, type LearningProgress } from "@/database/learning-progress";
 import { useTargetCategory } from "@/context/target-category-context";
 import { categoryLabel as baseCategoryLabel } from "@/domain/driving-categories";
 import { OnboardingFlow } from '@/components/onboarding-flow';
@@ -48,20 +46,17 @@ export default function DashboardScreen() {
   const [startError, setStartError] = useState<string | null>(null);
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<ExamReadiness | null>(null);
-  const [learning, setLearning] = useState<LearningProgress | null>(null);
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
     setFailedRevision(null);
     const refresh = () => { void Promise.all([
       hasCompletedOnboarding(db),
-      learningProgress(db, category),
       examReadiness(db, category),
       resumeActiveExam(db),
-    ]).then(([completed, nextChallenge, nextReadiness, active]) => {
+    ]).then(([completed, nextReadiness, active]) => {
       if (!mounted) return;
       setOnboardingComplete(completed);
-      setLearning(nextChallenge);
       setReadiness(nextReadiness);
       setActiveExamId(active?.id ?? null);
       setOnboardingChecked(true);
@@ -199,9 +194,6 @@ export default function DashboardScreen() {
           <ReadinessRing value={readiness?.passRate ?? null} />
         </View>
 
-        {learning && <LearningRewards progress={learning} category={category} />}
-
-        {learning && <LearningRewards progress={learning} category={category} part="achievements" />}
       </ScrollView>
       <ExamBriefing visible={briefing} category={category} hasActiveExam={Boolean(activeExamId)} starting={isStarting} committing={isCommitting} progress={mediaProgress} error={startError}
         onCancel={() => { if (!commitLock.current) { prepareCancelled.current = true; setBriefing(false); } }}

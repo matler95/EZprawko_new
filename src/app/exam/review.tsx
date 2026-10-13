@@ -11,7 +11,6 @@ import { BasicAnswerButtons, basicAnswerText } from "@/components/basic-answer-b
 import { examReview, type ExamReview, type ExamReviewQuestion } from "@/database/repository";
 import { getQuestionExplanation, type QuestionExplanation } from "@/database/explanations";
 import { ExplanationCard } from "@/components/explanation-card";
-import { AnimatedExamScore, SuccessBadge } from "@/components/exam-result-motion";
 import { useTargetCategory } from '@/context/target-category-context';
 import { isDrivingCategory } from '@/domain/driving-categories';
 
@@ -79,9 +78,8 @@ export default function ExamReviewScreen() {
         <Pressable onPress={() => router.replace("/")}><Text style={styles.back}>{t("← Panel główny")}</Text></Pressable>
         <Text style={styles.kicker}>{t("PODSUMOWANIE EGZAMINU")}</Text>
         <View style={[styles.hero, review.passed ? styles.heroPassed : styles.heroFailed]}>
-          {review.passed ? <SuccessBadge key={review.id} inverse /> : null}
           <Text style={styles.verdict}>{review.passed ? t("POZYTYWNY") : t("NEGATYWNY")}</Text>
-          <AnimatedExamScore key={review.id} score={review.score} sessionId={review.id} style={styles.score} />
+          <Text accessibilityLabel={t('Wynik egzaminu: {0} z 74 punktów', [review.score])} style={styles.score}>{review.score}/74</Text>
           <Text style={styles.heroCopy}>{t("Kategoria")} {review.category} {t("· czas")} {formatDuration(review.durationSeconds)}</Text>
         </View>
 

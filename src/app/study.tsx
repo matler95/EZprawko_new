@@ -12,7 +12,6 @@ import {
   toggleFlag,
   type TopicProgress,
 } from "@/database/repository";
-import { playAnswerSound } from "@/services/answer-feedback";
 import { QuestionMedia } from "@/components/question-media";
 import { BasicAnswerButtons, basicAnswerText } from "@/components/basic-answer-buttons";
 import { questionContent, selectedQuestionLanguage, type QuestionLanguage } from "@/database/translations";
@@ -189,7 +188,6 @@ function StudySession() {
       if (!userDataWritable(revision) || request !== openRequest.current) return;
       ledger.current = { ...ledger.current, [active.id]: { label, correct } };
       setSelected(label);
-      playAnswerSound(correct);
       void Haptics.notificationAsync(correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error).catch(() => {});
     } catch {
       if (request === openRequest.current) setActionError(t("Nie zapisano odpowiedzi. Wybierz ją ponownie, aby spróbować jeszcze raz."));

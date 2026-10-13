@@ -13,7 +13,7 @@ export const privacy: LegalDocument = {
       "Administrator danych i operator aplikacji: do uzupełnienia przed udostępnieniem innym użytkownikom. Nazwa lub imię i nazwisko, adres oraz kontakt do spraw prywatności nie zostały jeszcze ustalone w tym dokumencie. W prywatnym teście kwestie danych zgłaszaj bezpośrednio osobie udostępniającej aplikację.",
     ] },
     { title: "2. Dane nauki na urządzeniu", paragraphs: [
-      "SQLite przechowuje odpowiedzi, wyniki i daty egzaminów, historię ćwiczeń, oznaczone pytania, postęp, dni nauki, lokalny dzień aktywności i zdobyte odznaki oraz preferencje kategorii, języka, motywu i przypomnień. Baza pytań i tłumaczeń jest dostarczana z aplikacją.",
+      "SQLite przechowuje odpowiedzi, wyniki i daty egzaminów, historię ćwiczeń, oznaczone pytania, postęp oraz preferencje kategorii, języka, motywu i przypomnień. Baza pytań i tłumaczeń jest dostarczana z aplikacją. Starsze instalacje mogą zachować nieużywane dane dawnych wyzwań i odznak do czasu resetu danych lokalnych.",
       "Obecny kod nie wysyła historii odpowiedzi ani wyników do Supabase i nie synchronizuje ich między urządzeniami. Dane służą do odtworzenia sesji, powtórek i statystyk. Kopie systemowe urządzenia mogą działać zgodnie z ustawieniami Androida lub iOS; nie obiecujemy wyłączenia takich kopii.",
     ] },
     { title: "3. Opcjonalne konto i multimedia", paragraphs: [

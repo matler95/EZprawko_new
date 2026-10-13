@@ -22,7 +22,6 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name==='@/database/study-session')return {studyMastery:async()=>{if(failMastery)throw Error('read failed');return {total:100,mastered};}};
     if(name==='@/database/translations')return {selectedQuestionLanguage:async()=>'pl',questionContent:async(_db,id)=>({question:`Pytanie ${id}`,contentLanguage:'pl',answers:[{label:'A',answer:'Pierwsza'},{label:'B',answer:'Druga'}]})};
     if(name==='@/database/explanations')return {getQuestionExplanation:async()=>null};
-    if(name==='@/services/answer-feedback')return {playAnswerSound:()=>{}};
     if(name==='@/components/basic-answer-buttons')return {BasicAnswerButtons:'BasicAnswerButtons',basicAnswerText:(_answers,label)=>label==='T'?'TAK':'NIE'};
     if(name==='@/global.css')return {};
     if(name.startsWith('@/components/'))return new Proxy({}, {get:(_t,p)=>p});

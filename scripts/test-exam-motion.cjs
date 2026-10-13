@@ -46,32 +46,15 @@ function render(component,props){
 function reset(){prior.forEach((e)=>e.cleanup?.());refs=[];states=[];prior=[];ready=true;reduced=false;focused=true;}
 const text=(node)=>React.isValidElement(node)?React.Children.toArray(node.props.children).map(text).join(''):String(node);
 const {QuestionTransition}=load('src/components/question-transition.tsx');
-const {AnimatedExamScore,SuccessBadge}=load('src/components/exam-result-motion.tsx');
 const child=React.createElement('Pressable',{disabled:false},'Answer');
 let tree=render(QuestionTransition,{children:child});
 assert.equal(tree.props.children,child,'entry transition must not replace or disable the live answer controls');
 assert.equal(animations.at(-1).config.duration,180);assert(animations.at(-1).config.useNativeDriver);
 reset();assert(animations.at(-1).stopped);
-const props={score:71,sessionId:'session-1'};
-ready=false;tree=render(AnimatedExamScore,props);assert.equal(text(tree),'—/74');assert(tree.props.accessibilityLabel.includes('71'));
-ready=true;render(AnimatedExamScore,props);const count=animations.at(-1);
-assert.equal(count.config.duration,900);assert.equal(count.config.useNativeDriver,false);assert.equal(count.config.toValue,71);
-count.value.setValue(100);tree=render(AnimatedExamScore,props);assert.equal(text(tree),'71/74');
-count.value.setValue(-10);tree=render(AnimatedExamScore,props);assert.equal(text(tree),'0/74');
-count.value.setValue(35.4);tree=render(AnimatedExamScore,props);assert.equal(text(tree),'35/74');
-focused=false;tree=render(AnimatedExamScore,props);assert.equal(text(tree),'71/74');assert(count.stopped);
-const before=animations.length;focused=true;tree=render(AnimatedExamScore,props);tree=render(AnimatedExamScore,props);
-assert.equal(text(tree),'71/74');assert.equal(animations.length,before,'focus return must not replay partial score counting');
-reset();assert.equal(count.value.listeners.size,0,'score listener must be removed');
-render(SuccessBadge,{});const halo=animations.at(-1);assert.equal(halo.config.duration,650);assert(halo.config.useNativeDriver);
-const unchanged=animations.length;render(SuccessBadge,{});assert.equal(animations.length,unchanged);reset();assert(halo.stopped);
-for(const component of [QuestionTransition,AnimatedExamScore,SuccessBadge]){
-  reset();reduced=true;const before=animations.length;const props=component===AnimatedExamScore?{score:0,sessionId:'zero'}:{children:child};
-  const tree=render(component,props);assert.equal(animations.length,before,'Reduce Motion must disable animation');
-  if(component===AnimatedExamScore)assert.equal(text(tree),'0/74');
-}
+reset();reduced=true;const before=animations.length;
+render(QuestionTransition,{children:child});assert.equal(animations.length,before,'Reduce Motion must disable transition');
 reset();assert(animations.every((a)=>a.config.isInteraction===false));
-console.log('Exam motion: live controls, 180ms slide, 900ms score/count clamps, truthful accessibility, interrupted recovery, listener cleanup, 650ms success halo and reduced motion passed.');
+console.log('Exam motion: live controls, 180ms question transition, cleanup and reduced motion passed. Result celebrations/counting are removed.');
 (async()=>{
   let resolvePreference,onChange,removed=false;
   native.AccessibilityInfo={

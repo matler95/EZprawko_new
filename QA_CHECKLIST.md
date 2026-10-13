@@ -108,18 +108,18 @@ Run this checklist on a physical Android device and, before public release, an i
 - [ ] Check compact phone, large system fonts and screen reader: scrollable summary, readable counts, no color-only statuses and reachable ending/replay/menu controls. Cached question media works in airplane mode.
 - [ ] Leaving/reopening Study resets the in-memory round; existing persisted attempts/mastery remain. This point does not add durable resumable Study-session summaries.
 
-## New plan — point 5.2 learning streaks and achievements
+## Simplification — gamification removed (2026-10-13)
 
-- [ ] Upgrade a copy of an older installation: practice/exam counts, answers/results, flags, translations and sign data remain. local_day is backfilled once from timestamps in the migration device's timezone; subsequent upgrades must not rewrite the stored days.
-- [ ] One correct OR incorrect Study answer or one completed exam qualifies a learning day; repeated actions that day do not create extra days. Incomplete/abandoned exams do not count. All driving categories contribute to the global streak.
-- [ ] Verify yesterday grace, a genuinely missed day resetting current streak to zero, and best streak retention. Check local midnight/DST/year/leap transitions; foreground Dashboard refreshes within a minute and on returning from background.
-- [ ] Check the separate challenge: five correct Study answers on each of three consecutive days. Three nonconsecutive qualifying days must not falsely complete it; an already completed challenge remains completed until reset.
-- [ ] Verify first-completed and 74/74 badges from existing and new exams; repeatedly reopen Dashboard without duplicating awards. Streak badge uses three consecutive learning days, not the separate five-answer target.
-- [ ] Expert sign badge is per selected category, using unique questions with sign links and current mastery >=3. No award for a category with no linked questions. A third credit must respect the existing 24h spacing; repeated same-day correct answers cannot instantly master the bank.
-- [ ] Complete the final required sign question: award persists even if the next attempt is incorrect. Changing category shows that category's expert status while global badges remain. Label must not imply verified mastery of every sign in the full lexicon.
-- [ ] Export includes user_achievements and local_day history fields. Both reset flows clear streaks/awards without deleting questions or sign links. Pending old practice/exam work must not restore awards after reset.
-- [ ] Check compact phones, large font, light/dark and VoiceOver/TalkBack. Earned/locked states are textual, and daily-study shortcuts appear before the achievement list. Travel/timezone changes must not rewrite historical local_day; current-day projection/grace should be checked explicitly.
-- [ ] Run `node scripts/test-learning-rewards.cjs` in Europe/Warsaw and America/Los_Angeles, plus `node scripts/test-session-categories.cjs`. Tests use synthetic/in-memory fixtures, not the tester's actual progress.
+- [ ] Dashboard shows learning, exam, resume and category results without badges,
+  achievement lists, streaks or challenge cards. No reward prompts in other tabs.
+- [ ] Passed/failed exam results show the exact score immediately, with no counting,
+  success halo or celebration. Answer feedback is visual/tactile, without chimes.
+- [ ] Upgrade an older installation: questions, translations, media, answers/history,
+  flags and mastery remain. Old reward rows/nullable local_day columns are inactive,
+  not updated or reconstructed; optional export preserves them until explicit reset.
+- [ ] Fresh install creates no challenge_days/user_achievements tables. Reset and
+  export work both with and without these legacy tables; reset never deletes the bank.
+- [ ] Run `node scripts/test-no-gamification.cjs`, full regression and native device QA.
 
 ## New plan — point 4.3 configurable daily reminder time
 
@@ -229,10 +229,9 @@ Run this checklist on a physical Android device and, before public release, an i
 
 - [ ] Each new exam question slides in briefly without hiding content, blocking answers or delaying timers/auto-advance. Verify rapid answering and timeout progression.
 - [ ] A new long/media-heavy question starts scrolled to the top. Basic reading → answering must not remount/replay its video; consecutive questions referencing the same video must each get their one playback.
-- [ ] Passed and failed results count up to the exact recorded score; only passed attempts show success celebration. Buttons remain usable during the effect.
-- [ ] Navigate away during score counting and return; the final score must be correct, without a stuck partial count. Opening/closing review details must not replay the result effect.
-- [ ] Reduce Motion shows the final score without counting and removes slide/halo motion. Test changing this setting mid-animation and both themes.
-- [ ] VoiceOver/TalkBack announces the recorded final score, not each intermediate number; the halo is decorative.
+- [ ] Passed and failed results show the exact recorded score immediately; opening/closing review details does not change it. No reward animation/counting.
+- [ ] Reduce Motion removes question slide motion. Test changing this setting mid-animation and both themes.
+- [ ] VoiceOver/TalkBack announces the recorded final score once, without decorative reward elements.
 - [ ] Run `node scripts/test-exam-motion.cjs` and the engine/timer regressions. Stubbed contracts do not replace physical-device animation/playback QA.
 
 ## Core exam
@@ -283,7 +282,7 @@ Run this checklist on a physical Android device and, before public release, an i
 - [ ] Flag/unflag a question and verify the Saved filter.
 - [ ] Verify All, 3 points, Mistakes, and Saved filters.
 - [ ] Verify selected-category coverage/mastery and exam weak areas; the removed global weak-category cards must not reappear.
-- [ ] Complete five correct study answers on three separate days and verify the challenge card.
+- [ ] Complete Study answers and verify practice history/mastery update without challenges or awards.
 
 ## Media, cache, and connectivity
 

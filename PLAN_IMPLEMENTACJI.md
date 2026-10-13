@@ -1,5 +1,10 @@
 # Kompleksowy Plan Implementacji i Modernizacji: EZprawko
 
+> **Aktualizacja zakresu 2026-10-13:** właściciel zdecydował o usunięciu gamifikacji
+> dla prostszego UI i kodu. Odznaki, osiągnięcia, serie dni, wyzwania oraz celebracje
+> wyników opisane niżej są wycofane, nie stanowią dalszych zadań. Nauka, egzaminy,
+> historia i rzeczywiste statystyki postępu pozostają. Szczegóły w IMPLEMENTATION_PROGRESS.md.
+
 > **Status projektu:** Baza z oficjalnymi pytaniami ministerialnymi i szkieletem architektury (Expo SDK 57, SQLite, offline-first) jest wdrożona. 
 > Niniejszy dokument stanowi kompletny plan techniczny eliminacji luk prawnych i UX względem egzaminu państwowego WORD oraz wdrożenia kluczowych przewag konkurencyjnych na polskim rynku aplikacji prawa jazdy (względem ZdamyTo, Prawo Jazdy 360, Prawko.pl).
 

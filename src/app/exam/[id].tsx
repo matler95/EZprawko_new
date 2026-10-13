@@ -22,7 +22,6 @@ import { examClockState, type ExamClock } from "@/domain/exam-clock";
 import { QuestionTransition } from "@/components/question-transition";
 import { LoadingError } from "@/components/skeleton";
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
-import { AnimatedExamScore, SuccessBadge } from "@/components/exam-result-motion";
 import type { QuestionLanguage } from "@/database/translations";
 import { TabBarContext } from "@/context/tab-bar-context";
 import {
@@ -206,10 +205,9 @@ function ActiveExamScreen({ id }: { id: string }) {
     return (
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.result}>
-          {result.passed ? <SuccessBadge key={result.id} /> : <Text style={styles.resultIcon}>↗</Text>}
           <Text style={styles.kicker}>{t("EGZAMIN ZAKOŃCZONY")}</Text>
-          <Text style={styles.resultTitle}>{result.passed ? t("Zdane!") : t("Spróbuj ponownie")}</Text>
-          <AnimatedExamScore key={result.id} score={result.score} sessionId={result.id} style={styles.resultScore} />
+          <Text style={styles.resultTitle}>{result.passed ? t("POZYTYWNY") : t("NEGATYWNY")}</Text>
+          <Text accessibilityLabel={t('Wynik egzaminu: {0} z 74 punktów', [result.score])} style={styles.resultScore}>{result.score}/74</Text>
           <Text style={styles.muted}>
             {result.passed ? t("Wynik spełnia próg 68 punktów.") : t("Brakuje {0} pkt do zaliczenia.", [68 - result.score])}
           </Text>
@@ -323,7 +321,6 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   answerLetter: { backgroundColor: colors.primarySurface, borderRadius: 16, color: colors.primaryText, fontWeight: "800", height: 32, marginRight: 12, overflow: "hidden", paddingTop: 7, textAlign: "center", width: 32 },
   answerText: { color: colors.textPrimary, flex: 1, fontSize: 15, lineHeight: 21 },
   result: { alignItems: "center", flexGrow: 1, justifyContent: "center", padding: 32 },
-  resultIcon: { color: colors.primaryText, fontSize: 52, marginBottom: 20 },
   resultTitle: { color: colors.textPrimary, fontSize: 30, fontWeight: "800", marginTop: 10 },
   resultScore: { color: colors.primaryText, fontSize: 42, fontVariant: ["tabular-nums"], fontWeight: "800", marginTop: 28 },
   muted: { color: colors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 8, textAlign: "center" },

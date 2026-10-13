@@ -96,7 +96,8 @@ poprawna nawigacja/pominięte pytania/filtry/tłumaczenia i mastery 24 h.
   gotowości gwarantuje zdanie państwowego egzaminu.
 
 Odbiór: wyniki A/B/PT nie wpływają na wskaźnik innej wybranej kategorii,
-globalny streak zachowany, zmiana kategorii/zerowa historia nie tworzą fałszywych danych.
+zmiana kategorii/zerowa historia nie tworzą fałszywych danych. Serie dni i nagrody
+usunięte decyzją właściciela (2026-10-13); nie są warunkiem odbioru.
 
 ## UX-7 — dostępność i końcowa kontrola przepływów
 

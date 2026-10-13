@@ -1,5 +1,41 @@
 # Implementation progress
 
+## Checkpoint — simplification: gamification removed (2026-10-13)
+
+- Owner feedback supersedes earlier reward/challenge plans. Removed Dashboard
+  badge/achievement lists, daily challenge and streak cards, learning reward queries,
+  reward persistence/award triggers, streak/date-backfill module and obsolete tests.
+  Removed result celebration/halo and score count-up; exact passed/failed score is
+  displayed immediately, with its accessible label and review actions preserved.
+- Removed Study answer chimes, their generated audio players and the unused
+  expo-audio dependency/config plugin. Visual answer correctness and existing subtle
+  haptics remain functional feedback; timer warnings, Reduce Motion, question
+  transitions, offline/media delivery and signed access are unchanged.
+- Mobile UI design guidance was used for a calmer hierarchy and fewer sections,
+  deliberately not its celebration suggestions. Dashboard retains daily practice,
+  mistake review, exam/resume and actual category results. No replacement reward
+  system, extra screen or setting was added. Pruned 23 unused reward-related UI
+  translation entries (429 four-language entries remain).
+- Fresh installs no longer create reward tables or local_day columns. Existing
+  reward rows and nullable historical columns are left inactive, not dropped or
+  rewritten. Export optionally includes existing legacy tables; explicit user-data
+  reset clears them together with progress. Official 3,518 questions, translations,
+  answers/history, flags, mastery and settings are preserved. No real user database
+  was modified by development tools. Deleted modules can be recovered from the
+  owner's backup/version history.
+- Added test-no-gamification with real bank/SQLite: fresh schema, normal exam and
+  practice writes, upgrade preserving results/legacy columns, zero reward writes,
+  optional export and explicit reset, plus source contracts for plain result UI.
+  Updated session/motion tests and active plan/QA/legal draft descriptions.
+- Validation passed: all 25 regression scripts, final TypeScript/lint, UI-language
+  tests after copy pruning, Expo Doctor 21/21, 24 contrast pairs and Android JS
+  export to ignored .expo/simplified-ui-export (6.7 MB bundle). Device-level layout
+  and native behavior still require physical QA; no EAS build or cloud change.
+- npm uninstall reported 33 dependency audit findings (13 moderate, 20 high).
+  No automatic audit fix/major-version changes were applied; dependency security
+  review remains a separate release task. Removing the audio native plugin is
+  reflected in the next native build; no native folders were edited.
+
 ## Checkpoint — UX audit, shared UI language (2026-10-13)
 
 - Added a reactive PL/EN/DE/UK interface-language preference and a 452-entry UI

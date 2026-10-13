@@ -1,5 +1,9 @@
 # Kompleksowy Plan Implementacji: EZprawko (Mobilna Aplikacja Przygotowująca do Egzaminu WORD)
 
+> Zmiana zakresu (2026-10-13): gamifikacja została wycofana decyzją właściciela.
+> Nie wdrażamy ponownie odznak, osiągnięć, wyzwań ani serii dni. Aktywne funkcje
+> koncentrują się na nauce, egzaminie i historii/postępie; szczegóły w logu implementacji.
+
 Dokument stanowi kompletny, techniczny plan rozwoju aplikacji mobilnej **EZprawko** (Expo SDK 57 / React Native / SQLite). Plan usuwa luki w zgodności z państwowym egzaminem teoretycznym WORD, podnosi standard UI/UX do poziomu czołowych aplikacji rynkowych i definiuje architekturę systemu w podziale na 6 niezależnych faz.
 
 ---
