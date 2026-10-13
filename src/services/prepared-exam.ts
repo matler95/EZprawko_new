@@ -6,17 +6,19 @@ import { prepareExamMedia, type MediaPreloadProgress } from '@/services/media-pr
 import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
 import { validExamSelection } from '@/domain/exam-selection';
 import { hasAvailableQuestionMedia } from '@/domain/media-eligibility';
+import { examPreferencesChanged } from '@/domain/exam-preparation-events';
 
 type PreparedExam = { category: string; language: QuestionLanguage; questions: Question[] };
 let work: { key: string; promise: Promise<PreparedExam>; listeners: Set<(progress: MediaPreloadProgress) => void>; progress?: MediaPreloadProgress } | null = null;
 let newestKey = '';
+let generation = 0;
 export { subscribePreparedExam, examPreferencesChanged } from '@/domain/exam-preparation-events';
 const filenames = (questions: Question[]) => questions.map(q => q.mediaFilename).filter((name): name is string => Boolean(name));
 
 export async function ensurePreparedExam(db: SQLiteDatabase, category: string, onProgress?: (progress: MediaPreloadProgress) => void): Promise<PreparedExam> {
   const revision = userDataRevision();
   const language = await selectedQuestionLanguage(db);
-  const key = `${revision}:${category}:${language}`;
+  const key = `${revision}:${category}:${language}:${generation}`;
   newestKey = key;
   if (work) {
     if (work.key === key) {
@@ -39,7 +41,9 @@ export async function ensurePreparedExam(db: SQLiteDatabase, category: string, o
     if (stored) {
       try {
         const candidate = JSON.parse(stored.value) as PreparedExam;
-        if (candidate.category === category && candidate.language === language && validExamSelection(candidate.questions, category) && candidate.questions.every(question => hasAvailableQuestionMedia(question.id))) prepared = candidate;
+        const alreadyStarted = active && candidate.questions?.length === active.questions.length &&
+          candidate.questions.every((question, index) => question.id === active.questions[index].id);
+        if (!alreadyStarted && candidate.category === category && candidate.language === language && validExamSelection(candidate.questions, category) && candidate.questions.every(question => hasAvailableQuestionMedia(question.id))) prepared = candidate;
       } catch { /* Replace incompatible/invalid candidate. */ }
     }
     prepared ??= { category, language, questions: await createExam(db, category) };
@@ -64,8 +68,11 @@ export async function ensurePreparedExam(db: SQLiteDatabase, category: string, o
 }
 
 export function consumePreparedExam(questions: Question[]) {
+  generation++; newestKey = '';
   protectMedia('active', filenames(questions));
   releaseProtectedMedia('prepared');
+  // The committed start consumed the draft in SQLite; prepare its successor now.
+  examPreferencesChanged();
 }
 export async function verifyPreparedMedia(questions: readonly Question[]) {
   for (const question of questions) if (question.mediaFilename && !await cachedMediaUri(question.mediaFilename, true)) throw new Error('Materiały wymagają ponownego przygotowania.');

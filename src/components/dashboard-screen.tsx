@@ -18,6 +18,7 @@ import { mediaErrorMessage } from '@/domain/media-error';
 import { learningInsights } from '@/database/learning-insights';
 import { learningRecommendation, type TopicInsight } from '@/domain/learning-recommendation';
 import { AppButton, AppHeading } from '@/components/ui/app-controls';
+import { warmRecommendedStudy } from '@/services/prepared-study';
 
 import {
   clearActiveExam,
@@ -69,6 +70,7 @@ export default function DashboardScreen() {
       setReadiness(nextReadiness);
       setActiveExamId(active?.id ?? null);
       setTopics(insights.topics); setHistoricalMistakes(insights.historicalMistakes);
+      if (completed && !active) void warmRecommendedStudy(db, category, insights, () => mounted && current === request).catch(() => {});
       setOnboardingChecked(true);
     }).catch(() => { if (mounted && current === request) setFailedRevision(reload); }); };
     refresh();

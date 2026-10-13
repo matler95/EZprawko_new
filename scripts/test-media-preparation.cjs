@@ -39,10 +39,10 @@ function button(t,label){return nodes(t).find(n=>n.type==='Pressable'&&text(n).i
 (async()=>{
   const media=load('src/services/media-cache.ts'),preload=load('src/services/media-preload.ts');
   const {createStudyPreparation}=load('src/services/study-preparation.ts');
-  files.clear();failName='two.mp4';
+  files.clear();failName='one.jpg';
   const studyPool=[{id:1,media_filename:'one.jpg'},{id:2,media_filename:'two.wmv'}];
   const study=createStudyPreparation(studyPool);studyPool[0].media_filename='changed.jpg';
-  await assert.rejects(()=>study.run(()=>{}));assert(files.has(dir+'one.jpg'));
+  await assert.rejects(()=>study.run(()=>{}));assert(!files.has(dir+'one.jpg'));
   failName=null;assert.equal(await study.run(()=>{}),true);assert(!files.has(dir+'changed.jpg'),'retry uses the frozen study pool');
   files.clear();let studyRelease;delay=new Promise(resolve=>studyRelease=resolve);
   const cancelledStudy=createStudyPreparation(studyPool);let studyEvents=0;
@@ -68,7 +68,7 @@ function button(t,label){return nodes(t).find(n=>n.type==='Pressable'&&text(n).i
   await assert.rejects(()=>preload.prepareExamMedia([...pool,{mediaFilename:'third.jpg'}],p=>{if(p.completed===1)proceed=false;},()=>proceed),/przerwane/);assert(!files.has(dir+'third.jpg'),'cancel stops launching new work; two in-flight downloads may settle');
   files.clear();const windowPool=Array.from({length:8},(_,i)=>({id:i+1,media_filename:`window-${i}.jpg`}));
   assert.equal(await createStudyPreparation(windowPool,4).run(()=>{}),true);
-  assert.deepEqual([...files.keys()].sort(),[4,5,6].map(i=>dir+`window-${i}.jpg`),'study only waits for its selected question and the next two');
+  assert.deepEqual([...files.keys()].sort(),[4].map(i=>dir+`window-${i}.jpg`),'study only waits for its selected question');
   files.clear();await assert.rejects(()=>preload.prepareExamMedia(pool,p=>{if(p.completed===2)files.delete(dir+'one.jpg');}),/cache/,'final verification catches eviction');
   files.clear();let release;delay=new Promise(r=>release=r);const first=media.cachedMediaUri('shared.jpg'),second=media.cachedMediaUri('shared.jpg');await new Promise(setImmediate);const before=downloadCalls;release();await Promise.all([first,second]);delay=null;assert.equal(downloadCalls,before,'same-file requests share one download');
   files.clear();delay=new Promise(r=>release=r);const clearingConflict=media.cachedMediaUri('pending.jpg');await new Promise(setImmediate);

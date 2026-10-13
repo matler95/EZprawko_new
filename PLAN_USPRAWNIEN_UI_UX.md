@@ -16,7 +16,7 @@ Historia checkpointów pozostaje w `IMPLEMENTATION_PROGRESS.md`.
 | F4 | Rekomendacje z danych, ostatnie wyniki per dział i próbka, osobne opanowanie, akcje ćwiczenia | F4.1 uzgodniona definicja kolejki powtórek; część F4.2 dotycząca wznowienia Nauki |
 | F5 | Wspólne tokeny i kontrolki; F5.1 nagłówki i tokeny Start/Nauka/onboarding/Ustawienia/Postęp, formatowanie locale; F5.3 krótszy onboarding i wybór kategorii przed partią; F5.4 dostępność ekranów | F5.2 porównanie nawigacji; fizyczna dostępność i odbiór |
 | F6 | Nie rozpoczęto — opcjonalne rozszerzenie | Trwałe wznowienie jednej sesji wymaga osobnej decyzji; bez nowej historii/trybów |
-| F7 | 38 skryptów regresji, dotychczasowe 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, rzeczywiste dekodowanie/cache i pomiary startu |
+| F7 | 41 skryptów regresji, dotychczasowe 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, rzeczywiste dekodowanie/cache i pomiary startu |
 
 ### Kolejne zadania według priorytetu
 
@@ -187,6 +187,16 @@ Zakres: `question-media.tsx`, `media-error.ts`, `media-auth.ts`,
 `media-preload.ts`, `media-cache.ts`, `media-download-card.tsx`.
 
 ### F1.2 — przygotowanie materiałów konkretnej partii
+
+Aktualny checkpoint „kliknięcie i gotowe”: wybrane zestawy 5/12 i rekomendowane
+ćwiczenie są przygotowywane przed kliknięciem. Nowa partia powstaje w połowie
+bieżącej sesji. Start wymaga tylko bieżącego materiału; ciepły cache omija ekran
+przygotowania. Bufor kolejnych trzech pozostaje. Egzamin nadal wymaga całego
+zestawu, a jego następca jest przygotowywany natychmiast po zatwierdzeniu startu.
+Indeks cache eliminuje pełny skan po każdym pobraniu. Paczkowy endpoint grantów
+jest przygotowany lokalnie; wdrożenie Supabase i pomiary urządzeniowe pozostają
+otwarte. Szczegóły: docs/MEDIA_PREPARATION.md. Poniższe starsze punkty zachowują
+kontrakty bezpieczeństwa; bufor trzech nie jest już warunkiem startu Nauki.
 
 - Po wyborze partii zachować dokładny zestaw pytań i sprawdzić potrzebne pliki.
 - Aktualizacja 2026-10-13: Nauka czeka na wybrane pytanie i dwa następne, nie całą

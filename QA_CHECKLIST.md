@@ -457,3 +457,14 @@ Run this checklist on a physical Android device and, before public release, an i
 - [ ] Airplane mode: ready exam works from cache; Study may need retry beyond the prepared window and must not offer answers before media readiness.
 - [ ] Login, blur/refocus, cancel, cache limit and local reset cannot cause a stale question to open or a clock to start.
 - [ ] Current question/start outranks queued background downloads; at most two transfers run globally.
+
+## Exact ready pools and batch grants
+
+- [ ] Warm Start then tap default/recommended Study: same question IDs, no reroll and no preparation screen when the first material is cached.
+- [ ] Start from a middle question; only its material gates startup, next files remain background work.
+- [ ] Answer half a batch, then use Next batch: exact prefetched IDs, correct repeat count and unchanged scope.
+- [ ] Start an exam and immediately observe preparation of its successor, without starting a second clock or disturbing the first attempt.
+- [ ] Change language/category/filter/search and reset local data: no stale draft opens.
+- [ ] Deploy the Supabase function separately, reload app, confirm fewer auth requests for simultaneous cache misses and rejection of cross-file token reuse.
+- [ ] Confirm logout/expiry/relogin fences delayed grants; old backend falls back only on incompatible HTTP 400.
+- [ ] Repeat 1 GB/cache clearing/OS eviction checks; failed new over-budget files cannot pass a later cache-only retry.

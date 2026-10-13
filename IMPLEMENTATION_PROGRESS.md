@@ -989,3 +989,26 @@
 - Validation passed: all 38 test scripts, npx tsc --noEmit, npx expo lint,
   and git diff --check. No cloud deployment or source-media substitution.
 
+## Checkpoint — exact ready pools and batch grants (2026-10-13)
+
+- Default Study pools (5/12) and the actual dashboard recommendation warm before
+  navigation; the screen reuses those exact questions. Four bounded in-memory
+  drafts, five-minute expiry, scope/previous-ID keys and reset fencing.
+- Study waits only for its current material; a cache hit bypasses preparation.
+  Native decode readiness still gates answers. Next batch warms halfway through
+  the current batch; exact mistake/session replay retains its existing semantics.
+- Committed exam consumption emits an immediate successor-preparation event,
+  invalidates old work and rejects a stored draft identical to the active attempt.
+  No new exam clock is started; complete cache verification stays mandatory.
+- Cache inventory scans once per cache lifecycle, updates commits and serializes
+  eviction. Failed over-budget commits roll back; existing protected files remain.
+- Media grants coalesce short-window misses into <=8 filenames; user check once
+  per batch, individual object-bound 120-second tokens, memory-only token reuse,
+  expiry margins and logout/account/reset fencing. HTTP 400 from the legacy
+  single-file endpoint falls back without downgrading 401/403.
+- Server source updated locally, no deployment/account/cloud changes.
+- Regression suite now includes 41 scripts. Physical-device timing, native
+  decoding and deployment smoke tests remain separate acceptance work.
+- Validation passed: all 41 scripts, npx tsc --noEmit, npx expo lint and
+  git diff --check. Final cache-commit fencing also passed its focused regressions.
+

@@ -6,6 +6,7 @@ let states=[], refs=[], effects=[], pending=[], si=0, ri=0, ei=0, focus, writes=
 let routeParams={},failNext=false,nextReads=0,nextItems=null,nextDelay=null;
 let category='B',categoryWrites=0,categoryFail=false,categoryDelay=null;
 const prefetches=[];
+let cacheReady=false;
 const items=[1,2,3].map(id=>({id,question:`Pytanie ${id}`,points:3,scope:'SPECJALISTYCZNY',correct_answer:'A',media_filename:null,contentLanguage:'pl'}));
 const db={getAllAsync:async(sql)=>{if(sql.includes('CASE WHEN q.id IN')){nextReads++;if(nextDelay)await nextDelay;if(failNext)throw Error('batch failed');return nextItems??items;}return items;},getFirstAsync:async()=>null};
 function load(file){if(cache.has(file))return cache.get(file);const exports={};
@@ -24,7 +25,8 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name==='@/database/study-session')return {studyMastery:async()=>{if(failMastery)throw Error('read failed');return {total:100,mastered};}};
     if(name==='@/database/translations')return {selectedQuestionLanguage:async()=>'pl',questionContent:async(_db,id)=>({question:`Pytanie ${id}`,contentLanguage:'pl',answers:[{label:'A',answer:'Pierwsza'},{label:'B',answer:'Druga'}]})};
     if(name==='@/database/explanations')return {getQuestionExplanation:async()=>null};
-    if(name==='@/services/media-cache')return {protectMedia(){},releaseProtectedMedia(){}};
+    if(name==='@/services/media-cache')return {protectMedia(){},releaseProtectedMedia(){},cachedMediaUri:async()=>cacheReady?'file:///warm.jpg':undefined};
+    if(name==='@/services/prepared-study')return {readPreparedStudyBatch:(...args)=>load('src/database/study-batch.ts').readStudyBatch(...args),consumePreparedStudyBatch(){},warmNextStudyBatch:async()=>{}};
     if(name==='@/services/media-preload')return {preloadMedia:async(files,_progress,proceed)=>{prefetches.push({files,proceed});return {completed:files.length,total:files.length};}};
     if(name==='@/components/basic-answer-buttons')return {BasicAnswerButtons:'BasicAnswerButtons',basicAnswerText:(_answers,label)=>label==='T'?'TAK':'NIE'};
     if(name==='@/global.css')return {};
@@ -97,17 +99,17 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
   assert.match(text(autoTree),/Pytanie 1/);assert.match(text(autoTree),/1 z 3/);assert.equal(writes,0,'auto-open must not record an answer');assert.equal(routeParams.start,undefined);
   button(autoTree,'Pomiń →').props.onPress();await tick();autoTree=render();assert.match(text(autoTree),/Pytanie 2/,'consumed start cannot reopen question 1');assert.equal(writes,0,'skip does not save an answer');autoCleanup();routeParams={};
   // A media-bearing batch must remain fixed until preparation succeeds.
-  states=[];refs=[];effects=[];pending=[];writes=mastered=0;items[1].media_filename='fixture.jpg';
+  states=[];refs=[];effects=[];pending=[];writes=mastered=0;items[0].media_filename='first.jpg';items[1].media_filename='fixture.jpg';
   render();const mediaCleanup=focus();await tick();render();await tick();let mediaTree=render();
-  button(mediaTree,'Otwórz pytanie').props.onPress();mediaTree=render();
+  await button(mediaTree,'Otwórz pytanie').props.onPress();mediaTree=render();
   assert.equal(mediaTree.type,'StudyPreparation');assert.equal(mediaTree.props.questions.length,3);
   assert.equal(writes,0,'preparation cannot save an implicit answer');
   mediaTree.props.onCancel();mediaTree=render();assert.match(text(mediaTree),/Otwórz pytanie/);
-  button(mediaTree,'Otwórz pytanie').props.onPress();mediaTree=render();
+  await button(mediaTree,'Otwórz pytanie').props.onPress();mediaTree=render();
   mediaTree.props.onReady();await tick();mediaTree=render();assert.match(text(mediaTree),/Pytanie 1/);
   button(mediaTree,'Pomiń →').props.onPress();await tick();mediaTree=render();assert.match(text(mediaTree),/Pytanie 2/);
   const pendingMedia=nodes(mediaTree).find(n=>n.type==='QuestionMedia');assert(pendingMedia);pendingMedia.props.onReadyChange(true);
-  mediaTree=render();assert.equal(button(mediaTree,'Pierwsza').props.disabled,false);mediaCleanup();items[1].media_filename=null;
+  mediaTree=render();assert.equal(button(mediaTree,'Pierwsza').props.disabled,false);mediaCleanup();items[0].media_filename=null;items[1].media_filename=null;
   // Menu separates advanced controls from the primary start and clears all constraints.
   states=[];refs=[];effects=[];pending=[];writes=mastered=0;routeParams={filter:'mistakes',topic:'Znaki i sygnały drogowe',sign:'B-20',session:'exam-fixture',count:'5'};
   render();const menuCleanup=focus();await tick();render();await tick();let menu=render();
@@ -164,6 +166,12 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
   assert.deepEqual(prefetches.at(-1).files,['prefetch-1.jpg','prefetch-2.jpg']);
   const lastPrefetch=prefetches.at(-1);prefetchBlur();assert.equal(lastPrefetch.proceed(),false,'blur stops speculative work');
   items.forEach(item=>item.media_filename=null);
+  states=[];refs=[];effects=[];pending=[];items[0].media_filename='warm.jpg';cacheReady=true;
+  render();const warmBlur=focus();await tick();render();await tick();let warmTree=render();
+  await button(warmTree,'Otwórz pytanie').props.onPress();await tick();warmTree=render();
+  assert.notEqual(warmTree.type,'StudyPreparation','a cached first material bypasses the waiting screen');
+  assert(nodes(warmTree).some(n=>n.type==='QuestionMedia'),'native media still owns decode readiness');
+  warmBlur();cacheReady=false;items[0].media_filename=null;
   // Load the real SQL helper, not the UI's stub.
   const native=new DatabaseSync(':memory:');native.exec(`CREATE TABLE questions(id INTEGER,categories TEXT);CREATE TABLE practice_mastery(question_id INTEGER,correct_streak INTEGER);INSERT INTO questions VALUES(1,'["B","B1"]'),(2,'["A"]'),(3,'["B"]');INSERT INTO practice_mastery VALUES(1,3),(2,3),(3,2);`);
   const exports={};new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,'src/database/study-session.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(name=>load(`src/${name.slice(2)}.ts`),exports);

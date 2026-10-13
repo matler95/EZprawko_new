@@ -23,6 +23,11 @@ const db={getFirstAsync:async()=>settings.has('prepared-exam')?{value:settings.g
  settings.clear();fail=true;await assert.rejects(()=>service.ensurePreparedExam(db,'B'));assert(settings.has('prepared-exam'),'partial download preserves exact question draft');const before=draws;fail=false;await service.ensurePreparedExam(db,'B');assert.equal(draws,before);
  language='en';await service.ensurePreparedExam(db,'B');assert.equal(draws,before+1,'language change redraws candidate');
  settings.clear();delay=new Promise(r=>release=r);const obsolete=service.ensurePreparedExam(db,'B');await new Promise(setImmediate);category='C';const current=service.ensurePreparedExam(db,'C');release();await assert.rejects(()=>obsolete);delay=null;assert.equal((await current).category,'C');assert.equal(JSON.parse(settings.get('prepared-exam')).category,'C');
+ let successor,starts=0;
+ const unsubscribe=service.subscribePreparedExam(()=>{starts++;successor=service.ensurePreparedExam(db,'C');});
+ settings.clear();const beforeConsume=draws;
  service.consumePreparedExam((await current).questions);assert(pins.has('active'));assert(!pins.has('prepared'));
+ assert.equal(starts,1,'consumption immediately triggers next preparation without waiting for the interval');
+ await successor;assert.equal(draws,beforeConsume+1);unsubscribe();
  console.log('Prepared exam: coalesced single draw, persisted exact retry, language/category invalidation and active-media protection passed. No active session or exam clock is created by preparation.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

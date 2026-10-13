@@ -11,9 +11,13 @@ const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
 
 const safeName = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 const downloads = new Map<string, Promise<string | undefined>>();
+const committing = new Set<string>();
 const downloadPriorities = new Map<string, MediaDownloadPriority>();
 let clearing = false;
 const protectedMedia = new Map<string, Set<string>>();
+type CacheEntry = { size: number; modified: number };
+let inventory: Promise<Map<string, CacheEntry>> | undefined;
+let eviction: Promise<void> = Promise.resolve();
 export function protectMedia(group: string, filenames: readonly string[]) {
   protectedMedia.set(group, new Set(filenames.map(name => safeName(deliveredMediaFilename(name)))));
 }
@@ -44,7 +48,10 @@ async function fetchCachedMedia(sourceFilename: string, cacheOnly: boolean, prio
   await FileSystem.makeDirectoryAsync(CACHE_DIRECTORY, { intermediates: true });
   const uri = `${CACHE_DIRECTORY}${safeName(filename)}`;
   const current = await FileSystem.getInfoAsync(uri);
-  if (current.exists && !current.isDirectory && 'size' in current && current.size > 0) return uri;
+  if (current.exists && !current.isDirectory && 'size' in current && current.size > 0 && !committing.has(uri)) {
+    void inventory?.then(entries => { const entry = entries.get(safeName(filename)); if (entry) entry.modified = Date.now() / 1000; }).catch(() => {});
+    return uri;
+  }
   if (cacheOnly) return undefined;
   if (current.exists) await FileSystem.deleteAsync(uri, { idempotent: true });
   const remote = mediaUrl(objectKey);
@@ -53,6 +60,7 @@ async function fetchCachedMedia(sourceFilename: string, cacheOnly: boolean, prio
     if (!userDataWritable(revision)) return undefined;
     const token = await mediaGrant(objectKey);
     const temporaryUri = `${uri}.${revision}.download`;
+    let downloadedSize = 0;
     try {
       const result = await FileSystem.downloadAsync(remote, temporaryUri, {
         headers: { Authorization: `Bearer ${token}` },
@@ -64,12 +72,22 @@ async function fetchCachedMedia(sourceFilename: string, cacheOnly: boolean, prio
       if (!downloaded.exists || downloaded.isDirectory || !('size' in downloaded) || downloaded.size <= 0) throw new Error('Pobrany materiał jest pusty. Spróbuj ponownie.');
       if (downloaded.size > MAX_CACHE_BYTES) throw new Error('Materiał przekracza limit cache 1 GB. Nie można przygotować tej próby.');
       if (!userDataWritable(revision)) throw new Error("Pobieranie przerwane przez usunięcie danych lokalnych.");
+      committing.add(uri);
       await FileSystem.moveAsync({ from: temporaryUri, to: uri });
+      downloadedSize = downloaded.size;
     } catch (error) {
+      committing.delete(uri);
       await FileSystem.deleteAsync(temporaryUri, { idempotent: true });
       throw error;
     }
-    await evictOldMedia();
+    try { await registerDownloaded(safeName(filename), downloadedSize); }
+    catch (error) {
+      // This request owned a cache miss: do not leave a failed over-budget commit
+      // that a subsequent cache-only check could mistake for successful preparation.
+      await FileSystem.deleteAsync(uri, { idempotent: true });
+      inventory = undefined;
+      throw error;
+    } finally { committing.delete(uri); }
     return uri;
   }, (key && downloadPriorities.get(key)) || priority, key);
 }
@@ -87,21 +105,40 @@ export async function clearMediaCache() {
   if (clearing || downloads.size) throw new Error('Trwa pobieranie lub czyszczenie materiałów. Poczekaj na zakończenie i spróbuj ponownie.');
   clearing = true;
   try { await FileSystem.deleteAsync(CACHE_DIRECTORY, { idempotent: true }); }
-  finally { clearing = false; }
+  finally { inventory = undefined; clearing = false; }
 }
 
-async function evictOldMedia() {
-  const names = await FileSystem.readDirectoryAsync(CACHE_DIRECTORY).catch(() => []);
-  const entries = await Promise.all(names.filter(name => !name.endsWith('.download')).map(async (name) => ({ name, info: await FileSystem.getInfoAsync(`${CACHE_DIRECTORY}${name}`) })));
-  let total = entries.reduce((sum, entry) => sum + (entry.info.exists && 'size' in entry.info ? entry.info.size ?? 0 : 0), 0);
-  const modified = (entry: (typeof entries)[number]) =>
-    entry.info.exists && 'modificationTime' in entry.info ? entry.info.modificationTime ?? 0 : 0;
-  for (const entry of entries.sort((a, b) => modified(a) - modified(b))) {
-    if (total <= MAX_CACHE_BYTES) break;
-    if ([...protectedMedia.values()].some(names => names.has(entry.name))) continue;
-    const size = entry.info.exists && 'size' in entry.info ? entry.info.size ?? 0 : 0;
-    await FileSystem.deleteAsync(`${CACHE_DIRECTORY}${entry.name}`, { idempotent: true });
-    total -= size;
+function cacheInventory() {
+  if (!inventory) {
+    inventory = (async () => {
+      const names = await FileSystem.readDirectoryAsync(CACHE_DIRECTORY);
+      const entries = new Map<string, CacheEntry>();
+      await Promise.all(names.filter(name => !name.endsWith('.download')).map(async name => {
+        const info = await FileSystem.getInfoAsync(`${CACHE_DIRECTORY}${name}`);
+        if (info.exists && !info.isDirectory && 'size' in info) entries.set(name, {
+          size: info.size, modified: 'modificationTime' in info ? info.modificationTime ?? 0 : 0,
+        });
+      }));
+      return entries;
+    })().catch(error => { inventory = undefined; throw error; });
   }
-  if (total > MAX_CACHE_BYTES) throw new Error('Brak miejsca na przygotowanie materiałów. Usuń pobrane materiały i spróbuj ponownie.');
+  return inventory;
+}
+
+/** Scan once, register each commit, and serialize eviction across both download workers. */
+function registerDownloaded(name: string, size: number) {
+  const operation = eviction.catch(() => {}).then(async () => {
+    const entries = await cacheInventory();
+    entries.set(name, { size, modified: Date.now() / 1000 });
+    let total = [...entries.values()].reduce((sum, entry) => sum + entry.size, 0);
+    for (const [candidate, entry] of [...entries].sort((a,b) => a[1].modified - b[1].modified)) {
+      if (total <= MAX_CACHE_BYTES) break;
+      if ([...protectedMedia.values()].some(names => names.has(candidate)) || candidate === name) continue;
+      await FileSystem.deleteAsync(`${CACHE_DIRECTORY}${candidate}`, { idempotent: true });
+      entries.delete(candidate); total -= entry.size;
+    }
+    if (total > MAX_CACHE_BYTES) throw new Error('Brak miejsca na przygotowanie materiałów. Usuń pobrane materiały i spróbuj ponownie.');
+  });
+  eviction = operation;
+  return operation;
 }

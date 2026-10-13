@@ -17,7 +17,8 @@ import { QuestionMedia } from "@/components/question-media";
 import { BasicAnswerButtons, basicAnswerText } from "@/components/basic-answer-buttons";
 import { questionContent, selectedQuestionLanguage, type QuestionLanguage } from "@/database/translations";
 import { isStudyFilter, type StudyFilter } from "@/database/study-filters";
-import { readStudyBatch, type StudyQuestion } from '@/database/study-batch';
+import { type StudyQuestion } from '@/database/study-batch';
+import { readPreparedStudyBatch, consumePreparedStudyBatch, warmNextStudyBatch } from '@/services/prepared-study';
 import { QuestionExplanation } from '@/components/question-explanation';
 import { LoadingError, LoadingSkeleton } from "@/components/skeleton";
 import { useTargetCategory } from "@/context/target-category-context";
@@ -26,7 +27,7 @@ import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { studySummary, type StudyAnswers } from '@/domain/study-session';
 import { studyMastery, type MasterySnapshot } from '@/database/study-session';
 import { StudyPreparation } from '@/components/study-preparation';
-import { protectMedia, releaseProtectedMedia } from '@/services/media-cache';
+import { cachedMediaUri, protectMedia, releaseProtectedMedia } from '@/services/media-cache';
 import { preloadMedia } from '@/services/media-preload';
 import { STUDY_MEDIA_WINDOW } from '@/services/study-preparation';
 import { AppButton, AppCard, AppStatus, AppHeading } from '@/components/ui/app-controls';
@@ -136,7 +137,7 @@ function StudySession() {
   useEffect(() => {
     if (!languageReady) return;
     let current = true;
-    void Promise.all([readStudyBatch(db, { filter: activeFilter, category, language, limit: sessionLimit,
+    void Promise.all([readPreparedStudyBatch(db, { filter: activeFilter, category, language, limit: sessionLimit,
       topic: requestedTopic, sign: requestedSign, session: requestedSession, search }), topicProgress(db, category)]).then(([result, nextTopics]) => {
       if (current) { setItems(result.questions); setTopics(nextTopics); setFailedQuery(null); }
     }).catch(() => { if (current) setFailedQuery(queryKey); })
@@ -144,6 +145,12 @@ function StudySession() {
     return () => { current = false; };
   }, [activeFilter, category, db, language, languageReady, queryKey, requestedSign, requestedTopic, requestedSession, search, sessionLimit]);
   const batch = roundItems ?? items;
+  useEffect(() => {
+    if (!focused.current || !active || requestedSession || activeIndex < Math.floor(batch.length / 2) || loading || changing) return;
+    void warmNextStudyBatch(db, { filter: activeFilter, category, language, limit: sessionLimit,
+      topic: requestedTopic, sign: requestedSign, search }, [...items, ...batch].map(item => item.id)).catch(() => {});
+  }, [active, activeFilter, activeIndex, batch, category, changing, db, items, language, loading,
+    prefetchFocus, requestedSession, requestedSign, requestedTopic, search, sessionLimit]);
   useEffect(() => {
     if (!focused.current || loading || readError || summary || preparing || categoryExpanded || changing) return;
     let current = true;
@@ -156,8 +163,9 @@ function StudySession() {
     void preloadMedia(files, undefined, () => current && focused.current && userDataWritable(revision), 'background').catch(() => {});
     return () => { current = false; };
   }, [active, activeIndex, batch, categoryExpanded, changing, loading, prefetchFocus, preparing, readError, summary]);
-  const open = useCallback(async (item: StudyQuestion, itemIndex = batch.findIndex((value) => value.id === item.id)) => {
+  const open = useCallback(async (item: StudyQuestion, itemIndex = batch.findIndex((value) => value.id === item.id), questions = batch) => {
     if (writing.current || categoryLock.current || changing) return;
+    const revision = userDataRevision();
     const request = ++openRequest.current;
     setBusy(true);
     setActionError(null);
@@ -170,10 +178,12 @@ function StudySession() {
       if (request === openRequest.current) { setActionError(t("Nie udało się otworzyć pytania. Spróbuj ponownie.")); setBusy(false); }
       return;
     }
-    if (request !== openRequest.current) return;
+    if (request !== openRequest.current || !focused.current || !userDataWritable(revision)) return;
     baseline.current = nextBaseline;
     setBusy(false);
-    setRoundItems((previous) => previous ?? batch);
+    setRoundItems((previous) => previous ?? questions);
+    protectMedia(mediaGroup, questions.flatMap(q => q.media_filename ? [q.media_filename] : []));
+    consumePreparedStudyBatch(db, questions);
     setActiveIndex(itemIndex);
     setMediaReady(!item.media_filename);
     setActive({ ...item, question: content.question, contentLanguage: content.contentLanguage });
@@ -187,12 +197,18 @@ function StudySession() {
     } catch {
       if (request === openRequest.current) setActionError(t('Nie udało się odczytać oznaczenia pytania. Spróbuj otworzyć je ponownie.'));
     }
-  }, [batch, category, changing, db, language, setActive, t]);
-  const begin = useCallback((item: StudyQuestion, index = batch.findIndex(value => value.id === item.id), questions = batch) => {
+  }, [batch, category, changing, db, language, mediaGroup, setActive, t]);
+  const begin = useCallback(async (item: StudyQuestion, index = batch.findIndex(value => value.id === item.id), questions = batch) => {
     if (writing.current || categoryLock.current || changing) return;
-    if (questions.some(value => value.media_filename)) {
-      setPreparing({ questions: [...questions], item, index });
-    } else return open(item, index);
+    const request = ++openRequest.current;
+    const revision = userDataRevision();
+    if (item.media_filename) {
+      let ready = false;
+      try { ready = Boolean(await cachedMediaUri(item.media_filename, true)); } catch { /* Recover in preparation. */ }
+      if (request !== openRequest.current || !focused.current || !userDataWritable(revision)) return;
+      if (!ready) { setPreparing({ questions: [...questions], item, index }); return; }
+    }
+    return open(item, index, questions);
   }, [batch, changing, open]);
   useEffect(() => {
     if (categoryExpanded || categoryBusy || changing || requestedStart !== '1' || loading || readError || !items.length || autoOpened.current === queryKey) return;
@@ -271,7 +287,7 @@ function StudySession() {
     setBusy(true); setActionError(null);
     try {
       const [result, snapshot] = await Promise.all([
-        readStudyBatch(db, { filter: activeFilter, category, language, limit: sessionLimit,
+        readPreparedStudyBatch(db, { filter: activeFilter, category, language, limit: sessionLimit,
           topic: requestedTopic, sign: requestedSign, search }, [...items, ...batch].map(item => item.id)),
         studyMastery(db, category),
       ]);
@@ -316,7 +332,7 @@ function StudySession() {
       const pending = preparing;
       setRoundItems(pending.questions);
       setPreparing(null);
-      void open(pending.item, pending.index);
+      void open(pending.item, pending.index, pending.questions);
     }} />;
   if (summary) return (
     <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>

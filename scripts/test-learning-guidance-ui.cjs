@@ -17,6 +17,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name==='@/database/study-session')return {studyMastery:async()=>({total:20,mastered:1})};
     if(name==='@/database/repository')return {hasCompletedOnboarding:async()=>true,examReadiness:async()=>null,resumeActiveExam:async()=>active,recentExams:async()=>[]};
     if(name==='@/services/prepared-exam')return {};
+    if(name==='@/services/prepared-study')return {warmRecommendedStudy:async()=>{}};
     if(name==='@/domain/media-error')return {};
     if(name.startsWith('@/components/'))return new Proxy({},{get:(_target,key)=>key});
     if(name.startsWith('@/'))return load(`src/${name.slice(2)}.ts`);

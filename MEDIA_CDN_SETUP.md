@@ -37,7 +37,8 @@ Cloudflare Access correctly protects the Worker and the R2 binding, but an Expo 
 - Download only when a question is rendered.
 - Store downloads in the app cache and evict least-recently-used files above the 1 GB limit.
 - Render images and MP4-compatible video from the cache.
-- Use bounded serial preloading for a category batch (currently capped at 250 files).
+- Use a shared two-transfer queue, foreground priority and exact prepared pools.
+  Optional category downloads remain capped at 250 files.
 
 ## Validation checklist
 
@@ -67,3 +68,13 @@ npx wrangler@latest deploy
 Then retest an authenticated image/video on the phone. Supabase does not need
 redeployment for this checkpoint. Entitlement checks, rate limiting and full R2
 inventory/integrity validation remain separate production work.
+
+## Batch-grant checkpoint (2026-10-13)
+
+The local media-token source now accepts up to eight filenames in one request,
+checks the user once and returns individual object-bound grants. The single-file
+contract remains supported; active Worker verification and the 120-second TTL
+are unchanged. This checkpoint DOES require deployment of the Supabase function;
+no deployment was performed as part of the local implementation.
+
+See docs/MEDIA_PREPARATION.md for protocol, fallback/restart behavior and QA.
