@@ -1,5 +1,102 @@
 # Implementation progress
 
+## Improvement plan — official source search for two missing files (2026-10-13)
+
+- Inspected the user-specified gov.pl page and current links, then all three remote
+  ZIP central directories using bounded HTTP Range (ordinary packages and sign-language
+  package). No full archive download, extraction, storage write or media substitution.
+- Exact DSC_0055.JPG and 5-9.2021.wmv absent in all packages; no filename contains
+  DSC_0055 or question IDs 11150/13074. Part 2 contains only known bis variant for
+  another question. Two ordinary indexes match local names/size/CRC/compressed size.
+- Current catalog attachment SHA-256 equals local source. This is a binary comparison,
+  not a new worksheet edit/import. Source still needs publisher clarification/assets.
+- Added repeatable find-official-media.py with strict 206/Content-Range validation,
+  stable Last-Modified check, seek/transfer bounds and no full-download fallback.
+  Live search completed; Expo lint and TypeScript passed. Findings recorded in report.
+
+## Improvement plan — P0 Unicode delivery repair (2026-10-13)
+
+- Fixed delivery-only filename normalization to NFC before WMV -> MP4 mapping.
+  Actual cache filename, protection/download lock, grant key and URL derive from
+  the same canonical helper. Case/folder identity preserved; no source DB/manifest
+  rewrite, speculative alias, Worker deployment or cloud object write.
+- New real-mapping/cache integration checks both affected references, canonical
+  coalescing, one grant/download for NFD/NFC, identical signed/request key and warm
+  offline lookup. Legacy noncanonical cache is not falsely reused/deleted; normal
+  LRU can clean old entries. Worker regression confirms exact signature binding:
+  canonical grant works; mismatched decomposed request cannot read the bucket.
+- Audit tests additionally expose canonical filename collisions. Real catalog has
+  no new collision. Full R2 GET audit after repair confirms 2633/2635 exact keys
+  present/nonempty; only questions 11150 and 13074 lack expected files.
+- Candidate 5-9.2021 bis.wmv belongs to question 13080, not 13074. It was not
+  substituted. Remaining source files require verified originals/correction; no
+  invented media or changed official answers. Native playback/grant QA remains open.
+
+## Improvement plan — P0 F1.0 source rows / actual R2 inventory (2026-10-13)
+
+- Spreadsheet skill applied to read-only source analysis. Original XLSX was neither
+  edited nor exported. Added repeatable source-field extraction and keyed reconciliation:
+  all 3518 IDs/media references/category sets match SQLite, including 538 blank media
+  fields. Source provenance includes Excel row/media cell; duplicates/gaps/mismatches
+  are distinct diagnostics. Missing archive refs originate in H3031 and H3243.
+- Actual configured R2 bucket read through existing Wrangler session and Cloudflare GET
+  metadata API only. Tokens remain in process memory; no raw CLI stderr/provider body
+  is echoed. No upload, renaming, deployment, account/permission or source-data changes.
+- Complete inventory: 2649 objects; 2631/2635 expected exact keys present/nonempty,
+  with image/video MIME families. 18 objects unreferenced by exact delivered keys.
+  API omitted cursor metadata; documented start_after continuation reached an empty
+  page. First response contained 649 entries and was NOT assumed to be complete.
+- Four exact-key misses: 13074 and 11150 have no matching file/candidate; 11180 and
+  11179 have canonical-equivalent NFC files (598763 and 545143 bytes). Existing delivery
+  mapping/Worker lacks normalization, so this is a real key compatibility gap. No
+  automatic correction was made. Actual file contents and learner grants not verified.
+- Tests cover source mismatch/duplicates/gaps and exact/blank category comparisons;
+  cursor/start_after pagination including ignored/repeated/unsorted responses; size,
+  MIME and Unicode candidates without silently converting a miss to a pass. Test mocks
+  never call live API. Original audit integration now checks source-row matched status.
+- Results and remaining repair/codec/app-access tasks documented in docs/MEDIA_AUDIT.md.
+  F1.0 stays open until missing files, Unicode mapping, decoding and native QA are resolved.
+
+## Improvement plan — P0 F1.0 local media manifest audit (2026-10-13)
+
+- Added repeatable read-only `audit-media.cjs` and detailed JSON manifest output:
+  actual app delivery mapping, dependent question IDs/categories, cache keys and
+  reconciliation against the packaged manifest plus ZIP central-directory inventories.
+  Python helper only reads standard ZIP metadata; no extraction or cloud access.
+- Bank: 2980/3518 questions reference 2635 unique files (1534 images, 1101 WMV).
+  Manifest matches references, no current delivery/cache/case collisions. Source XLSX
+  SHA matches database/manifest; source ROW reconciliation is explicitly unverified.
+- 2633 references occur by exact basename in two source archives. Missing:
+  13074 -> 5-9.2021.wmv; 11150 -> DSC_0055.JPG. A separate 5-9.2021 bis.wmv exists
+  but was not substituted. 16 unreferenced archive entries are reported, not deleted.
+- New tests exercise shared IDs/categories, actual WMV mapping, manifest gaps,
+  delivery/cache/case collisions, invalid/unsafe/unsupported/empty/conflicting records,
+  unused entries and real bank/archive report. Existing preparation/readiness/Worker
+  regressions, Expo lint and TypeScript passed. No educational/answer data changed.
+- Detailed evidence and remaining P0 stages in docs/MEDIA_AUDIT.md. Remote presence,
+  authenticated HTTP/Range, conversion outputs, CRC/content decoding and native playback
+  are unverified for every reference; local metadata is not a completeness pass.
+
+## Improvement plan — F5.1 Start/Study/onboarding and P0 media audit (2026-10-13)
+
+- Migrated Dashboard title/section and Study menu/summary/category setup plus all
+  onboarding step/section headings to shared semantic AppHeading. Body/metadata,
+  answer/selection markers and recommendation/resume copy use common readable tokens.
+  Removed obsolete heading styles. Brand hero, question text and score hierarchy stay
+  specialized; no session, route, official content, timer or persistence behavior changed.
+- Mobile UI skill guided shared hierarchy and scalable text. Existing >=600px maximum
+  content width, wrapping controls and no fixed text heights remain. Device large-font
+  layout and VoiceOver/TalkBack focus are not certified by local tests.
+- Added F1.0 as first next P0 checkpoint at user request: complete manifest/reference
+  reconciliation, all-category source mapping, WMV-to-MP4/case/key collisions, actual
+  storage presence/size/type, authenticated HTTP/Range availability, integrity/decoding,
+  semantic media-question match and Android/iOS plus offline/recovery acceptance.
+- Media audit is planned, NOT performed. Report must distinguish missing, denied,
+  damaged and unverified, count shared objects correctly and include affected IDs.
+  No live storage/auth probes, downloads, uploads or cloud mutations were performed.
+- All 34 test scripts and 34 contrast pairs passed; final onboarding/Study semantic
+  heading checks, Expo lint and TypeScript also passed. QA and phase status updated.
+
 ## Improvement plan — checkpoint F5.1 headings / locale (2026-10-13)
 
 - Added screen/detail tokens and AppHeading with semantic header role, shared section
@@ -872,4 +969,23 @@
 
 - Started the LAN-only Metro server on port 8083 for private physical-device testing.
 - Public tunneling was intentionally not used; the machine and test phone must be on the same Wi-Fi network.
+
+## Checkpoint — missing-media quarantine and look-ahead buffer (2026-10-13)
+
+- Excluded confirmed missing-media questions 11150 and 13074 from new Study pools,
+  new exam draws/prepared drafts and optional offline downloads. Source rows,
+  history and already active attempts are preserved.
+- Learning coverage/mastery/topic counts and recommendations use the eligible pool
+  so unavailable questions cannot make completion impossible.
+- Study warms the first three questions in its menu, waits only for the selected
+  question plus two upcoming ones, then prefetches three upcoming questions.
+  This supersedes the earlier full-batch Study preparation contract, not exam safety.
+- Two concurrent workers use one global two-transfer queue; foreground requests
+  promote pending shared downloads. Reset/cancel guards and cache verification remain.
+- Added regression coverage for quarantine, old draft replacement, selected start
+  windows, focus cancellation, queue priority/limits and failure recovery.
+- Device measurements (cold/warm Wi-Fi and slow mobile network, native decode)
+  remain required; automated tests do not establish a startup-time benchmark.
+- Validation passed: all 38 test scripts, npx tsc --noEmit, npx expo lint,
+  and git diff --check. No cloud deployment or source-media substitution.
 

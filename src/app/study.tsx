@@ -1,4 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
+import { UiTokens } from '@/constants/ui-tokens';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -26,7 +27,9 @@ import { studySummary, type StudyAnswers } from '@/domain/study-session';
 import { studyMastery, type MasterySnapshot } from '@/database/study-session';
 import { StudyPreparation } from '@/components/study-preparation';
 import { protectMedia, releaseProtectedMedia } from '@/services/media-cache';
-import { AppButton, AppCard, AppStatus } from '@/components/ui/app-controls';
+import { preloadMedia } from '@/services/media-preload';
+import { STUDY_MEDIA_WINDOW } from '@/services/study-preparation';
+import { AppButton, AppCard, AppStatus, AppHeading } from '@/components/ui/app-controls';
 
 type Answer = { label: string; answer: string };
 export default function StudyScreen() {
@@ -74,10 +77,12 @@ function StudySession() {
   const [roundItems, setRoundItems] = useState<StudyQuestion[] | null>(null);
   const [preparing, setPreparing] = useState<{ questions: StudyQuestion[]; item: StudyQuestion; index: number } | null>(null);
   const mediaGroup = useId();
+  const focused = useRef(false);
+  const [prefetchFocus, setPrefetchFocus] = useState(0);
   useEffect(() => {
-    protectMedia(mediaGroup, (roundItems ?? []).flatMap(item => item.media_filename ? [item.media_filename] : []));
+    protectMedia(mediaGroup, (roundItems ?? items.slice(0, STUDY_MEDIA_WINDOW)).flatMap(item => item.media_filename ? [item.media_filename] : []));
     return () => releaseProtectedMedia(mediaGroup);
-  }, [mediaGroup, roundItems]);
+  }, [mediaGroup, roundItems, items]);
   const [summary, setSummary] = useState<ReturnType<typeof studySummary> | null>(null);
   const [masteryAfter, setMasteryAfter] = useState<MasterySnapshot | null>(null);
   const [masteryDelta, setMasteryDelta] = useState<number | null>(null);
@@ -99,6 +104,8 @@ function StudySession() {
   useEffect(() => () => { openRequest.current++; categoryEpoch.current++; }, []);
   useFocusEffect(useCallback(() => {
     let current = true;
+    focused.current = true;
+    setPrefetchFocus(value => value + 1);
     setCategoryBusy(categoryLock.current);
     void selectedQuestionLanguage(db).then((value) => {
       if (current) {
@@ -109,7 +116,7 @@ function StudySession() {
         setLanguage(value); setBusy(writing.current || batchLock.current); setActionError(null); setLanguageReady(true);
       }
     }).catch(() => { if (current) setFailedQuery(`language:${reload}`); });
-    return () => { current = false; categoryEpoch.current++; setCategoryExpanded(false); nextCancelled.current = true; if (batchLock.current) openRequest.current++; };
+    return () => { current = false; focused.current = false; categoryEpoch.current++; setCategoryExpanded(false); nextCancelled.current = true; if (batchLock.current) openRequest.current++; };
   }, [db, reload, setActive, setCategoryExpanded]));
   const activeFilter = isStudyFilter(requestedFilter) ? requestedFilter : filter;
   const filterOptions = [
@@ -137,6 +144,18 @@ function StudySession() {
     return () => { current = false; };
   }, [activeFilter, category, db, language, languageReady, queryKey, requestedSign, requestedTopic, requestedSession, search, sessionLimit]);
   const batch = roundItems ?? items;
+  useEffect(() => {
+    if (!focused.current || loading || readError || summary || preparing || categoryExpanded || changing) return;
+    let current = true;
+    const revision = userDataRevision();
+    const window = active
+      ? batch.slice(activeIndex + 1, activeIndex + 1 + STUDY_MEDIA_WINDOW)
+      : batch.slice(0, STUDY_MEDIA_WINDOW);
+    const files = window.flatMap(item => item.media_filename ? [item.media_filename] : []);
+    // Speculative failures are handled by the existing preparation/player retry UI.
+    void preloadMedia(files, undefined, () => current && focused.current && userDataWritable(revision), 'background').catch(() => {});
+    return () => { current = false; };
+  }, [active, activeIndex, batch, categoryExpanded, changing, loading, prefetchFocus, preparing, readError, summary]);
   const open = useCallback(async (item: StudyQuestion, itemIndex = batch.findIndex((value) => value.id === item.id)) => {
     if (writing.current || categoryLock.current || changing) return;
     const request = ++openRequest.current;
@@ -279,7 +298,7 @@ function StudySession() {
   };
   if (categoryExpanded && !active && !summary && !preparing && !roundItems && !requestedSession) return <SafeAreaView style={s.safe}>
     <ScrollView contentContainerStyle={s.content}>
-      <Text accessibilityRole='header' style={s.title}>{t('Zmień kategorię')}</Text>
+      <AppHeading level='screen'>{t('Zmień kategorię')}</AppHeading>
       <Text style={s.sub}>{t('Zmiana dotyczy Nauki i nowych egzaminów. Rozpoczęty egzamin zachowuje swoją kategorię. Filtry zostają, wyszukiwanie zacznie się od nowa.')}</Text>
       <View style={s.filters}>{drivingCategories.map(item => <AppButton key={item} variant={categoryDraft === item ? 'primary' : 'secondary'}
         label={item} accessibilityRole='radio' accessibilityLabel={categoryLabel(item)}
@@ -291,7 +310,7 @@ function StudySession() {
       <AppButton variant='link' disabled={categoryBusy || changing} label={t('Anuluj')} onPress={() => setCategoryExpanded(false)} />
     </ScrollView>
   </SafeAreaView>;
-  if (preparing) return <StudyPreparation questions={preparing.questions} category={category}
+  if (preparing) return <StudyPreparation questions={preparing.questions} startIndex={preparing.index} category={category}
     onCancel={() => { openRequest.current++; setPreparing(null); setBusy(false); }}
     onReady={() => {
       const pending = preparing;
@@ -301,7 +320,7 @@ function StudySession() {
     }} />;
   if (summary) return (
     <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
-      <Text style={s.title}>{t("Podsumowanie nauki")}</Text>
+      <AppHeading level='screen'>{t("Podsumowanie nauki")}</AppHeading>
       <Text style={s.sub}>{categoryLabel(category)} · {summary.total} {t("pytań w tej partii")}</Text>
       <AppCard>
         <Text style={s.topicTitle}>{summary.unanswered ? t("Sesja zakończona wcześniej") : t("Partia ukończona!")}</Text>
@@ -406,7 +425,7 @@ function StudySession() {
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
-        <Text style={s.title}>{t("Nauka")}</Text>
+        <AppHeading level='screen'>{t("Nauka")}</AppHeading>
         {repeatedCount > 0 && <Text style={s.sub}>{t('Mała pula pytań: {0} z tej partii powtarza poprzedni zestaw.', [repeatedCount])}</Text>}
         {actionError ? <Text accessibilityRole="alert" style={s.sub}>{t(actionError)}</Text> : null}
         <Text style={s.sub}>{categoryLabel(category)} {t("· wspólna z egzaminem")}</Text>
@@ -506,8 +525,7 @@ function StudySession() {
 const createStyles = (colors: AppTheme) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, paddingBottom: 48, gap: 12, maxWidth: 600, width: '100%', alignSelf: 'center' },
-  title: { fontSize: 30, fontWeight: "700", color: colors.textPrimary },
-  sub: { color: colors.textSecondary, marginBottom: 12 },
+  sub: { color: colors.textSecondary, ...UiTokens.text.body, marginBottom: 12 },
   search: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -519,10 +537,10 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   },
   filters: { flexDirection: "row", gap: 8, marginBottom: 8, flexWrap: "wrap" },
   topicSection: { gap: 8, marginBottom: 8 },
-  topicTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "700", marginTop: 8 },
+  topicTitle: { color: colors.textPrimary, ...UiTokens.text.heading, marginTop: 8 },
   topicCard: { alignItems: "center", backgroundColor: colors.primarySurface, borderRadius: 16, flexDirection: "row", justifyContent: "space-between", padding: 14 },
   topicName: { color: colors.textPrimary, fontWeight: "700" },
-  topicMeta: { color: colors.textSecondary, fontSize: 14, marginTop: 4 },
+  topicMeta: { color: colors.textSecondary, ...UiTokens.text.detail, marginTop: 4 },
   filter: {
     backgroundColor: colors.primarySurface,
     paddingHorizontal: 12,
@@ -534,14 +552,14 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   card: { backgroundColor: colors.surface, padding: 18, borderRadius: 18, gap: 10 },
   row: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
   badge: { color: colors.primaryText, fontWeight: "700" },
-  scope: { color: colors.textSecondary, fontSize: 12 },
+  scope: { color: colors.textSecondary, ...UiTokens.text.detail },
   question: {
     fontSize: 18,
     lineHeight: 25,
     color: colors.textPrimary,
     marginVertical: 8,
   },
-  cardPosition: { alignSelf: "center", color: colors.textSecondary, fontSize: 13, fontVariant: ["tabular-nums"], marginTop: 4 },
+  cardPosition: { alignSelf: "center", color: colors.textSecondary, ...UiTokens.text.detail, fontVariant: ["tabular-nums"], marginTop: 4 },
   link: { color: colors.primaryText, fontWeight: "700" },
   endButton: { minHeight: 48, justifyContent: 'center' },
   answer: {
@@ -566,8 +584,8 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
     color: colors.primaryText,
     fontWeight: "700",
   },
-  answerText: { lineHeight: 20, color: colors.textPrimary },
-  answerMark: { color: colors.textPrimary, fontSize: 12, lineHeight: 18 },
+  answerText: { ...UiTokens.text.body, color: colors.textPrimary },
+  answerMark: { color: colors.textPrimary, ...UiTokens.text.detail },
   selected: { borderColor: colors.primaryText },
   correct: { backgroundColor: colors.successSurface, borderColor: colors.success },
   wrong: { backgroundColor: colors.errorSurface, borderColor: colors.error },
@@ -581,7 +599,7 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   navButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 14, flex: 1, justifyContent: "center", minHeight: 52, paddingHorizontal: 8 },
   navButtonDisabled: { backgroundColor: colors.disabledSurface },
   navButtonText: { color: colors.onPrimary, fontWeight: "700" },
-  feedbackTitle: { fontSize: 17, fontWeight: "700", color: colors.warning },
+  feedbackTitle: { ...UiTokens.text.heading, color: colors.warning },
   explanation: { color: colors.textSecondary, lineHeight: 20, marginTop: 8 },
   empty: { color: colors.textSecondary, paddingTop: 20 },
 });

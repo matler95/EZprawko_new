@@ -11,13 +11,13 @@ import type { MediaPreloadProgress } from '@/services/media-preload';
 import { MediaAccountCard } from '@/components/media-account-card';
 import { AppButton, AppStatus } from '@/components/ui/app-controls';
 
-export function StudyPreparation({ questions, category, onReady, onCancel }: {
-  questions: readonly StudyMediaQuestion[]; category: string; onReady: () => void; onCancel: () => void;
+export function StudyPreparation({ questions, category, startIndex = 0, onReady, onCancel }: {
+  questions: readonly StudyMediaQuestion[]; category: string; startIndex?: number; onReady: () => void; onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const group = useId();
-  const controller = useMemo(() => createStudyPreparation(questions), [questions]);
+  const controller = useMemo(() => createStudyPreparation(questions, startIndex), [questions, startIndex]);
   const [progress, setProgress] = useState<MediaPreloadProgress | null>(null);
   const [failure, setFailure] = useState<MediaFailure | null>(null);
   const [ready, setReady] = useState(false);
@@ -64,8 +64,8 @@ export function StudyPreparation({ questions, category, onReady, onCancel }: {
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <Text accessibilityRole="header" style={s.title}>{t('Przygotowanie nauki')}</Text>
         <Text style={s.copy}>{t('Kategoria')} {category} · {t('Partia: {0} pytań', [questions.length])}</Text>
-        <Text style={s.copy}>{t('Przygotujemy materiały tej partii. Ponowienie zachowa wybrane pytania.')}</Text>
-        <AppStatus tone={ready ? 'success' : 'info'} message={ready ? t('Materiały gotowe. Możesz rozpocząć naukę.') : progress ? t('Materiały: {0}/{1}', [progress.completed, progress.total]) : t('Sprawdzanie materiałów…')} />
+        <Text style={s.copy}>{t('Przygotujemy pierwsze materiały. Kolejne pobierzemy w tle podczas nauki. Ponowienie zachowa wybrane pytania.')}</Text>
+        <AppStatus tone={ready ? 'success' : 'info'} message={ready ? t('Materiały startowe gotowe. Możesz rozpocząć naukę.') : progress ? t('Materiały: {0}/{1}', [progress.completed, progress.total]) : t('Sprawdzanie materiałów…')} />
         {failure && <AppStatus tone="error" message={t(failure.message)} />}
         {failure?.kind === 'account' && !account && <AppButton label={t('Zaloguj się do materiałów')} onPress={() => setAccount(true)} />}
         {account && <MediaAccountCard onAuthenticated={() => void run()} />}

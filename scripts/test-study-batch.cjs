@@ -40,5 +40,19 @@ const db={getAllAsync:async(sql,params)=>native.prepare(sql).all(...params)};
   const injection=await readStudyBatch(db,{...scope,search:"' OR 1=1 --"});assert.equal(injection.questions.length,0);
   const fallback=await readStudyBatch(db,{...scope,language:'de'});assert(fallback.questions.every(q=>q.contentLanguage==='pl'));
   assert.equal((await readStudyBatch(db,{...scope,limit:12})).questions.length,12);
-  native.close();console.log('Study batches: real SQL fresh preference, partial/full repeats, unique IDs, category/topic/sign/search/filter/exam scope, language fallback and limits passed.');
+  for(const id of [11150,13074]){
+    native.prepare('INSERT INTO questions VALUES(?,?,?,?,?,?,?)').run(id,'Known missing',JSON.stringify(['B','AM']),3,'PODSTAWOWY','T','missing.jpg');
+    native.prepare('INSERT INTO exam_answers VALUES(?,?,?)').run(id,'quarantined-history',0);
+    native.prepare('INSERT INTO flags VALUES(?,?)').run(id,999999);
+  }
+  for(const category of ['B','AM']){
+    for(const filter of ['all','flags']){
+      const result=await readStudyBatch(db,{...scope,category,filter,limit:12});
+      assert(result.questions.every(q=>![11150,13074].includes(q.id)));
+    }
+    assert.equal((await readStudyBatch(db,{...scope,category,session:'quarantined-history'})).questions.length,0);
+  }
+  assert.equal(native.prepare('SELECT COUNT(*) AS n FROM exam_answers WHERE session_id=?').get('quarantined-history').n,2,'history is preserved');
+  assert.equal(native.prepare('SELECT COUNT(*) AS n FROM questions WHERE id IN (11150,13074)').get().n,2,'source rows are preserved');
+  native.close();console.log('Study batches: real SQL scopes, repeats, limits, media quarantine and preserved source/history passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

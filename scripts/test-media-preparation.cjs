@@ -65,7 +65,10 @@ function button(t,label){return nodes(t).find(n=>n.type==='Pressable'&&text(n).i
   files.clear();emptyName='one.jpg';await assert.rejects(()=>preload.prepareExamMedia(pool),/pusty/);assert(!files.has(dir+'one.jpg'));assert(![...files.keys()].some(k=>k.endsWith('.download')));emptyName=null;
   files.set(dir+'one.jpg',0);await preload.prepareExamMedia([{mediaFilename:'one.jpg'}]);assert.equal(files.get(dir+'one.jpg'),123,'zero-sized cache entry repaired');
   files.clear();let proceed=true;
-  await assert.rejects(()=>preload.prepareExamMedia(pool,p=>{if(p.completed===1)proceed=false;},()=>proceed),/przerwane/);assert(!files.has(dir+'two.mp4'));
+  await assert.rejects(()=>preload.prepareExamMedia([...pool,{mediaFilename:'third.jpg'}],p=>{if(p.completed===1)proceed=false;},()=>proceed),/przerwane/);assert(!files.has(dir+'third.jpg'),'cancel stops launching new work; two in-flight downloads may settle');
+  files.clear();const windowPool=Array.from({length:8},(_,i)=>({id:i+1,media_filename:`window-${i}.jpg`}));
+  assert.equal(await createStudyPreparation(windowPool,4).run(()=>{}),true);
+  assert.deepEqual([...files.keys()].sort(),[4,5,6].map(i=>dir+`window-${i}.jpg`),'study only waits for its selected question and the next two');
   files.clear();await assert.rejects(()=>preload.prepareExamMedia(pool,p=>{if(p.completed===2)files.delete(dir+'one.jpg');}),/cache/,'final verification catches eviction');
   files.clear();let release;delay=new Promise(r=>release=r);const first=media.cachedMediaUri('shared.jpg'),second=media.cachedMediaUri('shared.jpg');await new Promise(setImmediate);const before=downloadCalls;release();await Promise.all([first,second]);delay=null;assert.equal(downloadCalls,before,'same-file requests share one download');
   files.clear();delay=new Promise(r=>release=r);const clearingConflict=media.cachedMediaUri('pending.jpg');await new Promise(setImmediate);

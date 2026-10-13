@@ -10,15 +10,22 @@ Historia checkpointów pozostaje w `IMPLEMENTATION_PROGRESS.md`.
 | Faza | Wdrożone lokalnie | Pozostały zakres |
 | --- | --- | --- |
 | F0 | Baseline i kontrakty regresji | Pomiary czasu oraz zadania na telefonach |
-| F1 | F1.1 gotowość dekodera i recovery; F1.2 dokładna partia multimediów, retry, cancel, powrót po loginie | F1.3 polityka dostępu; F1.4 rejestracja/odzyskiwanie po decyzji i konfiguracji serwera; odbiór urządzeniowy |
+| F1 | F1.1 gotowość dekodera i recovery; F1.2 bufor Nauki i look-ahead, pełny cache egzaminu, retry/cancel/login; kwarantanna dwóch potwierdzonych braków | P0 F1.0 dekodowanie/dostęp i pomiary na telefonach; F1.3 polityka dostępu; F1.4 rejestracja/odzyskiwanie po decyzji i konfiguracji serwera |
 | F2 | F2.4 retry odczytu; F2.5 wyjaśnienie od razu i rozwijane szczegóły; F2.6 raport globalny, per kategoria i punktacja z kontrolą źródła | F2.2–F2.3 kwalifikowana redakcja/import; odbiór urządzeniowy. Pakiet nadal ma 0 wyjaśnień |
 | F3 | Czytelny start i zakres, rozwijane filtry, reset, jawne pomijanie, F3.6 kolejna partia z informacją o powtórkach | Odbiór ergonomii na telefonach; kontrola wszystkich informacji zakresu i dolnych CTA |
 | F4 | Rekomendacje z danych, ostatnie wyniki per dział i próbka, osobne opanowanie, akcje ćwiczenia | F4.1 uzgodniona definicja kolejki powtórek; część F4.2 dotycząca wznowienia Nauki |
-| F5 | Wspólne tokeny i kontrolki; F5.1 nagłówki Ustawień/Postępu, tokeny kart i formatowanie locale; F5.3 krótszy onboarding i wybór kategorii przed partią; F5.4 dostępność ekranów | Pozostała migracja tokenów na Start/Nauka/onboarding; F5.2 porównanie nawigacji; fizyczna dostępność i odbiór |
+| F5 | Wspólne tokeny i kontrolki; F5.1 nagłówki i tokeny Start/Nauka/onboarding/Ustawienia/Postęp, formatowanie locale; F5.3 krótszy onboarding i wybór kategorii przed partią; F5.4 dostępność ekranów | F5.2 porównanie nawigacji; fizyczna dostępność i odbiór |
 | F6 | Nie rozpoczęto — opcjonalne rozszerzenie | Trwałe wznowienie jednej sesji wymaga osobnej decyzji; bez nowej historii/trybów |
-| F7 | 32 dotychczasowe skrypty regresji i nowy test F2.6, 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, rzeczywiste dekodowanie/cache |
+| F7 | 38 skryptów regresji, dotychczasowe 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, rzeczywiste dekodowanie/cache i pomiary startu |
 
 ### Kolejne zadania według priorytetu
+
+P0 — pierwszy kolejny checkpoint: F1.0, pełna weryfikacja kompletności i dostępności
+multimediów do pytań. Obejmuje źródło, mapowanie, rzeczywisty storage, dostęp przez
+aplikację, integralność/dekodowanie i QA Android/iOS. Źródło i pełny inwentarz R2
+porównano; dwa potwierdzone braki są na prośbę właściciela wykluczone z nowych pul.
+Status: część katalogowa wykonana, dekodowanie/dostęp i pomiary zimnego/ciepłego
+startu na Android/iOS pozostają P0. Szczegóły: docs/MEDIA_AUDIT.md.
 
 1. P0: uzgodnić politykę dostępu F1.3 oraz recenzenta/pilotaż treści F2.2.
    Nie wykonywać zmian kont, maili ani chmury bez tej decyzji.
@@ -123,6 +130,52 @@ Pomiary mogą być ręczne; zdalna analityka nie jest potrzebna do tej fazy.
 
 ## 5. Faza 1 — multimedia i konto
 
+### F1.0 — P0: kompletność i dostępność multimediów
+
+Nowy priorytet na prośbę użytkownika. Status: częściowy audyt wykonany, usterki otwarte; nie oznaczać jako
+zaliczone na podstawie testów ze stubami ani obecności nazwy pliku w bazie.
+
+Checkpoint lokalny: raport `scripts/audit-media.cjs` uzgadnia bazę/manifest
+i indeksy ZIP; 2633/2635 referencji znaleziono lokalnie. Braki dotyczą pytań
+13074 i 11150. Wiersze arkusza uzgodnione (3518/3518, także puste referencje).
+Pełny inwentarz R2: 2631/2635 dokładnych kluczy obecnych; dodatkowe 11179/11180
+mają pliki pod równoważnymi nazwami NFC. Mapowanie NFC naprawione lokalnie;
+ponowny audyt potwierdza 2633/2635 kluczy. Pozostały braki 11150/13074 oraz
+fizyczna weryfikacja naprawy; nie podmieniono materiałów innymi filmami.
+Pełne ustalenia: `docs/MEDIA_AUDIT.md`. Dostęp aplikacyjny, dekodowanie/konwersje
+i zgodność treści pozostają nieweryfikowane; F1.0 otwarte.
+
+1. Utworzyć pełny manifest referencji z aktualnej bazy i porównać z oficjalnym
+   źródłem importu: ID pytania, kategorie, nazwa oryginalna, typ i docelowy klucz.
+   Rozróżnić pytania celowo bez materiału od utraconego powiązania. Objąć wszystkie
+   kategorie, nie tylko B; deduplikować pliki, zachować wszystkie zależne pytania.
+2. Sprawdzić mapowanie nazw, wielkość liter, znaki specjalne i konwersję WMV → MP4.
+   Wykryć puste/nieobsługiwane referencje, kolizje docelowych kluczy i duplikaty.
+3. Porównać manifest z rzeczywistym inwentarzem docelowego storage: brakujące,
+   zerobajtowe i osierocone obiekty; format, rozmiar, Content-Type i sumy kontrolne,
+   jeśli istnieje zaufany manifest źródłowy. Osieroconych plików nie usuwać automatycznie.
+4. Sprawdzić rzeczywistą dostępność przez ścieżkę aplikacji: podpis/autoryzacja,
+   HEAD/GET, 401/403/404/5xx, wygasły grant i Range dla filmów. Nie mylić braku
+   dostępu do konta z brakującym plikiem. Użyć konta testowego bez ujawniania tokenów;
+   odczyty sieciowe wykonywać z ograniczoną współbieżnością i ruchem.
+5. Sprawdzić integralność/dekodowanie wszystkich unikalnych plików odpowiednim
+   narzędziem oraz natywne odtwarzanie reprezentatywnych formatów na Android/iOS.
+   Potwierdzić zgodność obrazu/filmu z pytaniem, także klatki po konwersji. Kontrola
+   HTTP i metadanych nie wystarcza do potwierdzenia poprawnej treści materiału.
+6. Zweryfikować ciepły cache/offline, częściowe pobranie, retry i usunięcie pliku
+   z cache. Przy brakującym lub niedekodowalnym materiale odpowiedź pozostaje
+   zablokowana, a odzyskiwanie nie losuje innego pytania.
+7. Zapisać raport globalny/per kategoria/per typ: oczekiwane, obecne, dostępne,
+   zdekodowane i zgodne; osobno nieweryfikowane. Każda usterka ma klucz, ID pytań,
+   przyczynę, priorytet i sposób ponownego sprawdzenia. Nie sumować współdzielonych
+   kategorii jako liczby unikalnych plików.
+
+Odbiór: 100% oczekiwanych referencji zmapowanych; brak niewyjaśnionych braków,
+kolizji i uszkodzeń; dostęp potwierdzony dla uprawnionego konta; wyniki kontroli
+kodeków i obu platform zapisane. Niewykonane kontrole mają status nieweryfikowane,
+nie OK. Naprawy źródła, upload/konwersja oraz zmiany praw dostępu są osobnymi
+czynnościami — audyt nie upoważnia do masowych zapisów ani usuwania w chmurze.
+
 ### F1.1 — jednoznaczne stany materiałów
 
 Wprowadzić wspólny model: sprawdzanie, gotowe lokalnie, pobieranie, wymagane
@@ -136,6 +189,12 @@ Zakres: `question-media.tsx`, `media-error.ts`, `media-auth.ts`,
 ### F1.2 — przygotowanie materiałów konkretnej partii
 
 - Po wyborze partii zachować dokładny zestaw pytań i sprawdzić potrzebne pliki.
+- Aktualizacja 2026-10-13: Nauka czeka na wybrane pytanie i dwa następne, nie całą
+  partię. Pierwsze trzy przygotowuje w menu, podczas nauki pobiera trzy kolejne.
+  Komunikat gotowości dotyczy bufora startowego, nie pełnej dostępności offline.
+- Egzamin nadal wymaga wszystkich plików dokładnego zestawu przed startem zegara.
+- Wspólna kolejka: maksymalnie dwa transfery; oczekujący materiał bieżący/start
+  ma pierwszeństwo przed tłem. Dołączenie do prefetchu podnosi jego priorytet.
 - Pokazać postęp, ponowienie i anulowanie przed otwarciem pierwszego pytania.
 - Przy braku konta kierować do konta z zapamiętanym celem powrotu.
 - Po logowaniu kontynuować tę samą partię; nie losować innej.

@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { categoryClause } from '@/domain/driving-categories';
 import { studyFilterSql } from '@/database/study-filters';
 import type { TopicInsight } from '@/domain/learning-recommendation';
+import { eligibleQuestionMediaSql } from '@/domain/media-eligibility';
 
 export async function learningInsights(db: SQLiteDatabase, category: string) {
   const [topics, mistakes] = await Promise.all([
@@ -21,9 +22,9 @@ export async function learningInsights(db: SQLiteDatabase, category: string) {
         COALESCE(SUM(r.is_correct),0) AS correct
       FROM question_topics t JOIN questions q ON q.id=t.question_id
       LEFT JOIN ranked r ON r.question_id=q.id AND r.rank=1
-      WHERE ${categoryClause} GROUP BY t.topic ORDER BY t.topic`, [category, category]),
+      WHERE ${eligibleQuestionMediaSql} AND ${categoryClause} GROUP BY t.topic ORDER BY t.topic`, [category, category]),
     db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) AS count FROM questions q
-      WHERE (${studyFilterSql('mistakes').where}) AND ${categoryClause}`, [category]),
+      WHERE (${studyFilterSql('mistakes').where}) AND ${eligibleQuestionMediaSql} AND ${categoryClause}`, [category]),
   ]);
   return { topics, historicalMistakes: mistakes?.count ?? 0 };
 }

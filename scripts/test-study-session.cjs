@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, '..'), cache = new Map();
 let states=[], refs=[], effects=[], pending=[], si=0, ri=0, ei=0, focus, writes=0, failWrite=false, failMastery=false, mastered=0, theme='light';
 let routeParams={},failNext=false,nextReads=0,nextItems=null,nextDelay=null;
 let category='B',categoryWrites=0,categoryFail=false,categoryDelay=null;
+const prefetches=[];
 const items=[1,2,3].map(id=>({id,question:`Pytanie ${id}`,points:3,scope:'SPECJALISTYCZNY',correct_answer:'A',media_filename:null,contentLanguage:'pl'}));
 const db={getAllAsync:async(sql)=>{if(sql.includes('CASE WHEN q.id IN')){nextReads++;if(nextDelay)await nextDelay;if(failNext)throw Error('batch failed');return nextItems??items;}return items;},getFirstAsync:async()=>null};
 function load(file){if(cache.has(file))return cache.get(file);const exports={};
@@ -24,6 +25,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};
     if(name==='@/database/translations')return {selectedQuestionLanguage:async()=>'pl',questionContent:async(_db,id)=>({question:`Pytanie ${id}`,contentLanguage:'pl',answers:[{label:'A',answer:'Pierwsza'},{label:'B',answer:'Druga'}]})};
     if(name==='@/database/explanations')return {getQuestionExplanation:async()=>null};
     if(name==='@/services/media-cache')return {protectMedia(){},releaseProtectedMedia(){}};
+    if(name==='@/services/media-preload')return {preloadMedia:async(files,_progress,proceed)=>{prefetches.push({files,proceed});return {completed:files.length,total:files.length};}};
     if(name==='@/components/basic-answer-buttons')return {BasicAnswerButtons:'BasicAnswerButtons',basicAnswerText:(_answers,label)=>label==='T'?'TAK':'NIE'};
     if(name==='@/global.css')return {};
     if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
@@ -46,6 +48,7 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
     render();let blur=focus();await tick();render();await tick();let tree=render();
     const staleStart=button(tree,'Rozpocznij naukę');
     button(tree,'Zmień kategorię').props.onPress();tree=render();
+    assert(nodes(tree).some(n=>n.type==='Text'&&n.props.accessibilityRole==='header'),'category setup retains semantic heading');
     assert.equal(nodes(tree).filter(n=>n.type==='Pressable'&&n.props.accessibilityRole==='radio').length,12);
     button(tree,'Anuluj').props.onPress();assert.equal(categoryWrites,0);tree=render();
     button(tree,'Zmień kategorię').props.onPress();tree=render();
@@ -149,9 +152,21 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
   assert.match(text(nextTree),/Podsumowanie nauki/,'reset fences delayed next batch');
   routeParams.session='exam-one';nextTree=render();assert(!nodes(nextTree).some(n=>n.type==='Pressable'&&text(n).includes('Kolejna partia')),'exact exam replay never offers general continuation');
   nextCleanup();nextItems=null;routeParams={};
+  // Exact upcoming window is warmed on menu/focus, then slides during study.
+  states=[];refs=[];effects=[];pending=[];prefetches.length=0;
+  items.forEach((item,i)=>item.media_filename=`prefetch-${i}.jpg`);
+  render();const prefetchBlur=focus();await tick();render();await tick();let prefetchTree=render();
+  assert.deepEqual(prefetches.at(-1).files,['prefetch-0.jpg','prefetch-1.jpg','prefetch-2.jpg']);
+  await button(prefetchTree,'Otwórz pytanie').props.onPress();await tick();prefetchTree=render();
+  assert.equal(prefetchTree.type,'StudyPreparation');
+  assert.equal(prefetchTree.props.startIndex,0);
+  prefetchTree.props.onReady();await tick();render();
+  assert.deepEqual(prefetches.at(-1).files,['prefetch-1.jpg','prefetch-2.jpg']);
+  const lastPrefetch=prefetches.at(-1);prefetchBlur();assert.equal(lastPrefetch.proceed(),false,'blur stops speculative work');
+  items.forEach(item=>item.media_filename=null);
   // Load the real SQL helper, not the UI's stub.
   const native=new DatabaseSync(':memory:');native.exec(`CREATE TABLE questions(id INTEGER,categories TEXT);CREATE TABLE practice_mastery(question_id INTEGER,correct_streak INTEGER);INSERT INTO questions VALUES(1,'["B","B1"]'),(2,'["A"]'),(3,'["B"]');INSERT INTO practice_mastery VALUES(1,3),(2,3),(3,2);`);
-  const exports={};new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,'src/database/study-session.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(()=>load('src/domain/driving-categories.ts'),exports);
+  const exports={};new Function('require','exports',ts.transpileModule(fs.readFileSync(path.join(root,'src/database/study-session.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(name=>load(`src/${name.slice(2)}.ts`),exports);
   const adapter={getFirstAsync:async(sql,category)=>native.prepare(sql).get(category)};
   assert.deepEqual({...await exports.studyMastery(adapter,'B')},{total:2,mastered:1});assert.deepEqual({...await exports.studyMastery(adapter,'PT')},{total:0,mastered:0});
   console.log('Study sessions: unique answers, partial completion, double-tap/write-failure guards, review lock, exact mistake replay, read retries, both themes and real category mastery SQL passed. Native/device QA remains separate.');

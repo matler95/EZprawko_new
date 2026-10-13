@@ -7,6 +7,7 @@ import { categoryClause, isDrivingCategory, type DrivingCategory } from "@/domai
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import { newExamClock, type ExamClock } from '@/domain/exam-clock';
 import { validExamSelection } from '@/domain/exam-selection';
+import { eligibleQuestionMediaSql, hasAvailableQuestionMedia } from '@/domain/media-eligibility';
 
 export type Question = ExamQuestion & {
   question: string;
@@ -97,7 +98,7 @@ export async function topicProgress(db: SQLiteDatabase, category?: string): Prom
        FROM practice_attempts GROUP BY question_id
      ) p ON p.question_id = t.question_id
      LEFT JOIN practice_mastery m ON m.question_id = t.question_id
-     ${category ? `WHERE ${categoryClause}` : ''} GROUP BY t.topic`,
+     WHERE ${eligibleQuestionMediaSql} ${category ? `AND ${categoryClause}` : ''} GROUP BY t.topic`,
     category ? [category] : [],
   );
   const byTopic = new Map(rows.map((row) => [row.topic, row]));
@@ -111,7 +112,7 @@ export async function createExam(
   const rows = await db.getAllAsync<QuestionRow>(
     "SELECT id, scope, points, categories, question, correct_answer, media_filename FROM questions",
   );
-  const pool = rows.filter((row) => JSON.parse(row.categories).includes(category)).map((row) => ({
+  const pool = rows.filter((row) => hasAvailableQuestionMedia(row.id) && JSON.parse(row.categories).includes(category)).map((row) => ({
     id: row.id,
     scope: row.scope,
     points: row.points,
@@ -532,11 +533,12 @@ export async function startActiveExam(db: SQLiteDatabase, category: string,
   const language = await selectedQuestionLanguage(db);
   if (prepared && (prepared.category !== category || prepared.language !== language)) throw new Error('Zmieniono ustawienia. Przygotuj próbę ponownie.');
   if (prepared && !validExamSelection(prepared.questions, category)) throw new Error('Nieprawidłowy zestaw egzaminu. Przygotuj próbę ponownie.');
+  if (prepared && !prepared.questions.every(question => hasAvailableQuestionMedia(question.id))) throw new Error('Zestaw zawiera niedostępne multimedia. Przygotuj próbę ponownie.');
   const rows = prepared ? [] : await db.getAllAsync<QuestionRow>(
     "SELECT id, scope, points, categories FROM questions",
   );
   const base = prepared ? { durationSeconds: 1500, questions: prepared.questions } : buildOfficialExam(
-    rows.filter((row) => JSON.parse(row.categories).includes(category)).map((row) => ({
+    rows.filter((row) => hasAvailableQuestionMedia(row.id) && JSON.parse(row.categories).includes(category)).map((row) => ({
       id: row.id,
       scope: row.scope,
       points: row.points,
@@ -704,6 +706,7 @@ export async function mediaFilenamesForCategory(
     `SELECT DISTINCT q.media_filename
      FROM questions q
      WHERE q.media_filename IS NOT NULL
+       AND ${eligibleQuestionMediaSql}
        AND q.media_filename != ''
        AND ${categoryClause}
      LIMIT ?`,

@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 import { categoryClause } from '@/domain/driving-categories';
+import { eligibleQuestionMediaSql } from '@/domain/media-eligibility';
 
 export type BankProgress = { total: number; answered: number };
 
@@ -15,6 +16,6 @@ export async function bankProgress(db: SQLiteDatabase, category?: string): Promi
     )
     SELECT COUNT(*) AS total, COUNT(a.question_id) AS answered
     FROM questions q LEFT JOIN answered_questions a ON a.question_id = q.id
-    ${category ? `WHERE ${categoryClause}` : ''}
+    WHERE ${eligibleQuestionMediaSql} ${category ? `AND ${categoryClause}` : ''}
   `, category ? [category] : [])) ?? { total: 0, answered: 0 };
 }

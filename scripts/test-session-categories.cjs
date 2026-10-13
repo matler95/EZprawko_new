@@ -34,13 +34,18 @@ const db={execAsync:async sql=>native.exec(sql),runAsync:async(sql,...values)=>n
     const exam=await r.startActiveExam(db,category);assert.equal(exam.questions.length,32);
     assert.equal(exam.questions.reduce((n,q)=>n+q.points,0),74);
     assert(exam.questions.every(q=>q.categories.includes(category)),`all questions must match ${category}`);
+    assert(exam.questions.every(q=>![11150,13074].includes(q.id)),'new exam must exclude confirmed missing media');
+    const candidate=await r.createExam(db,category);
+    assert.equal(candidate.length,32);assert.equal(candidate.reduce((n,q)=>n+q.points,0),74);
+    assert(candidate.every(q=>![11150,13074].includes(q.id)),'prepared draw must exclude confirmed missing media');
     assert.equal((await r.resumeActiveExam(db)).id,exam.id);
     const rows=await db.getAllAsync(`SELECT q.id FROM questions q WHERE ${categoryClause}`,category);
     assert(rows.length>=32);
     const topics=await r.topicProgress(db,category);
-    assert.equal(topics.reduce((n,t)=>n+t.total,0),rows.length);
+    assert.equal(topics.reduce((n,t)=>n+t.total,0),rows.filter(q=>![11150,13074].includes(q.id)).length);
     const media=await r.mediaFilenamesForCategory(db,category);
     assert(media.length<=250);
+    assert(media.every(filename=>!['DSC_0055.JPG','5-9.2021.wmv'].includes(filename)),'offline bulk downloads exclude unavailable files');
     const expectedMedia=new Set(native.prepare(`SELECT q.media_filename FROM questions q WHERE ${categoryClause}`).all(category).map(q=>q.media_filename));
     assert(media.every(filename=>expectedMedia.has(filename)));
   }

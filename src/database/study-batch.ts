@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { categoryClause } from '@/domain/driving-categories';
 import { studyFilterSql, type StudyFilter } from '@/database/study-filters';
 import type { QuestionLanguage } from '@/database/translations';
+import { eligibleQuestionMediaSql } from '@/domain/media-eligibility';
 
 export type StudyQuestion = {
   id: number; question: string; points: number; scope: string; correct_answer: string;
@@ -31,7 +32,7 @@ export async function readStudyBatch(db: SQLiteDatabase, scope: StudyBatchScope,
     CASE WHEN tr.question IS NULL THEN 'pl' ELSE tr.language END AS contentLanguage,
     q.points,q.scope,q.correct_answer,q.media_filename
     FROM questions q LEFT JOIN question_translations tr ON tr.question_id=q.id AND tr.language=?
-    ${joins} WHERE (${where}) AND ${categoryClause}${topicClause}${signClause}${sessionClause}${searchClause}
+    ${joins} WHERE (${where}) AND ${eligibleQuestionMediaSql} AND ${categoryClause}${topicClause}${signClause}${sessionClause}${searchClause}
     ORDER BY ${preference}${order} LIMIT ?`, params);
   const previousSet = new Set(previous);
   return { questions, repeated: questions.filter(question => previousSet.has(question.id)).length };

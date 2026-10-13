@@ -1,4 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
+import { UiTokens } from '@/constants/ui-tokens';
 import { useCallback, useContext, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +12,7 @@ import { questionLanguages } from '@/database/translations';
 import { setUiLanguage } from '@/domain/ui-language';
 import { emptyOnboarding, readOnboardingDraft, saveOnboardingDraft, finishOnboarding, type OnboardingDraft } from '@/database/onboarding';
 import { LoadingError, LoadingSkeleton } from '@/components/skeleton';
-import { AppButton, AppCard, AppStatus } from '@/components/ui/app-controls';
+import { AppButton, AppCard, AppStatus, AppHeading } from '@/components/ui/app-controls';
 
 export type OnboardingDestination = 'study' | 'dashboard' | 'settings';
 export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingCategory, destination: OnboardingDestination) => void }) {
@@ -64,34 +65,33 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
   };
   const s = StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background }, content: { padding: 24, gap: 16, flexGrow: 1, maxWidth: 600, width: '100%', alignSelf: 'center' },
-    title: { fontSize: 28, fontWeight: '700', color: colors.textPrimary }, copy: { fontSize: 16, lineHeight: 24, color: colors.textSecondary },
-    heading: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+    copy: { ...UiTokens.text.body, color: colors.textSecondary },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, choice: { minHeight: 64, minWidth: 72, padding: 16, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primarySurface },
-    chosen: { backgroundColor: colors.primary }, choiceText: { fontSize: 16, fontWeight: '700', color: colors.primaryText }, chosenText: { color: colors.onPrimary },
+    chosen: { backgroundColor: colors.primary }, choiceText: { ...UiTokens.text.label, color: colors.primaryText }, chosenText: { color: colors.onPrimary },
   });
   return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.content}>
     <Text style={s.copy}>{t("EZprawko · Krok")} {draft.step + 1} {t("z 4")}</Text>
     {readFailed ? <LoadingError onRetry={() => setReload(value => value + 1)} /> : !ready ? <LoadingSkeleton variant="study" label={t("Wczytywanie konfiguracji")} /> : <>
       {draft.step === 1 ? <>
-        <Text accessibilityRole="header" style={s.title}>{t("Jaką kategorię zdajesz?")}</Text>
+        <AppHeading level='screen'>{t("Jaką kategorię zdajesz?")}</AppHeading>
         <Text style={s.copy}>{t('Kategoria obowiązuje w Nauce i nowych egzaminach. Zmienisz ją później. PT to pozwolenie na tramwaj.')}</Text>
         <View style={s.grid}>{drivingCategories.map(category => <Pressable key={category} accessibilityRole="radio" accessibilityLabel={categoryLabel(category)} accessibilityState={{ checked: draft.category === category, disabled: busy }} disabled={busy} onPress={() => setDraft(value => ({ ...value, category }))} style={[s.choice, draft.category === category && s.chosen]}><Text style={[s.choiceText, draft.category === category && s.chosenText]}>{category}</Text></Pressable>)}</View>
       </> : draft.step === 0 ? <>
-        <Text accessibilityRole="header" style={s.title}>{t('Wybierz język aplikacji')}</Text>
+        <AppHeading level='screen'>{t('Wybierz język aplikacji')}</AppHeading>
         <View style={s.grid}>{questionLanguages.map(language => <Pressable key={language.code} accessibilityRole="radio" accessibilityState={{ checked: draft.language === language.code, disabled: busy }} disabled={busy} onPress={() => { setUiLanguage(language.code); setDraft(value => ({ ...value, language: language.code })); }} style={[s.choice, draft.language === language.code && s.chosen]}><Text style={[s.choiceText, draft.language === language.code && s.chosenText]}>{language.label}</Text></Pressable>)}</View>
         <Text style={s.copy}>{t('Ten język będzie używany w aplikacji i domyślnie w pytaniach. Język pytań możesz później ustawić osobno.')}</Text>
       </> : draft.step === 2 ? <>
-        <Text accessibilityRole="header" style={s.title}>{t("Ucz się, potem sprawdź wynik")}</Text>
-        <AppCard><Text style={s.heading}>{t("Nauka — bez presji czasu")}</Text><Text style={s.copy}>{t("Po odpowiedzi zobaczysz poprawny wybór i dostępne wyjaśnienie. Wracaj do pytań i powtarzaj błędy.")}</Text></AppCard>
-        <AppCard><Text style={s.heading}>{t("Egzamin próbny — jak w WORD")}</Text><Text style={s.copy}>{t("32 pytania, 25 minut, próg 68/74. Nie wracasz do poprzednich pytań; wynik i odpowiedzi zobaczysz na końcu.")}</Text></AppCard>
+        <AppHeading level='screen'>{t("Ucz się, potem sprawdź wynik")}</AppHeading>
+        <AppCard><AppHeading>{t("Nauka — bez presji czasu")}</AppHeading><Text style={s.copy}>{t("Po odpowiedzi zobaczysz poprawny wybór i dostępne wyjaśnienie. Wracaj do pytań i powtarzaj błędy.")}</Text></AppCard>
+        <AppCard><AppHeading>{t("Egzamin próbny — jak w WORD")}</AppHeading><Text style={s.copy}>{t("32 pytania, 25 minut, próg 68/74. Nie wracasz do poprzednich pytań; wynik i odpowiedzi zobaczysz na końcu.")}</Text></AppCard>
         <Text style={s.copy}>{t('Pobieranie zdjęć i filmów wymaga logowania.')}</Text>
         <Text style={s.copy}>{t("Postępy zapisują się tylko na tym urządzeniu. Logowanie nie tworzy kopii ani synchronizacji w chmurze.")}</Text>
         <AppButton variant='link' label={t(detailsExpanded ? 'Ukryj informacje o materiałach offline' : 'Jak działają materiały offline?')}
           accessibilityState={{ expanded: detailsExpanded }} onPress={() => setDetailsExpanded(value => !value)} />
         {detailsExpanded && <Text style={s.copy}>{t('Pobrane materiały działają offline, dopóki są w pamięci podręcznej. Mogą zostać usunięte, aby zwolnić miejsce; wtedy wymagają ponownego pobrania.')}</Text>}
       </> : <>
-        <Text accessibilityRole="header" style={s.title}>{t("Zacznij od pięciu pytań")}</Text>
-        <AppCard><Text style={s.heading}>{categoryLabel(draft.category ?? '')}</Text><Text style={s.copy}>{t("Pytania:")} {questionLanguages.find(value => value.code === draft.language)?.label}{t(". Krótka sesja pytań za 3 punkty — bez zegara.")}</Text></AppCard>
+        <AppHeading level='screen'>{t("Zacznij od pięciu pytań")}</AppHeading>
+        <AppCard><AppHeading>{categoryLabel(draft.category ?? '')}</AppHeading><Text style={s.copy}>{t("Pytania:")} {questionLanguages.find(value => value.code === draft.language)?.label}{t(". Krótka sesja pytań za 3 punkty — bez zegara.")}</Text></AppCard>
         <Text style={s.copy}>{t("Przypomnienia są opcjonalne. Możesz ustawić godzinę w Ustawieniach i dopiero wtedy zdecydować o zgodzie na powiadomienia.")}</Text>
         <View style={{ flexGrow: 1 }} />
         <AppButton busy={busy} label={busy ? t("Zapisywanie…") : t("Zacznij pierwsze 5 pytań")} onPress={() => void finish('study')} />

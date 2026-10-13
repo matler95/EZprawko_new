@@ -51,6 +51,7 @@ const tick=()=>new Promise(setImmediate),setting=key=>native.prepare('SELECT val
     native.exec('DELETE FROM settings');states=[];refs=[];completed=[];
     const render=()=>{si=ri=0;return Flow({onComplete:(...v)=>completed.push(v)});};
     render();let cleanup=focus();await tick();let tree=render();assert(hidden);assert(!button(tree,'Dalej').props.disabled,'language is available before category');
+    assert(nodes(tree).some(n=>n.type==='Text'&&n.props.accessibilityRole==='header'),'onboarding title uses a native semantic heading');
     button(tree,'English').props.onPress();tree=render();assert.equal(load('src/domain/ui-language.ts').uiLanguage(),'en');
     button(tree,'Dalej').props.onPress();await tick();tree=render();assert(button(tree,'Dalej').props.disabled,'category remains an explicit choice');
     button(tree,'A1').props.onPress();tree=render();const next=button(tree,'Dalej');const before=writes;

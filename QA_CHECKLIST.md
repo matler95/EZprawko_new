@@ -2,6 +2,46 @@
 
 ## New improvement plan — F0 / F1.1 (2026-10-13)
 
+- [x] Missing-file search: all three current gov.pl ZIP indexes checked remotely;
+  exact DSC_0055.JPG and 5-9.2021.wmv absent. Ordinary indexes match local copies;
+  current catalog SHA matches local source. This is not a repair or decoding pass.
+
+- [x] P0 canonical media delivery mapping fixed locally; real NFC grant/URL/cache
+  regression and exact-key Worker checks pass. R2 inventory after repair matches
+  2633/2635 keys; no new canonical collisions in real catalog.
+- [ ] P0 on updated app: 11179/11180 obtain canonical grants and decode films on
+  Android/iOS; warm cache works offline. Old cached names do not cause wrong media.
+- [ ] P0 obtain verified DSC_0055.JPG (11150) and 5-9.2021.wmv/MP4 (13074).
+  File with bis is linked to 13080 and cannot be assumed to be a safe replacement.
+
+- [x] F1.0 source reconciliation: all 3518 IDs/media/category sets match official
+  katalog rows, including 538 blanks; source cells for missing files recorded.
+- [x] F1.0 actual R2 metadata inventory completed via read-only GET: 2649 objects,
+  2631/2635 exact expected keys present/nonempty. Two absent files (11150/13074) and
+  two NFC/NFD name mismatches (11179/11180) documented. No repairs performed.
+- [ ] F1.0 resolve two absent files and canonical delivery-key mapping; verify grants,
+  URLs/cache and true decoding for all affected questions on Android/iOS.
+
+- [x] P0 F1.0 local reference audit: database/manifest sets, real app delivery/cache
+  mapping and ZIP metadata reconciled using `audit-media.cjs` (see docs/MEDIA_AUDIT.md).
+  Exact local source references missing for questions 13074 and 11150; not repaired.
+  This check does not mark full media completeness, decoding or server access as passed.
+
+- [ ] P0 F1.0 completeness: reconcile every expected media reference against official
+  import source and actual storage, across all categories. Record IDs/keys, intentional
+  text-only questions, missing/empty files, unsupported types and WMV -> MP4/case/key
+  collisions. Shared objects count once globally; unknown inventory is not a pass.
+- [ ] P0 F1.0 availability: verify real authenticated application path, HEAD/GET and
+  video Range, distinguish 401/403/404/5xx, expired grant and invalid/partial media.
+  Check all unique files for integrity/decoding; native Android/iOS samples and reviewed
+  question-media correspondence are separate requirements. Do not expose auth tokens.
+- [ ] P0 F1.0 offline: warm cache, partially downloaded/lost file, retry and decoder
+  failure keep exact question pool and block answering until ready. Save all-category
+  report with expected/present/accessible/decoded/matched/unverified totals and defects.
+- [ ] F5.1 Start/Study/onboarding: shared headings announced; larger recommendation,
+  answer markers and metadata fit both themes/all languages/largest fonts without
+  obscuring exam CTA, bottom navigation or selected/correct semantics.
+
 - [ ] F5.1 headings/locale: Settings and Progress headings are announced and wrap at
   largest font; five Settings child cards retain readable metadata in both themes.
   Postęp stays centered on tablets without clipping numbers or section headings.
@@ -406,3 +446,14 @@ Run this checklist on a physical Android device and, before public release, an i
 - [ ] Run `npx expo-doctor`, `npx tsc --noEmit`, and `npx expo lint` on the release branch.
 - [ ] Run `node scripts/test-exam-engine.cjs`; all 5,000 seeded exams and scoring boundaries must pass.
 - [ ] Build and install the EAS `preview` profile before requesting production credentials.
+
+## Look-ahead media and quarantine — device QA
+
+- [ ] Fresh Study/exam pools never include 11150/13074; old history remains viewable.
+- [ ] All categories retain 32 questions / 74 points; an unstarted old draft is replaced.
+- [ ] Cold Study start waits for only the selected question and next two, including start from the middle of a batch.
+- [ ] While answering, upcoming materials download; repeat on slow mobile data, rapid Next/Previous and after changing filters/category.
+- [ ] Compare cold vs warmed startup time on physical Android/iOS; record network and cache state (no claimed benchmark yet).
+- [ ] Airplane mode: ready exam works from cache; Study may need retry beyond the prepared window and must not offer answers before media readiness.
+- [ ] Login, blur/refocus, cancel, cache limit and local reset cannot cause a stale question to open or a clock to start.
+- [ ] Current question/start outranks queued background downloads; at most two transfers run globally.

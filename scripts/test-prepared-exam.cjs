@@ -16,6 +16,10 @@ const db={getFirstAsync:async()=>settings.has('prepared-exam')?{value:settings.g
  const service=load('src/services/prepared-exam.ts');let release;delay=new Promise(r=>release=r);
  const progress=[];const first=service.ensurePreparedExam(db,'B');await new Promise(setImmediate);const second=service.ensurePreparedExam(db,'B',value=>progress.push(value));await new Promise(setImmediate);assert.equal(draws,1);release();assert.deepEqual(await first,await second);delay=null;assert.deepEqual(progress.map(value=>value.completed),[0,3],'a joining UI receives current and final warm-download progress');
  await service.ensurePreparedExam(db,'B');assert.equal(draws,1,'ready candidate survives a new call without reroll');
+ const blocked=JSON.parse(settings.get('prepared-exam'));blocked.questions[0].id=13074;settings.set('prepared-exam',JSON.stringify(blocked));
+ const beforeQuarantine=draws;
+ assert((await service.ensurePreparedExam(db,'B')).questions.every(q=>q.id!==13074));
+ assert.equal(draws,beforeQuarantine+1,'an old unstarted candidate containing a missing asset must be replaced');
  settings.clear();fail=true;await assert.rejects(()=>service.ensurePreparedExam(db,'B'));assert(settings.has('prepared-exam'),'partial download preserves exact question draft');const before=draws;fail=false;await service.ensurePreparedExam(db,'B');assert.equal(draws,before);
  language='en';await service.ensurePreparedExam(db,'B');assert.equal(draws,before+1,'language change redraws candidate');
  settings.clear();delay=new Promise(r=>release=r);const obsolete=service.ensurePreparedExam(db,'B');await new Promise(setImmediate);category='C';const current=service.ensurePreparedExam(db,'C');release();await assert.rejects(()=>obsolete);delay=null;assert.equal((await current).category,'C');assert.equal(JSON.parse(settings.get('prepared-exam')).category,'C');

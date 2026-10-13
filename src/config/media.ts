@@ -10,9 +10,10 @@ export const mediaConfig = {
 export const mediaUrl = (filename: string) =>
   baseUrl ? `${baseUrl}/${filename.split('/').map(encodeURIComponent).join('/')}` : undefined;
 
-/** Converted R2 videos retain the source basename with an MP4 extension. */
+/** R2 uses canonical Unicode names; preserve official source references in SQLite.
+ * All cache/grant/URL paths derive from this same delivery-only normalization. */
 export const deliveredMediaFilename = (filename: string) =>
-  filename.replace(/\.wmv$/i, '.mp4');
+  filename.normalize('NFC').replace(/\.wmv$/i, '.mp4');
 
 /** Full object key, shared by the media grant and the R2 download request. */
 export function deliveredMediaKey(sourceFilename: string) {

@@ -5,6 +5,7 @@ import { cachedMediaUri, protectMedia, releaseProtectedMedia } from '@/services/
 import { prepareExamMedia, type MediaPreloadProgress } from '@/services/media-preload';
 import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
 import { validExamSelection } from '@/domain/exam-selection';
+import { hasAvailableQuestionMedia } from '@/domain/media-eligibility';
 
 type PreparedExam = { category: string; language: QuestionLanguage; questions: Question[] };
 let work: { key: string; promise: Promise<PreparedExam>; listeners: Set<(progress: MediaPreloadProgress) => void>; progress?: MediaPreloadProgress } | null = null;
@@ -38,7 +39,7 @@ export async function ensurePreparedExam(db: SQLiteDatabase, category: string, o
     if (stored) {
       try {
         const candidate = JSON.parse(stored.value) as PreparedExam;
-        if (candidate.category === category && candidate.language === language && validExamSelection(candidate.questions, category)) prepared = candidate;
+        if (candidate.category === category && candidate.language === language && validExamSelection(candidate.questions, category) && candidate.questions.every(question => hasAvailableQuestionMedia(question.id))) prepared = candidate;
       } catch { /* Replace incompatible/invalid candidate. */ }
     }
     prepared ??= { category, language, questions: await createExam(db, category) };
@@ -53,7 +54,7 @@ export async function ensurePreparedExam(db: SQLiteDatabase, category: string, o
         if (work?.key !== key) return;
         work.progress = progress;
         for (const listener of work.listeners) listener(progress);
-      }, () => userDataWritable(revision) && newestKey === key);
+      }, () => userDataWritable(revision) && newestKey === key, onProgress ? 'foreground' : 'background');
       if (!userDataWritable(revision) || newestKey !== key) throw new Error('Przygotowanie przerwane.');
       return prepared;
     } catch (error) { releaseProtectedMedia('prepared'); throw error; }

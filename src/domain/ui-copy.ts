@@ -35,6 +35,8 @@ export const uiCopy: readonly Row[] = [
   ['Partia: {0} pytań', 'Batch: {0} questions', 'Runde: {0} Fragen', 'Добірка: {0} запитань'],
   ['Przygotujemy materiały tej partii. Ponowienie zachowa wybrane pytania.', 'We will prepare media for this batch. Retrying keeps your selected questions.', 'Wir bereiten die Medien dieser Runde vor. Beim erneuten Versuch bleiben die ausgewählten Fragen erhalten.', 'Ми підготуємо матеріали цієї добірки. Повторна спроба збереже вибрані запитання.'],
   ['Materiały gotowe. Możesz rozpocząć naukę.', 'Media ready. You can start studying.', 'Medien bereit. Du kannst mit dem Lernen beginnen.', 'Матеріали готові. Можна починати навчання.'],
+  ['Przygotujemy pierwsze materiały. Kolejne pobierzemy w tle podczas nauki. Ponowienie zachowa wybrane pytania.', 'We will prepare the first media. The next files download in the background as you study. Retrying keeps your selected questions.', 'Wir bereiten die ersten Medien vor. Weitere Dateien werden während des Lernens im Hintergrund geladen. Beim erneuten Versuch bleiben die ausgewählten Fragen erhalten.', 'Ми підготуємо перші матеріали. Наступні завантажуватимуться у фоні під час навчання. Повторна спроба збереже вибрані запитання.'],
+  ['Materiały startowe gotowe. Możesz rozpocząć naukę.', 'Starting media ready. You can start studying.', 'Die ersten Medien sind bereit. Du kannst mit dem Lernen beginnen.', 'Початкові матеріали готові. Можна починати навчання.'],
   ['Materiały: {0}/{1}', 'Media: {0}/{1}', 'Medien: {0}/{1}', 'Матеріали: {0}/{1}'],
   ['Sprawdzanie materiałów…', 'Checking media…', 'Medien werden geprüft…', 'Перевірка матеріалів…'],
   ['Rozpocznij naukę', 'Start studying', 'Lernen starten', 'Почати навчання'],
