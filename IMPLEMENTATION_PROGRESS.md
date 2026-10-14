@@ -1012,3 +1012,86 @@
 - Validation passed: all 41 scripts, npx tsc --noEmit, npx expo lint and
   git diff --check. Final cache-commit fencing also passed its focused regressions.
 
+## Checkpoint — native/legacy grant compatibility regression (2026-10-13)
+
+- Fixed HTTP status extraction for native/polyfilled/cross-realm responses:
+  instanceof Response must not hide 400/401/403 and disable the legacy fallback.
+- Batch requests include the first filename for older issuers. A legacy 200
+  single-token response authorizes only that first object; remaining objects
+  obtain separate grants. No broad token sharing or auth/access downgrade.
+- Added tests for plain response objects and successful old-server responses
+  alongside cache/session/logout, expiry and Worker object-binding checks.
+- This addresses a reproducible client compatibility gap; it does not establish
+  the exact device-side cause without the failing question/request diagnostics.
+  No backend deployment, cache removal or account changes were performed.
+
+## Checkpoint — exam fidelity and Study replay (2026-10-13)
+
+- Exam T/N controls are neutral. Current selection is mutable/persisted until
+  explicit Next or timeout, with correctness/score available only after finish.
+- New basic-film questions separate reading, single playback and actual-end
+  +15 s answering. Specialist questions retain 50 s, including rare video rows.
+- Disabled native exam controls, fullscreen/PiP and frame-analysis affordances;
+  Study/review retain controls and explicit replay from the same cached file.
+- Video clock updates/completion are persistent and idempotent; foreground
+  recovery seeks forward rather than replaying from zero. Global time continues.
+- Existing legacy-clock attempts retain their deadlines; no user history reset.
+- Added exam-screen/player regressions and extended SQLite selection/clock tests.
+  Physical Android/iOS playback and exact current WORD UX acceptance remain open.
+- Behavior/reference boundaries documented in docs/EXAM_BEHAVIOR.md.
+- Validation passed: all 43 scripts, npx tsc --noEmit, npx expo lint and
+  git diff --check. Final React/native-player integration fixes passed focused
+  exam-flow/player tests; no new dependencies, cloud deployment or history reset.
+
+## 2026-10-14 — media optimization local checkpoint (not device/cloud acceptance)
+
+- M0: complete read-only R2 size inventory, per-type distribution and 1000 seeded
+  exams per category; conservative largest-category bound 113,357,276 bytes.
+- M2: one Study media intent, lightweight next-batch text only, current/lookahead
+  pins rather than whole batches; speculative byte admission and cancellation.
+- M2E: transactional unseen seed/exposure, 24h lineage TTL, 31/30 retained IDs,
+  exact retry, raw expiry handling, saved-result exclusion, all 12 quotas, no full
+  speculative successor during an active attempt. No history reset.
+- M1/M4: shared queue/cache/auth, <=8 upcoming grant priming, batch/legacy support,
+  native timeout and oversized-transfer cancellation, one HTTP 429/5xx retry,
+  200 MiB pre-write reservations, disk headroom, orphan cleanup and pinned LRU
+  migration. Full-key/version cache identity and safe legacy-original reads.
+- Per-question decoder/player identity fixes shared-file consecutive questions;
+  stale callbacks cannot mark another question ready. Neutral exam answers and
+  final-only result remain; one-shot film vs Study/review replay unchanged.
+- M3 pilot: 8 smaller image candidates, 4 larger video candidates rejected.
+  Local originals, final-frame comparisons and candidate manifest are excluded
+  from Git/EAS. NO media upload, app manifest activation or cloud deployment.
+- Sanitized bounded local diagnostics and physical measurement summary tooling.
+  Tests do not substitute for real device timings or native decoding.
+- Local validation: 48 regression scripts, TypeScript, Expo lint and diff check.
+  Device/cloud gates and rollback workflow: docs/MEDIA_OPTIMIZATION_STATUS.md.
+  No Android device was attached through ADB; Android/iOS acceptance is OPEN.
+## 2026-10-14 — wcześniejsze przygotowanie pierwszego egzaminu
+
+- Przygotowanie dostępne już po zatwierdzeniu kategorii w onboardingu;
+  roboczy język/kategoria nie są zastępowane domyślną B/PL.
+- Istniejący formularz konta na kroku opisu trybów; logowanie opcjonalne,
+  bez dodawania rejestracji i bez osłabienia autoryzacji multimediów.
+- Ten sam zapisany zestaw przechodzi przez onboarding, Ustawienia i panel.
+  Logowanie podczas kończenia starej pracy wyzwala natychmiastowe ponowienie,
+  nie oczekiwanie do kolejnego cyklu minutowego.
+- Foreground egzaminu zatrzymuje spekulację Nauki; wszystkie materiały
+  muszą być gotowe przed uruchomieniem zegara. Brak nowego niezależnego
+  egzaminu podczas Nauki/aktywnej próby.
+- Dodany test lifecycle oraz test integracyjny z rzeczywistą bazą SQLite
+  dla kategorii A1/English, braku konta, logowania i identycznych ID po handoff.
+- Instrukcja ręcznego odbioru: docs/NEW_USER_EXAM_QA.md. Bez publikacji
+  backendu/aplikacji; czas pierwszego startu pozostaje pomiarem telefonu.
+## 2026-10-14 — blokada startu/wznowienia egzaminu
+
+- Naprawiona struktura nawigacji: Root Stack → (tabs) + egzamin/przegląd/legal.
+  NativeTabs obsługuje tylko pięć faktycznych zakładek. Zachowane publiczne
+  adresy ekranów i wszystkie lokalne dane użytkownika.
+- Dodany test rzeczywistego parsera Expo Router dla startu i wznowienia;
+  dotychczasowe testy ekranów używały atrap router.push i nie wykrywały tej luki.
+- Android: lokalny export Metro/Hermes zakończony poprawnie (bez publikacji).
+  Po zmianie folderów konieczny pełny reload/restart Metro, nie reset danych.
+- Pomiar preparation/screen-load pozwala rozdzielić czas przygotowania od
+  wejścia na ekran. Zgłoszone 60 s pobierania nie jest uznane za naprawione;
+  nadal wymaga pomiaru grant-request/download/cache/decode na telefonie.

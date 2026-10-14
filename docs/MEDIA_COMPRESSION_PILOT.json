@@ -1,0 +1,298 @@
+{
+  "published": false,
+  "phoneQualityReview": "pending",
+  "profiles": {
+    "image": "JPEG q=2, width <=1600, no crop/upscale",
+    "video": "H.264 CRF23, width <=1280, original frame cadence, AAC128k, faststart"
+  },
+  "records": [
+    {
+      "key": "zdjecia/!RS_Przejazd kolejowy Uwieliny.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 9084331,
+      "currentlyDeliveredBytes": 9084331,
+      "candidateBytes": 512704,
+      "savingVsDelivered": 0.9435617218262963,
+      "sha256": "73238166409016a656583cef4c4d70aca07c1008dce31b96a68b0294c7e19eca",
+      "sourceMetadata": {
+        "width": 4032,
+        "height": 3024,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1600,
+        "height": 1200,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/!RS_Przejazd kolejowy Uwieliny.jpg"
+    },
+    {
+      "key": "zdjecia/!RS_Droga bez przejazdu.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 9033975,
+      "currentlyDeliveredBytes": 9033975,
+      "candidateBytes": 670757,
+      "savingVsDelivered": 0.9257517316574376,
+      "sha256": "a36269e8f483a8b5aca3da9bd8938624893c4e3753b93f19f7a36ecab2e9afc5",
+      "sourceMetadata": {
+        "width": 4032,
+        "height": 3024,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1600,
+        "height": 1200,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/!RS_Droga bez przejazdu.jpg"
+    },
+    {
+      "key": "zdjecia/!RS_Bankowy przejazd tramwajowy - Zielone.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 7951173,
+      "currentlyDeliveredBytes": 7951173,
+      "candidateBytes": 411164,
+      "savingVsDelivered": 0.9482888876899044,
+      "sha256": "981111e536932bb860ffd9f43c506be160aee30f2f26d0c8b21e65b74eb00811",
+      "sourceMetadata": {
+        "width": 4032,
+        "height": 3024,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1600,
+        "height": 1200,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/!RS_Bankowy przejazd tramwajowy - Zielone.jpg"
+    },
+    {
+      "key": "zdjecia/Wyprzedzanie9.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 5992378,
+      "currentlyDeliveredBytes": 5992378,
+      "candidateBytes": 465718,
+      "savingVsDelivered": 0.9222816050656351,
+      "sha256": "694b4d6f467d727ab1877304e80490f77bebad5de1a6b07620287b5c97724ae0",
+      "sourceMetadata": {
+        "width": 5456,
+        "height": 3632,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1600,
+        "height": 1066,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/Wyprzedzanie9.jpg"
+    },
+    {
+      "key": "zdjecia/Przejście sugerowane.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 5331015,
+      "currentlyDeliveredBytes": 5331015,
+      "candidateBytes": 599956,
+      "savingVsDelivered": 0.8874593299774995,
+      "sha256": "c19ff0c6b5a7363bc9115da127ca766ab69e174397598a4769d892808715ce3e",
+      "sourceMetadata": {
+        "width": 4000,
+        "height": 3000,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1600,
+        "height": 1200,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/Przejście sugerowane.jpg"
+    },
+    {
+      "key": "zdjecia/1000003284.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 4598840,
+      "currentlyDeliveredBytes": 4598840,
+      "candidateBytes": 500198,
+      "savingVsDelivered": 0.8912338763688235,
+      "sha256": "7517f31f405946a5891a4f6f1baace908736bbd5bc163a15e4042318fe720d76",
+      "sourceMetadata": {
+        "width": 4000,
+        "height": 3000,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1600,
+        "height": 1200,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/1000003284.jpg"
+    },
+    {
+      "key": "zdjecia/Przejście-wyspa.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 4359581,
+      "currentlyDeliveredBytes": 4359581,
+      "candidateBytes": 475556,
+      "savingVsDelivered": 0.8909170399632442,
+      "sha256": "17b54ef1f5521bd1c421096c1518af5dcb137869b60d8e9995b2f642fdacceda",
+      "sourceMetadata": {
+        "width": 4000,
+        "height": 3000,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1600,
+        "height": 1200,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/Przejście-wyspa.jpg"
+    },
+    {
+      "key": "wideo/1_1456ztV.mp4",
+      "status": "largerThanDelivery",
+      "sourceBytes": 17802769,
+      "currentlyDeliveredBytes": 3870025,
+      "candidateBytes": 7422548,
+      "savingVsDelivered": -0.9179586695176387,
+      "sha256": "6343fb3f1d1ea0e3550d3ae4d1c3b880f7030b62ddbe61215d3e6727c1278a22",
+      "sourceMetadata": {
+        "width": 800,
+        "height": 450,
+        "frames": 278,
+        "duration": 9.266,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 800,
+        "height": 450,
+        "frames": 278,
+        "duration": 9.266667,
+        "audioStreams": 0
+      },
+      "candidateKey": "wideo/mobile-v1/1_1456ztV.mp4"
+    },
+    {
+      "key": "wideo/1_1457ztV.mp4",
+      "status": "largerThanDelivery",
+      "sourceBytes": 14605957,
+      "currentlyDeliveredBytes": 3209656,
+      "candidateBytes": 6110471,
+      "savingVsDelivered": -0.9037775387767413,
+      "sha256": "7643acc57d7aba12338a605bd6e68bba3f6d23f18f6c7af38806891a92a6ac4a",
+      "sourceMetadata": {
+        "width": 800,
+        "height": 450,
+        "frames": 211,
+        "duration": 7.033,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 800,
+        "height": 450,
+        "frames": 211,
+        "duration": 7.033008,
+        "audioStreams": 0
+      },
+      "candidateKey": "wideo/mobile-v1/1_1457ztV.mp4"
+    },
+    {
+      "key": "wideo/1641ztV_2.mp4",
+      "status": "largerThanDelivery",
+      "sourceBytes": 24653451,
+      "currentlyDeliveredBytes": 3196349,
+      "candidateBytes": 10084993,
+      "savingVsDelivered": -2.1551601530371056,
+      "sha256": "ab54534e09b762e615fc2555311ac7eb3185b8c09c6c0f49942905dcd0a86ddb",
+      "sourceMetadata": {
+        "width": 1024,
+        "height": 576,
+        "frames": 220,
+        "duration": 8.823,
+        "audioStreams": 1
+      },
+      "candidateMetadata": {
+        "width": 1024,
+        "height": 576,
+        "frames": 220,
+        "duration": 8.8,
+        "audioStreams": 1
+      },
+      "candidateKey": "wideo/mobile-v1/1641ztV_2.mp4"
+    },
+    {
+      "key": "zdjecia/001TRAM1org.jpg",
+      "status": "reviewRequired",
+      "sourceBytes": 700025,
+      "currentlyDeliveredBytes": 700025,
+      "candidateBytes": 200434,
+      "savingVsDelivered": 0.7136759401449948,
+      "sha256": "21a15451a3448d805c3c30eca580c9ae56d66ae0bb321088003df368a04a189d",
+      "sourceMetadata": {
+        "width": 1024,
+        "height": 576,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1024,
+        "height": 576,
+        "frames": 1,
+        "duration": 0.04,
+        "audioStreams": 0
+      },
+      "candidateKey": "zdjecia/mobile-v1/001TRAM1org.jpg"
+    },
+    {
+      "key": "wideo/005TRAM3org.mp4",
+      "status": "largerThanDelivery",
+      "sourceBytes": 6572701,
+      "currentlyDeliveredBytes": 711798,
+      "candidateBytes": 1883689,
+      "savingVsDelivered": -1.6463814171998234,
+      "sha256": "46f1f1e5dcac47bf60349272bed9add50dff92be0d1b0ad28bb94c66c4d2f21b",
+      "sourceMetadata": {
+        "width": 1024,
+        "height": 576,
+        "frames": 253,
+        "duration": 8.433,
+        "audioStreams": 0
+      },
+      "candidateMetadata": {
+        "width": 1024,
+        "height": 576,
+        "frames": 253,
+        "duration": 8.42,
+        "audioStreams": 0
+      },
+      "candidateKey": "wideo/mobile-v1/005TRAM3org.mp4"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { isDrivingCategory, type DrivingCategory } from '@/domain/driving-catego
 import { parseQuestionLanguage, type QuestionLanguage } from '@/database/translations';
 import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
 import { readUiLanguage } from '@/database/ui-language';
+import { examPreferencesChanged } from '@/domain/exam-preparation-events';
 
 export type OnboardingDraft = { step: number; category: DrivingCategory | null; language: QuestionLanguage };
 export const emptyOnboarding: OnboardingDraft = { step: 0, category: null, language: 'pl' };
@@ -20,13 +21,19 @@ export async function readOnboardingDraft(db: SQLiteDatabase) {
 }
 export async function saveOnboardingDraft(db: SQLiteDatabase, draft: OnboardingDraft) {
   const revision = userDataRevision();
+  let targetChanged = false;
   await db.withExclusiveTransactionAsync(async tx => {
     if (!userDataWritable(revision)) throw new Error('Setup interrupted');
     const done = await tx.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', 'onboarding-complete');
     if (done?.value === 'true') return;
+    const previous = await readOnboardingDraft(tx);
+    const before = previous.step >= 2 ? `${previous.category}:${previous.language}` : '';
+    const after = draft.step >= 2 ? `${draft.category}:${draft.language}` : '';
+    targetChanged = before !== after;
     await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', 'onboarding-draft', JSON.stringify(draft));
     if (!userDataWritable(revision)) throw new Error('Setup interrupted');
   });
+  if (targetChanged) examPreferencesChanged();
 }
 export async function finishOnboarding(db: SQLiteDatabase, draft: OnboardingDraft) {
   if (!draft.category || !isDrivingCategory(draft.category)) throw new Error('Choose a category');

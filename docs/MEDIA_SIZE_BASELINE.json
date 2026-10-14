@@ -1,0 +1,221 @@
+{
+  "checkedAt": "2026-10-14T08:15:51.978Z",
+  "inventoryComplete": true,
+  "units": "bytes",
+  "all": {
+    "count": 2633,
+    "total": 1735136368,
+    "median": 603676,
+    "p95": 1470679,
+    "max": 9084331
+  },
+  "image": {
+    "count": 1533,
+    "total": 793102197,
+    "median": 548158,
+    "p95": 832281,
+    "max": 9084331
+  },
+  "video": {
+    "count": 1100,
+    "total": 942034171,
+    "median": 722064,
+    "p95": 1802423,
+    "max": 3870025
+  },
+  "exams": [
+    {
+      "category": "A",
+      "count": 1000,
+      "total": 19224225576,
+      "median": 19023608,
+      "p95": 23897262,
+      "max": 29806788,
+      "conservativeUpperBound": 73434595
+    },
+    {
+      "category": "A1",
+      "count": 1000,
+      "total": 19450728633,
+      "median": 19255238,
+      "p95": 24125680,
+      "max": 30969549,
+      "conservativeUpperBound": 73434595
+    },
+    {
+      "category": "A2",
+      "count": 1000,
+      "total": 19424308216,
+      "median": 19222067.5,
+      "p95": 24061948,
+      "max": 28927084,
+      "conservativeUpperBound": 73434595
+    },
+    {
+      "category": "AM",
+      "count": 1000,
+      "total": 20286230279,
+      "median": 19676603,
+      "p95": 27696765,
+      "max": 37138183,
+      "conservativeUpperBound": 113357276
+    },
+    {
+      "category": "B",
+      "count": 1000,
+      "total": 16859723427,
+      "median": 16608230.5,
+      "p95": 21773916,
+      "max": 27519005,
+      "conservativeUpperBound": 79832369
+    },
+    {
+      "category": "B1",
+      "count": 1000,
+      "total": 18329110374,
+      "median": 18226802.5,
+      "p95": 22850571,
+      "max": 27697903,
+      "conservativeUpperBound": 72832461
+    },
+    {
+      "category": "C",
+      "count": 1000,
+      "total": 18484311966,
+      "median": 18236567,
+      "p95": 23189050,
+      "max": 31629901,
+      "conservativeUpperBound": 72994346
+    },
+    {
+      "category": "C1",
+      "count": 1000,
+      "total": 18298089786,
+      "median": 18201792,
+      "p95": 22719157,
+      "max": 26626498,
+      "conservativeUpperBound": 72481282
+    },
+    {
+      "category": "D",
+      "count": 1000,
+      "total": 17888173982,
+      "median": 17733978,
+      "p95": 22278091,
+      "max": 28136097,
+      "conservativeUpperBound": 72246773
+    },
+    {
+      "category": "D1",
+      "count": 1000,
+      "total": 18038570353,
+      "median": 17810025,
+      "p95": 22639803,
+      "max": 31292479,
+      "conservativeUpperBound": 72246773
+    },
+    {
+      "category": "PT",
+      "count": 1000,
+      "total": 13146275410,
+      "median": 13035404.5,
+      "p95": 16503021,
+      "max": 20750921,
+      "conservativeUpperBound": 36879234
+    },
+    {
+      "category": "T",
+      "count": 1000,
+      "total": 18453012788,
+      "median": 18235370.5,
+      "p95": 22651971,
+      "max": 30410082,
+      "conservativeUpperBound": 72492638
+    }
+  ],
+  "largest": [
+    {
+      "key": "zdjecia/!RS_Przejazd kolejowy Uwieliny.jpg",
+      "size": 9084331
+    },
+    {
+      "key": "zdjecia/!RS_Droga bez przejazdu.jpg",
+      "size": 9033975
+    },
+    {
+      "key": "zdjecia/!RS_Bankowy przejazd tramwajowy - Zielone.jpg",
+      "size": 7951173
+    },
+    {
+      "key": "zdjecia/Wyprzedzanie9.jpg",
+      "size": 5992378
+    },
+    {
+      "key": "zdjecia/Przejście sugerowane.jpg",
+      "size": 5331015
+    },
+    {
+      "key": "zdjecia/1000003284.jpg",
+      "size": 4598840
+    },
+    {
+      "key": "zdjecia/Przejście-wyspa.jpg",
+      "size": 4359581
+    },
+    {
+      "key": "wideo/1_1456ztV.mp4",
+      "size": 3870025
+    },
+    {
+      "key": "zdjecia/PW12-2025-40.jpg",
+      "size": 3598364
+    },
+    {
+      "key": "wideo/1_1457ztV.mp4",
+      "size": 3209656
+    },
+    {
+      "key": "wideo/1641ztV_2.mp4",
+      "size": 3196349
+    },
+    {
+      "key": "zdjecia/Znak D1+T6 w prawo.jpg",
+      "size": 3138387
+    },
+    {
+      "key": "wideo/1868ztV.mp4",
+      "size": 2960678
+    },
+    {
+      "key": "wideo/PW12-2025-36.mp4",
+      "size": 2918907
+    },
+    {
+      "key": "wideo/1990ztV.mp4",
+      "size": 2871382
+    },
+    {
+      "key": "wideo/Znak D1+T6!.mp4",
+      "size": 2854315
+    },
+    {
+      "key": "wideo/poprawione_strefa-zamieszkania.mp4",
+      "size": 2849477
+    },
+    {
+      "key": "wideo/GM_W16_316_317.mp4",
+      "size": 2764257
+    },
+    {
+      "key": "wideo/L4T1_058.mp4",
+      "size": 2735418
+    },
+    {
+      "key": "wideo/1189ztV.mp4",
+      "size": 2704227
+    }
+  ],
+  "appAccess": "unverified",
+  "nativeDecoding": "unverified",
+  "deviceTiming": "not measured"
+}

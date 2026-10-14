@@ -1,9 +1,9 @@
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useEvent, useEventListener } from 'expo';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
@@ -11,12 +11,17 @@ import { deliveredMediaFilename, mediaConfig } from '@/config/media';
 import { cachedMediaUri } from '@/services/media-cache';
 import { mediaFailure, type MediaFailure } from '@/domain/media-error';
 import { MediaAccountCard } from '@/components/media-account-card';
+import { recordMediaDiagnostic } from '@/services/media-diagnostics';
 
 type QuestionMediaProps = {
+  questionId?: number;
   filename?: string | null;
   examMode?: boolean;
-  onVideoEnd?: () => void;
+  onVideoEnd?: (finishedAt?: number) => void;
   onReadyChange?: (ready: boolean) => void;
+  examPlayback?: 'waiting' | 'playing' | 'finished';
+  videoStartedAt?: number;
+  onVideoDuration?: (duration: number) => void;
 };
 
 const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
@@ -32,43 +37,103 @@ function VideoMedia({
   onVideoEnd,
   onError,
   onReadyChange,
+  examPlayback = 'waiting',
+  videoStartedAt,
+  onVideoDuration,
 }: {
   uri: string;
   examMode?: boolean;
-  onVideoEnd?: () => void;
+  onVideoEnd?: (finishedAt?: number) => void;
   onError?: () => void;
   onReadyChange: (ready: boolean) => void;
+  examPlayback?: 'waiting' | 'playing' | 'finished';
+  videoStartedAt?: number;
+  onVideoDuration?: (duration: number) => void;
 }) {
   const { colors } = useAppTheme();
+  const { t } = useTranslation();
+  const started = useRef(false);
+  const ended = useRef(false);
   const styles = createStyles(colors);
   const player = useVideoPlayer(uri, (instance) => {
     instance.loop = false;
-    if (examMode) instance.play();
+    instance.showNowPlayingNotification = false;
   });
-  useEventListener(player, 'playToEnd', () => onVideoEnd?.());
+  useEventListener(player, 'playToEnd', () => {
+    if (!ended.current) { ended.current = true; onVideoEnd?.(Date.now()); }
+  });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
   useEffect(() => {
     onReadyChange(status === 'readyToPlay');
     if (status === 'error') onError?.();
   }, [status, onReadyChange, onError]);
+  useEffect(() => {
+    if (status === 'readyToPlay' && player.duration > 0) onVideoDuration?.(player.duration);
+  }, [status, player, onVideoDuration]);
+  useEffect(() => {
+    if (!examMode || status !== 'readyToPlay') return;
+    if (examPlayback === 'finished') {
+      player.pause();
+      if (!ended.current) {
+        ended.current = true;
+        player.seekBy(Math.max(0, player.duration - 0.04) - player.currentTime);
+        onVideoEnd?.();
+      }
+    } else if (examPlayback === 'playing' && !started.current && !ended.current) {
+      started.current = true;
+      const elapsed = videoStartedAt ? Math.max(0, (Date.now() - videoStartedAt) / 1000) : 0;
+      if (elapsed >= player.duration) {
+        ended.current = true; player.seekBy(Math.max(0, player.duration - 0.04) - player.currentTime);
+        onVideoEnd?.(videoStartedAt! + player.duration * 1000);
+      } else {
+        player.seekBy((elapsed < 1 ? 0 : elapsed) - player.currentTime);
+        player.play();
+      }
+    }
+  }, [examMode, examPlayback, onVideoEnd, player, status, videoStartedAt]);
+  useEffect(() => {
+    if (!examMode || !videoStartedAt) return;
+    const app = AppState.addEventListener('change', state => {
+      if (state !== 'active' || examPlayback !== 'playing' || ended.current || status !== 'readyToPlay') return;
+      const elapsed = Math.max(0, (Date.now() - videoStartedAt) / 1000);
+      if (elapsed >= player.duration) {
+        ended.current = true; player.pause(); player.seekBy(Math.max(0, player.duration - 0.04) - player.currentTime);
+        onVideoEnd?.(videoStartedAt + player.duration * 1000);
+      } else { player.seekBy(Math.max(player.currentTime, elapsed) - player.currentTime); player.play(); }
+    });
+    return () => app.remove();
+  }, [examMode, examPlayback, onVideoEnd, player, status, videoStartedAt]);
 
   return (
+    <View>
     <VideoView
       contentFit="contain"
       nativeControls={!examMode}
+      fullscreenOptions={{ enable: !examMode }}
+      allowsPictureInPicture={false}
+      allowsVideoFrameAnalysis={!examMode}
+      pointerEvents={examMode ? 'none' : 'auto'}
       player={player}
-      style={styles.video}
+      style={[styles.video, examMode && examPlayback === 'waiting' && { opacity: 0 }]}
     />
+    {!examMode && <Pressable accessibilityRole="button" accessibilityLabel={t('Odtwórz ponownie')} disabled={status !== 'readyToPlay'}
+      onPress={() => { ended.current = false; player.replay(); player.play(); }} style={{ minHeight: 48, justifyContent: 'center', marginBottom: 16 }}>
+      <Text style={styles.statusTitle}>{t('Odtwórz ponownie')}</Text>
+    </Pressable>}
+    </View>
   );
 }
 
-export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }: QuestionMediaProps) {
+export function QuestionMedia({ questionId, filename, examMode, examPlayback, videoStartedAt, onVideoDuration, onVideoEnd, onReadyChange }: QuestionMediaProps) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
   const [retry, setRetry] = useState(0);
   const [accountOpen, setAccountOpen] = useState(false);
+  const requestKey = `${questionId ?? ''}:${filename ?? ''}:${retry}`;
+  const decode = useRef({key:'',startedAt:0});
   const [media, setMedia] = useState<{
+    requestKey: string;
     filename: string;
     uri?: string;
     error?: string;
@@ -76,16 +141,22 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
     decoded?: boolean;
   }>();
   const markReady = useCallback((decoded: boolean) => {
-    setMedia(current => current && current.filename === filename && current.uri && !current.error && current.decoded !== decoded
+    if (decoded && decode.current.key === requestKey && decode.current.startedAt) {
+      recordMediaDiagnostic({stage:'decode',kind:filename && playableVideoExtensions.has(extension(deliveredMediaFilename(filename)))?'video':'image',
+        elapsedMs:Date.now()-decode.current.startedAt,questionId,status:'ok'});
+      decode.current.startedAt = 0;
+    }
+    setMedia(current => current && current.requestKey === requestKey && current.uri && !current.error && current.decoded !== decoded
       ? { ...current, decoded } : current);
-  }, [filename]);
+  }, [filename, questionId, requestKey]);
   const playbackError = useCallback(() => {
-    setMedia(current => current && current.filename === filename
-      ? { filename: current.filename, error: 'Nie udało się odtworzyć materiału. Spróbuj ponownie.' } : current);
-  }, [filename]);
+    recordMediaDiagnostic({stage:'decode',kind:filename && playableVideoExtensions.has(extension(deliveredMediaFilename(filename)))?'video':'image',elapsedMs:0,questionId,status:'error'});
+    setMedia(current => current && current.requestKey === requestKey
+      ? { requestKey, filename: current.filename, error: 'Nie udało się odtworzyć materiału. Spróbuj ponownie.' } : current);
+  }, [filename, questionId, requestKey]);
   useEffect(() => {
-    onReadyChange?.(!filename || Boolean(media?.filename === filename && media.uri && media.decoded && !media.error));
-  }, [filename, media, onReadyChange]);
+    onReadyChange?.(!filename || Boolean(media?.requestKey === requestKey && media.uri && media.decoded && !media.error));
+  }, [filename, media, onReadyChange, requestKey]);
 
   useEffect(() => {
     let active = true;
@@ -95,12 +166,13 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
     cachedMediaUri(filename)
       .then((value) => {
         if (!value) throw new Error('Missing media');
-        if (active) setMedia({ filename, uri: value, decoded: false });
+        if (active) { decode.current = {key:requestKey,startedAt:Date.now()}; setMedia({ requestKey, filename, uri: value, decoded: false }); }
       })
       .catch((reason: unknown) => {
         if (active) {
           const failure = mediaFailure(reason);
           setMedia({
+            requestKey,
             filename,
             error: failure.message,
             failure,
@@ -111,12 +183,12 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
     return () => {
       active = false;
     };
-  }, [filename, retry, t]);
+  }, [filename, requestKey, t]);
 
   if (!filename) return null;
 
-  const uri = media?.filename === filename ? media.uri : undefined;
-  const error = media?.filename === filename ? media.error : undefined;
+  const uri = media?.requestKey === requestKey ? media.uri : undefined;
+  const error = media?.requestKey === requestKey ? media.error : undefined;
 
   const fileExtension = extension(deliveredMediaFilename(filename));
   const canPlay = playableVideoExtensions.has(fileExtension);
@@ -167,9 +239,9 @@ export function QuestionMedia({ filename, examMode, onVideoEnd, onReadyChange }:
     );
   }
 
-  if (isImage) return <Image key={`${filename}:${retry}`} accessibilityLabel={t("Materiał do pytania")} resizeMode="contain" source={{ uri }} style={styles.image} onLoad={() => markReady(true)} onError={playbackError} />;
+  if (isImage) return <Image key={requestKey} accessibilityLabel={t("Materiał do pytania")} resizeMode="contain" source={{ uri }} style={styles.image} onLoad={() => markReady(true)} onError={playbackError} />;
 
-  if (canPlay) return <VideoMedia key={`${filename}:${retry}`} examMode={examMode} onVideoEnd={onVideoEnd} uri={uri} onError={playbackError} onReadyChange={markReady} />;
+  if (canPlay) return <VideoMedia key={requestKey} examMode={examMode} examPlayback={examPlayback} videoStartedAt={videoStartedAt} onVideoDuration={onVideoDuration} onVideoEnd={onVideoEnd} uri={uri} onError={playbackError} onReadyChange={markReady} />;
 
   return (
     <View style={styles.statusCard}>

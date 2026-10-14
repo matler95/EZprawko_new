@@ -40,7 +40,7 @@ const render=component=>{si=ri=0;return component();};
   button(tree,'Pytania z historycznymi błędami').props.onPress();assert.equal(routes.at(-1).params.filter,'mistakes');assert.equal(routes.at(-1).params.topic,undefined);cleanup();
   active={id:'active-fixture'};reset();render(Dashboard);cleanup=focus();await tick();tree=render(Dashboard);
   assert(!text(tree).includes('NAJLEPSZY KOLEJNY KROK'));await button(tree,'Wznów').props.onPress();assert.equal(routes.at(-1).params.id,'active-fixture');cleanup();active=null;
-  const Progress=load('src/app/progress.tsx').default;
+  const Progress=load('src/app/(tabs)/progress.tsx').default;
   insights={topics:[{topic:'Znaki i sygnały drogowe',total:20,answered:6,correct:2},{topic:'Pozostałe zagadnienia',total:10,answered:1,correct:0}],historicalMistakes:0};
   reset();render(Progress);cleanup=focus();await tick();tree=render(Progress);
   assert.match(text(tree),/Za mało danych/);assert.match(text(tree),/1 \/ 20/);assert.match(text(tree),/33%/);

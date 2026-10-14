@@ -2,6 +2,7 @@ import { supabase, supabaseConfigured } from '@/services/supabase';
 import { MediaAccountRequiredError } from '@/domain/account';
 import { userDataRevision, userDataWritable } from '@/domain/data-maintenance';
 import { t } from '@/domain/ui-copy';
+import { recordMediaDiagnostic } from '@/services/media-diagnostics';
 
 type Grant = { filename?: string; token: string; expiresAt?: number };
 type Job = { filename: string; epoch: number; revision: number; resolve: (token: string) => void; reject: (error: unknown) => void };
@@ -16,24 +17,59 @@ function failure(status?: number) {
   if (status === 401) return new MediaAccountRequiredError(true);
   return new Error(t(status === 403 ? 'Dostęp do materiału nie został przyznany.' : 'Zdjęcie lub film jest teraz niedostępny. Spróbuj później.'));
 }
-const statusOf = (error: { context?: unknown } | null) => error?.context instanceof Response ? error.context.status : undefined;
+const statusOf = (error: { context?: unknown } | null) => {
+  // Native fetch/polyfills can expose Response from another realm. Its HTTP
+  // status is authoritative; instanceof can silently hide 400/401/403.
+  const context = error?.context as { status?: unknown } | undefined;
+  const status = context?.status;
+  return typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599 ? status : undefined;
+};
+
+async function singleGrants(filenames: string[]) {
+  return Promise.all(filenames.map(async filename => {
+    const { data, error } = await invokeGrant<Grant>({ filename });
+    if (error || !data?.token) throw failure(statusOf(error));
+    return { ...data, filename };
+  }));
+}
+
+async function invokeGrant<T>(body: { filename?: string; filenames?: string[] }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  const started = Date.now();
+  const files = body.filenames ?? (body.filename ? [body.filename] : []);
+  const kind = files.every(file=>/\.mp4$/i.test(file)) ? 'video' : files.every(file=>/\.(jpg|jpeg|png|webp)$/i.test(file)) ? 'image' : 'mixed';
+  try {
+    const result = await supabase.functions.invoke<T>('media-token', { body, signal: controller.signal });
+    recordMediaDiagnostic({stage:'grant-request',kind,items:files.length,elapsedMs:Date.now()-started,httpStatus:statusOf(result.error)??200,status:result.error?'error':'ok'});
+    return result;
+  } catch (error) {
+    recordMediaDiagnostic({stage:'grant-request',kind,items:files.length,elapsedMs:Date.now()-started,status:'error'});
+    throw error;
+  }
+  finally { clearTimeout(timer); }
+}
 
 async function invoke(filenames: string[]) {
   if (batchSupported) {
-    const { data, error } = await supabase.functions.invoke<{ grants: Grant[] }>('media-token', { body: { filenames } });
+    const { data, error } = await invokeGrant<{ grants?: Grant[]; token?: string; expiresAt?: number }>({
+      // A legacy endpoint can safely authorize the first object without first
+      // failing the request. Never apply that one token to the other objects.
+      filenames, filename: filenames[0],
+    });
     if (!error) {
-      if (!Array.isArray(data?.grants)) throw failure();
-      return data.grants;
+      if (Array.isArray(data?.grants)) return data.grants;
+      if (typeof data?.token === 'string' && data.token) {
+        batchSupported = false;
+        return [{ filename: filenames[0], token: data.token, expiresAt: data.expiresAt }, ...await singleGrants(filenames.slice(1))];
+      }
+      throw failure();
     }
     // Old deployments accept only filename. Do not downgrade auth/access failures.
     if (statusOf(error) !== 400) throw failure(statusOf(error));
     batchSupported = false;
   }
-  return Promise.all(filenames.map(async filename => {
-    const { data, error } = await supabase.functions.invoke<Grant>('media-token', { body: { filename } });
-    if (error || !data?.token) throw failure(statusOf(error));
-    return { ...data, filename };
-  }));
+  return singleGrants(filenames);
 }
 
 function schedule() {
@@ -89,4 +125,9 @@ export async function mediaGrant(filename: string) {
   });
   requests.set(key, request);
   try { return await request; } finally { if (requests.get(key) === request) requests.delete(key); }
+}
+
+/** Prime one small upcoming chunk through the existing batch/cache, not another auth path. */
+export async function primeMediaGrants(filenames: readonly string[]) {
+  await Promise.all([...new Set(filenames)].slice(0,8).map(mediaGrant));
 }

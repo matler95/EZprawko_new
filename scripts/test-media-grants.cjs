@@ -1,6 +1,6 @@
 // Both real endpoint signing and real client batching; no live accounts/network.
 const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript'),path=require('node:path'),{createHmac}=require('node:crypto');
-const root=path.join(__dirname,'..');let handler,userChecks=0,status=200,legacy=false,listener;
+const root=path.join(__dirname,'..');let handler,userChecks=0,status=200,legacy=false,legacySuccess=false,plainResponse=false,listener;
 const secret='fixture-only',env={MEDIA_TOKEN_SECRET:secret,SUPABASE_URL:'https://fixture.invalid',SUPABASE_ANON_KEY:'fixture'};
 new Function('Deno','fetch',ts.transpileModule(fs.readFileSync(path.join(root,'infrastructure/supabase/functions/media-token/index.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(
  {env:{get:key=>env[key]},serve:fn=>handler=fn},async()=>{userChecks++;return Response.json({id:'user-one'},{status});});
@@ -9,8 +9,8 @@ let session={access_token:'account-one'},invocations=[],hold=null;
 const supabase={auth:{onAuthStateChange:fn=>{listener=fn;return {data:{subscription:{unsubscribe(){}}}};},getSession:async()=>({data:{session},error:null})},
  functions:{invoke:async(_name,{body})=>{
    invocations.push(body);if(hold)await hold;
-   const response=status===403?new Response(null,{status:403}):legacy&&body.filenames?new Response(null,{status:400}):await send(body);
-   return response.ok?{data:await response.json(),error:null}:{data:null,error:{context:response}};
+   const response=status===403?new Response(null,{status:403}):legacySuccess?await send({filename:body.filename}):legacy&&body.filenames?new Response(null,{status:400}):await send(body);
+   return response.ok?{data:await response.json(),error:null}:{data:null,error:{context:plainResponse?{status:response.status}:response}};
  }}};
 const modules=new Map();
 function load(file){if(modules.has(file))return modules.get(file);const exports={};modules.set(file,exports);
@@ -37,6 +37,10 @@ function load(file){if(modules.has(file))return modules.get(file);const exports=
  invocations=[];const tokens=await Promise.all([mediaGrant('a.jpg'),mediaGrant('b.mp4'),mediaGrant('a.jpg')]);
  assert.equal(invocations.length,1);assert.equal(invocations[0].filenames.length,2);assert.equal(tokens[0],tokens[2]);
  await mediaGrant('a.jpg');assert.equal(invocations.length,1,'valid in-memory grant is reused');
+ const beforePrime=invocations.length;
+ await load('src/services/media-auth.ts').primeMediaGrants(Array.from({length:9},(_,i)=>'prime-'+i+'.jpg'));
+ assert.equal(invocations.length,beforePrime+1);assert.equal(invocations.at(-1).filenames.length,8,'one upcoming authorization chunk is bounded at eight');
+ invocations.splice(beforePrime);
  listener('SIGNED_OUT');session=null;await assert.rejects(()=>mediaGrant('a.jpg'),/Zaloguj/);
  session={access_token:'account-two'};listener('SIGNED_IN');await mediaGrant('a.jpg');assert.equal(invocations.length,2);
  const realNow=Date.now;Date.now=()=>realNow()+100_000;
@@ -44,9 +48,18 @@ function load(file){if(modules.has(file))return modules.get(file);const exports=
  let release;hold=new Promise(resolve=>release=resolve);
  const delayed=mediaGrant('late.jpg');const outcome=assert.rejects(delayed);
  await new Promise(setImmediate);listener('SIGNED_OUT');session=null;release();await outcome;hold=null;
- session={access_token:'account-three'};listener('SIGNED_IN');legacy=true;
+ session={access_token:'account-three'};listener('SIGNED_IN');legacy=true;plainResponse=true;
  await mediaGrant('legacy.jpg');assert(invocations.some(body=>body.filename==='legacy.jpg'));
  status=403;await assert.rejects(()=>mediaGrant('denied.jpg'),/Dostęp/);status=200;
+ modules.delete('src/services/media-auth.ts');legacy=false;legacySuccess=true;invocations=[];
+ const compatible=load('src/services/media-auth.ts').mediaGrant;
+ const oldTokens=await Promise.all([compatible('old-first.jpg'),compatible('old-second.mp4')]);
+ assert.equal(invocations.length,2,'old endpoint success reuses the first grant, only requests the second separately');
+ const claims=oldTokens.map(token=>JSON.parse(Buffer.from(token.split('.')[1],'base64url')));
+ assert.deepEqual(claims.map(value=>value.key),['old-first.jpg','old-second.mp4']);
+ assert.notEqual(oldTokens[0],oldTokens[1],'a legacy grant cannot be reused across files');
+ await compatible('old-first.jpg');assert.equal(invocations.length,2);
+ listener('SIGNED_OUT');session=null;await assert.rejects(()=>compatible('old-first.jpg'),/Zaloguj/);
  const worker=await import('data:text/javascript;base64,'+fs.readFileSync(path.join(root,'infrastructure/cloudflare-media-worker/src/index.js')).toString('base64'));
  let reads=0;const workerEnv={MEDIA_TOKEN_SECRET:secret,MEDIA_BUCKET:{get:async()=>{reads++;return {body:'fixture',httpEtag:'etag',writeHttpMetadata(){}};}}};
  const accepted=await worker.default.fetch(new Request('https://fixture.invalid/media/'+grants[0].filename,{headers:{Authorization:'Bearer '+grants[0].token}}),workerEnv);

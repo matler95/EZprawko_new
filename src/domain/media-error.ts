@@ -6,6 +6,9 @@ const safeKeys = new Set([
   'Dostęp do materiału nie został przyznany.',
   'Zdjęcie lub film jest teraz niedostępny. Spróbuj później.',
   'Brak miejsca na przygotowanie materiałów. Usuń pobrane materiały i spróbuj ponownie.',
+  'Brak miejsca na telefonie. Zwolnij miejsce i spróbuj ponownie.',
+  'Pobieranie trwało zbyt długo. Sprawdź połączenie i spróbuj ponownie.',
+  'Rozmiar materiału nie zgadza się z katalogiem. Spróbuj ponownie po aktualizacji aplikacji.',
 ]);
 export function mediaErrorMessage(reason: unknown) {
   if (reason instanceof MediaAccountRequiredError) return reason.message;
@@ -17,7 +20,7 @@ export function mediaErrorMessage(reason: unknown) {
 }
 
 export type MediaFailure = {
-  kind: 'account' | 'access' | 'storage' | 'unavailable' | 'download';
+  kind: 'account' | 'access' | 'storage' | 'manifest' | 'unavailable' | 'download';
   message: string;
   retryable: boolean;
 };
@@ -27,7 +30,8 @@ export function mediaFailure(reason: unknown): MediaFailure {
   const message = mediaErrorMessage(reason);
   if (reason instanceof MediaAccountRequiredError) return { kind: 'account', message, retryable: false };
   if (message === 'Dostęp do materiału nie został przyznany.') return { kind: 'access', message, retryable: false };
-  if (message === 'Brak miejsca na przygotowanie materiałów. Usuń pobrane materiały i spróbuj ponownie.') return { kind: 'storage', message, retryable: false };
+  if (message === 'Brak miejsca na przygotowanie materiałów. Usuń pobrane materiały i spróbuj ponownie.' || message === 'Brak miejsca na telefonie. Zwolnij miejsce i spróbuj ponownie.') return { kind: 'storage', message, retryable: false };
+  if (message === 'Rozmiar materiału nie zgadza się z katalogiem. Spróbuj ponownie po aktualizacji aplikacji.') return { kind: 'manifest', message, retryable: false };
   if (message === 'Zdjęcie lub film jest teraz niedostępny. Spróbuj później.') return { kind: 'unavailable', message, retryable: true };
   return { kind: 'download', message, retryable: true };
 }

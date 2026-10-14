@@ -41,6 +41,7 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 __pycache__/
+.media-pilot/
 
 example
 

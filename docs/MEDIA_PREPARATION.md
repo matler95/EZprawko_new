@@ -3,11 +3,11 @@
 ## Zasady
 
 - Egzamin: jeden zapisany draft w SQLite, komplet plików lokalnie i weryfikacja
-  cache przed startem zegara. Po zatwierdzonym starcie przygotowujemy następny,
-  bez oczekiwania na interwał 60 s. Stary draft identyczny z aktywną próbą jest
-  odrzucany. Aktywny egzamin i następca mają oddzielną ochronę cache.
-- Nauka: globalnie przygotowujemy domyślne 5/12 pytań i rzeczywiste rekomendowane
-  ćwiczenie Startu. Ekran korzysta z dokładnie tej samej partii, bez nowego losowania.
+  cache przed startem zegara. Nie przygotowujemy niezależnego pełnego następcy
+  podczas aktywnej próby. Nowa próba po porzuceniu zachowuje niewidziane ID,
+  wymienia pokazane i uzupełnia wyłącznie brakujące pliki. Wznów zachowuje próbę.
+- Nauka: przygotowujemy jeden aktualny zakres lub rekomendowane ćwiczenie
+  Startu, nie równoczesne 5/12/rekomendacja. Ekran korzysta z dokładnie tej samej partii, bez nowego losowania.
   Klucz obejmuje kategorię, język, filtr, temat, znak, historię, wyszukiwanie,
   długość, poprzednie IDs i generację danych.
 - Cztery drafty Nauki są trzymane tylko w pamięci, przez maksymalnie pięć minut.
@@ -18,7 +18,8 @@
   odpowiedzi do dekodowania; URI nie oznacza gotowego odtwarzacza.
 - Bufor trzech kolejnych pytań przesuwa się podczas sesji. W połowie partii
   wybieramy następną z tym samym zakresem i preferencją niepowtarzania IDs;
-  przy kliknięciu „Kolejna partia” używamy dokładnie tego draftu.
+  przy kliknięciu „Kolejna partia” używamy dokładnie tego draftu. To prefetch
+  tekstu, nie mediów przyszłej partii. Okno mediów ma też budżet 12 MiB.
 - Powtórka błędów konkretnego egzaminu nie rozszerza się na ogólną kolejną partię.
 - Globalny limit to dwa transfery. Bieżący plik/start ma pierwszeństwo przed
   oczekującym tłem; już rozpoczęte transfery nie są przerywane.
@@ -29,12 +30,16 @@
 
 Pierwszy zapis buduje inwentarz plików. Następne pobrania aktualizują rozmiary,
 bez ponownego odczytu statystyk całego katalogu. Eviction jest serializowane,
-chroni bieżące zestawy i ma limit 1 GB. Nieudany nowy zapis ponad limit jest
+chroni aktywny egzamin/bieżące okno Nauki i ma limit 200 MiB. Rezerwacja bajtów
+poprzedza transfer, wspólny plik rezerwujemy raz. Nieudany nowy zapis ponad limit jest
 cofany, aby retry nie uznał go za poprawnie przygotowany plik.
 
 Każde użycie pliku nadal sprawdza jego istnienie/niepusty rozmiar. System może
 usunąć cache: ta optymalizacja nie zastępuje weryfikacji przed egzaminem.
 Ręczny odczyt rozmiaru w Ustawieniach nadal mierzy rzeczywisty katalog.
+Znany plik musi odpowiadać rozmiarowi dostawy, nie źródłowego WMV. Mniejsze
+warianty są wersjonowane; oryginałów nie nadpisujemy. Pełny checkpoint i bramki
+odbioru: [MEDIA_OPTIMIZATION_STATUS.md](MEDIA_OPTIMIZATION_STATUS.md).
 
 ## Autoryzacja paczkowa
 
@@ -51,6 +56,9 @@ Aplikacja łączy pobliskie żądania w oknie 8 ms, współdzieli to samo żąda
 i przechowuje maksymalnie 256 ważnych grantów tylko w RAM. Odnawia tokeny z
 30-sekundowym marginesem. Wylogowanie/zmiana sesji/reset unieważniają cache;
 spóźniona odpowiedź nie trafia do nowej sesji. Cache plików nie wymaga grantów.
+Przygotowanie primuje do ośmiu nadchodzących brakujących grantów przez ten sam
+mechanizm; nie ogranicza paczki do dwóch zajętych slotów downloadu. Zegar jeszcze
+nie działa. Gotowe pliki nie wywołują autoryzacji.
 
 Nie ma wspólnego tokenu do całego bucketu. Autoryzacja użytkownika zachowuje
 dotychczasową politykę — nie dodaje abonamentów ani entitlementów/rate limitów.
@@ -64,6 +72,12 @@ dotychczasową politykę — nie dodaje abonamentów ani entitlementów/rate lim
 3. Zaktualizować/przeładować aplikację. Starszy endpoint odpowiadający 400 na
    filenames uruchamia fallback pojedynczych żądań na czas procesu aplikacji;
    po wdrożeniu backendu restart pozwala ponownie użyć paczek.
+
+Poprawka zgodności: żądanie wysyła również filename pierwszego pliku. Stary
+endpoint może od razu zwrócić jego pojedynczy token (HTTP 200); aplikacja używa
+go tylko do tego pliku i pobiera pozostałe granty osobno. Status HTTP odczytujemy
+również z natywnych obiektów odpowiedzi niebędących instancją globalnego Response.
+401/403 nie uruchamiają obejścia ani nie są zamieniane na „brak pliku”.
 4. Sprawdzić anonimowe 401, poprawną paczkę, inny plik odrzucany przez ten sam
    token, odnowienie i wylogowanie podczas żądania. Nie wypisywać tokenów w logach.
 5. Zmierzyć zimny/ciepły Start → Nauka/egzamin na Android/iOS i wolnej sieci.

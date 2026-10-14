@@ -89,12 +89,42 @@ const db={execAsync:async sql=>native.exec(sql),runAsync:async(sql,...values)=>n
   exam=await r.startActiveExam(db,'B');
   native.prepare('UPDATE active_exam_questions SET question_id=999999 WHERE position=0').run();assert.equal(await r.resumeActiveExam(db),null);
   exam=await r.startActiveExam(db,'B');
-  const clock=await r.questionClock(db,exam.id,0,exam.questions[0]);
+  let clock=await r.questionClock(db,exam.id,0,{...exam.questions[0],mediaFilename:'fixture.wmv'});
   assert.deepEqual(await r.questionClock(db,exam.id,0,exam.questions[0]),clock,'resume must preserve the original deadline');
   const clockDomain=load('src/domain/exam-clock.ts');
   assert.equal(clockDomain.examClockState(clock,clock.readingEndsAt-1).phase,'READING');
-  assert.equal(clockDomain.examClockState(clock,clock.readingEndsAt).phase,'ANSWERING');
+  if(clock.videoDurationSeconds===-1){
+    await assert.rejects(()=>r.finishExamReading(db,exam.id,0),/not ready/,'manual start waits for native video duration');
+    assert.equal(clockDomain.examClockState(clock,clock.readingEndsAt).phase,'MEDIA');
+    clock=await r.configureExamVideoClock(db,exam.id,0,6);
+    assert.deepEqual(await r.configureExamVideoClock(db,exam.id,0,12),clock,'retry cannot change the film timeline');
+    const globalExpiry=(await r.resumeActiveExam(db)).expiresAt;
+    const manualNow=Date.now;
+    const manualTimestamp=clock.readingEndsAt-10000;Date.now=()=>manualTimestamp;
+    try {
+      clock=await r.finishExamReading(db,exam.id,0);
+      assert.equal(clock.readingEndsAt,Date.now());assert.equal(clock.answeringEndsAt,Date.now()+21000,'manual start retains film + full 15-second answer window');
+      assert.deepEqual(await r.finishExamReading(db,exam.id,0),clock,'double tap cannot restart the film or extend time');
+      assert.deepEqual(await r.questionClock(db,exam.id,0,exam.questions[0]),clock,'resume retains the earlier start');
+      assert.equal((await r.resumeActiveExam(db)).expiresAt,globalExpiry,'manual start never changes the overall deadline');
+      await assert.rejects(()=>r.finishExamReading(db,exam.id,1),/changed/,'stale question callback cannot alter the next clock');
+    } finally {Date.now=manualNow;}
+    assert.equal(clockDomain.examClockState(clock,clock.readingEndsAt+6000).phase,'MEDIA','wait for actual player end, not only duration metadata');
+    const now=Date.now;
+    Date.now=()=>clock.readingEndsAt+6500;
+    try{clock=await r.completeExamVideoClock(db,exam.id,0);
+      assert.equal(clock.answeringEndsAt-clock.videoFinishedAt,15000);
+      assert.deepEqual(await r.completeExamVideoClock(db,exam.id,0),clock,'completion is idempotent');
+    }finally{Date.now=now;}
+  }
+  assert.equal(clockDomain.examClockState(clock,clock.videoFinishedAt??clock.readingEndsAt).phase,'ANSWERING');
   assert(clockDomain.examClockState(clock,clock.answeringEndsAt).expired);
+  const storedClock=JSON.parse(native.prepare('SELECT value FROM settings WHERE key=?').get(`exam-clock:${exam.id}`).value);
+  assert.deepEqual(await r.finishExamReading(db,exam.id,0),storedClock,'late click after automatic transition is a no-op');
+  await r.saveActiveChoice(db,exam.id,0,exam.questions[0].id,'T');
+  assert.equal((await r.resumeActiveExam(db)).index,0,'a choice does not advance');
+  await r.saveActiveChoice(db,exam.id,0,exam.questions[0].id,'N');
+  assert.equal((await r.resumeActiveExam(db)).selections[exam.questions[0].id],'N','current choice can change and survive resume');
   const choices=Object.fromEntries(exam.questions.map(q=>[q.id,q.correctAnswer]));
   const failCompletion={...db,withExclusiveTransactionAsync:fn=>db.withExclusiveTransactionAsync(tx=>fn({...tx,runAsync:async(sql,...v)=>{
     if(sql.startsWith('INSERT INTO exam_answers'))throw Error('synthetic completion failure');return tx.runAsync(sql,...v);
@@ -109,6 +139,19 @@ const db={execAsync:async sql=>native.exec(sql),runAsync:async(sql,...values)=>n
   assert.equal((await r.recentExams(db,12,'A')).length,0);
   assert.equal(await r.examReadiness(db,'A'),null);assert.equal((await r.examReadiness(db,'B')).averageScore,74);
   assert.equal((await r.weakAreas(db,'A')).length,0);
+  exam=await r.startActiveExam(db,'B');
+  const photoClock=await r.questionClock(db,exam.id,0,{...exam.questions[0],mediaFilename:null});
+  const photoNow=Date.now,photoTimestamp=photoClock.readingEndsAt-10000;Date.now=()=>photoTimestamp;
+  try{
+    const failing={...db,withExclusiveTransactionAsync:fn=>db.withExclusiveTransactionAsync(tx=>fn({...tx,runAsync:async()=>{throw Error('clock write failed');}}))};
+    await assert.rejects(()=>r.finishExamReading(failing,exam.id,0),/write failed/);
+    assert.deepEqual(await r.questionClock(db,exam.id,0,exam.questions[0]),photoClock,'failed manual start preserves original clock');
+    const earlyPhoto=await r.finishExamReading(db,exam.id,0);
+    assert.equal(earlyPhoto.answeringEndsAt-photoTimestamp,15000,'photo/no-media early start receives exactly 15 seconds');
+    assert.deepEqual(await r.finishExamReading(db,exam.id,0),earlyPhoto);
+    native.prepare('UPDATE active_exam SET current_index=20').run();
+    await assert.rejects(()=>r.finishExamReading(db,exam.id,20),/Not a basic/,'specialist 50-second phase cannot be shortened');
+  }finally{Date.now=photoNow;}
   exam=await r.startActiveExam(db,'B');
   await r.clearActiveExam(db);assert.equal(await r.resumeActiveExam(db),null);
   assert.equal(native.prepare('SELECT COUNT(*) AS n FROM questions').get().n,3518);

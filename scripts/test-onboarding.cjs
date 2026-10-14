@@ -21,6 +21,7 @@ function load(file){if(cache.has(file))return cache.get(file);const exports={};c
     if(name==='@/context/app-theme-context')return {useAppTheme:()=>({colors:load('src/constants/theme.ts').Colors[theme]})};
     if(name==='@/context/tab-bar-context')return {TabBarContext:{}};
     if(name==='@/components/skeleton')return {LoadingError:'LoadingError',LoadingSkeleton:'LoadingSkeleton'};
+    if(name==='@/components/media-account-card')return {MediaAccountCard:'MediaAccountCard'};
     if(name==='@/components/ui/app-controls')return load('src/components/ui/app-controls.tsx');
     if(name==='@/global.css')return {};
     if(name.startsWith('@/assets/'))return require(path.join(root,name.slice(2)));

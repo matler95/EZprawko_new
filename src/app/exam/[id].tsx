@@ -2,7 +2,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import { useAppTheme, type AppTheme } from "@/context/app-theme-context";
 import { useFocusEffect, useLocalSearchParams, router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Alert,
   BackHandler,
@@ -18,17 +18,22 @@ import { QuestionMedia } from "@/components/question-media";
 import { BasicAnswerButtons } from "@/components/basic-answer-buttons";
 import { AnimatedProgress } from "@/components/animated-progress";
 import { ExamTimer } from "@/components/exam-timer";
-import { examClockState, type ExamClock } from "@/domain/exam-clock";
+import { examClockState, isExamVideo, type ExamClock } from "@/domain/exam-clock";
 import { QuestionTransition } from "@/components/question-transition";
 import { LoadingError } from "@/components/skeleton";
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
 import type { QuestionLanguage } from "@/database/translations";
 import { TabBarContext } from "@/context/tab-bar-context";
+import { recordMediaDiagnostic } from '@/services/media-diagnostics';
 import {
   clearActiveExam,
   resumeActiveExam,
   saveActiveProgress,
+  saveActiveChoice,
   questionClock,
+  finishExamReading,
+  configureExamVideoClock,
+  completeExamVideoClock,
   saveCompletedExam,
   type Question,
 } from "@/database/repository";
@@ -56,7 +61,7 @@ function ActiveExamScreen({ id }: { id: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const advanceLock = useRef(false);
   const finishLock = useRef(false);
-  const retryAction = useRef<{ type: 'finish'; answers: Record<number, string> } | { type: 'advance'; answer: string | null } | null>(null);
+  const retryAction = useRef<{ type: 'finish'; answers: Record<number, string> } | { type: 'advance'; answer: string | null } | { type: 'choice'; answer: string } | { type: 'reading' } | { type: 'videoDuration'; duration: number } | { type: 'videoEnd'; finishedAt: number } | null>(null);
   const [globalSeconds, setGlobalSeconds] = useState(25 * 60);
 
   const [isAdvancing, setIsAdvancing] = useState(false);
@@ -66,11 +71,45 @@ function ActiveExamScreen({ id }: { id: string }) {
   const [reload, setReload] = useState(0);
 
   const question = questions[index];
+  const [readyMedia, setReadyMedia] = useState<number | null>(null);
+  const [completedVideo, setCompletedVideo] = useState<number | null>(null);
+  const configuringVideo = useRef<string | null>(null);
+  const visibleMedia = useRef('');
+  useLayoutEffect(() => {
+    visibleMedia.current = `${sessionId}:${index}`;
+    return () => { visibleMedia.current = ''; };
+  }, [sessionId, index]);
+  const hasVideo = isExamVideo(question?.mediaFilename);
+  const mediaReady = !question?.mediaFilename || readyMedia === question.id;
   const clockReady = clock?.index === index;
   const timing = clockReady && clock ? examClockState(clock, now) : { phase: 'READING' as const, seconds: 0, expired: false };
   const phase = timing.phase;
   const clockKey = question ? `${question.id}:${phase}` : '';
   const questionSeconds = timing.seconds;
+  const configureVideo = useCallback(async (duration: number) => {
+    if (!sessionId || !clock || clock.videoDurationSeconds !== -1) return;
+    const key = `${sessionId}:${index}`;
+    if (configuringVideo.current === key) return;
+    configuringVideo.current = key;
+    try {
+      const value = await configureExamVideoClock(db, sessionId, index, duration);
+      if (visibleMedia.current === key) { setClock(value); setNow(Date.now()); if (retryAction.current?.type === 'videoDuration') retryAction.current = null; }
+    } catch {
+      if (visibleMedia.current === key) { retryAction.current = { type: 'videoDuration', duration }; setActionError(t('Nie udało się odczytać czasu pytania. Wróć do panelu i wznów próbę.')); }
+    } finally { if (configuringVideo.current === key) configuringVideo.current = null; }
+  }, [clock, db, index, sessionId, t]);
+  const finishVideo = useCallback(async (finishedAt?: number) => {
+    if (!sessionId || !question) return;
+    const key = `${sessionId}:${index}`;
+    const endedAt = finishedAt ?? Date.now();
+    if (clock?.videoDurationSeconds === undefined) { setCompletedVideo(question.id); return; }
+    try {
+      const value = await completeExamVideoClock(db, sessionId, index, endedAt);
+      if (visibleMedia.current === key) { setClock(value); setCompletedVideo(question.id); setNow(Date.now()); if (retryAction.current?.type === 'videoEnd') retryAction.current = null; }
+    } catch {
+      if (visibleMedia.current === key) { retryAction.current = { type: 'videoEnd', finishedAt: endedAt }; setActionError(t('Nie udało się odczytać czasu pytania. Wróć do panelu i wznów próbę.')); }
+    }
+  }, [clock, db, index, question, sessionId, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,6 +120,7 @@ function ActiveExamScreen({ id }: { id: string }) {
 
   useEffect(() => {
     let active = true;
+    const startedAt = Date.now();
     void resumeActiveExam(db).then((exam) => {
       if (!active) return;
       if (!exam || exam.id !== id) {
@@ -101,7 +141,11 @@ function ActiveExamScreen({ id }: { id: string }) {
       setSelections(exam.selections);
 
       setLoadFailed(false);
-    }).catch(() => { if (active) setLoadFailed(true); });
+      recordMediaDiagnostic({stage:'screen-load',kind:'mixed',items:exam.questions.length,elapsedMs:Date.now()-startedAt,status:'ok'});
+    }).catch(() => { if (active) {
+      recordMediaDiagnostic({stage:'screen-load',kind:'mixed',elapsedMs:Date.now()-startedAt,status:'error'});
+      setLoadFailed(true);
+    } });
     return () => {
       active = false;
     };
@@ -169,10 +213,10 @@ function ActiveExamScreen({ id }: { id: string }) {
     const transition = setTimeout(() => {
       if (advanceLock.current || finishLock.current) return;
       if (globalSeconds === 0 && questions.length) void finishExam(selections);
-      else if (clockReady && timing.expired) void advance(null);
+      else if (clockReady && timing.expired && question) void advance(selections[question.id] ?? null);
     }, 0);
     return () => clearTimeout(transition);
-  }, [actionError, advance, clockReady, finishExam, globalSeconds, isAdvancing, isFinishing, questions.length, result, selections, timing.expired]);
+  }, [actionError, advance, clockReady, finishExam, globalSeconds, isAdvancing, isFinishing, question, questions.length, result, selections, timing.expired]);
 
   const abandonExam = useCallback(() => {
     if (advanceLock.current || finishLock.current) return;
@@ -193,13 +237,46 @@ function ActiveExamScreen({ id }: { id: string }) {
     return () => back.remove();
   }, [abandonExam, result]));
 
+  const persistChoice = useCallback(async (answer: string) => {
+    if (!question || !sessionId || advanceLock.current || finishLock.current || !userDataWritable()) return;
+    advanceLock.current = true; setIsAdvancing(true); setActionError(null);
+    const revision = userDataRevision();
+    setSelections(previous => ({ ...previous, [question.id]: answer }));
+    try {
+      await saveActiveChoice(db, sessionId, index, question.id, answer);
+      if (userDataWritable(revision)) retryAction.current = null;
+    } catch {
+      retryAction.current = { type: 'choice', answer };
+      setActionError(t('Nie udało się zapisać odpowiedzi. Ponów zapis — zachowamy wybrany wariant.'));
+    } finally { advanceLock.current = false; setIsAdvancing(false); }
+  }, [db, index, question, sessionId, t]);
+  const startQuestionMedia = useCallback(async () => {
+    if (!sessionId || !clockReady || !clock || !question || question.scope !== 'PODSTAWOWY' || advanceLock.current || finishLock.current) return;
+    if (expiresAt && Date.now() >= expiresAt) { void finishExam(selections); return; }
+    if (phase !== 'READING') {
+      if (retryAction.current?.type === 'reading') { retryAction.current = null; setActionError(null); }
+      return;
+    }
+    if (!mediaReady || (hasVideo && !(clock.videoDurationSeconds && clock.videoDurationSeconds > 0))) return;
+    advanceLock.current = true; setIsAdvancing(true); setActionError(null);
+    const key = `${sessionId}:${index}`;
+    try {
+      const value = await finishExamReading(db, sessionId, index);
+      if (visibleMedia.current === key) { retryAction.current = null; setClock(value); setNow(Date.now()); }
+    } catch {
+      if (visibleMedia.current === key) {
+        retryAction.current = { type: 'reading' };
+        setActionError(t('Nie udało się rozpocząć tego etapu. Spróbuj ponownie.'));
+      }
+    } finally { advanceLock.current = false; setIsAdvancing(false); }
+  }, [clock, clockReady, db, expiresAt, finishExam, hasVideo, index, mediaReady, phase, question, selections, sessionId, t]);
   const chooseAnswer = useCallback((answer: string) => {
     if (advanceLock.current || finishLock.current) return;
-    if (!clockReady || phase !== 'ANSWERING' || actionError || isAdvancing || isFinishing || !clock || !expiresAt) return;
+    if (!clockReady || phase !== 'ANSWERING' || !mediaReady || (hasVideo && completedVideo !== question?.id) || actionError || isAdvancing || isFinishing || !clock || !expiresAt) return;
     const timestamp = Date.now();
     if (timestamp >= expiresAt) void finishExam(selections);
-    else void advance(timestamp < clock.answeringEndsAt ? answer : null);
-  }, [actionError, advance, clock, clockReady, expiresAt, finishExam, isAdvancing, isFinishing, phase, selections]);
+    else if (timestamp < clock.answeringEndsAt) void persistChoice(answer);
+  }, [actionError, clock, clockReady, completedVideo, expiresAt, finishExam, hasVideo, isAdvancing, isFinishing, mediaReady, persistChoice, phase, question?.id, selections]);
 
   if (result) {
     return (
@@ -225,11 +302,11 @@ function ActiveExamScreen({ id }: { id: string }) {
     );
   }
 
-  if (!question || !sessionId) {
+  if (!question || !sessionId || !clockReady) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.loading}>
-          {loadFailed ? <>
+          {loadFailed || actionError ? <>
             <LoadingError onRetry={() => setReload((value) => value + 1)} />
             <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => router.replace("/")}><Text style={styles.primaryButtonText}>{t("Wróć do panelu")}</Text></Pressable>
           </> : <Text style={styles.muted}>{t("Przygotowujemy egzamin…")}</Text>}
@@ -238,11 +315,11 @@ function ActiveExamScreen({ id }: { id: string }) {
     );
   }
 
-  const canAnswer = clockReady && phase === "ANSWERING" && globalSeconds > 0 && !isAdvancing && !isFinishing && !actionError;
+  const canAnswer = clockReady && phase === "ANSWERING" && mediaReady && (!hasVideo || completedVideo === question.id) && globalSeconds > 0 && !isAdvancing && !isFinishing && !actionError;
   const phaseCopy =
     phase === "ANSWERING"
       ? t("Wybierz odpowiedź")
-      : t("Zapoznaj się z pytaniem");
+      : phase === 'MEDIA' ? t('Oglądaj film') : t("Zapoznaj się z pytaniem");
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -252,7 +329,7 @@ function ActiveExamScreen({ id }: { id: string }) {
         </Pressable>
         <View style={styles.timerGroup}>
           <ExamTimer seconds={globalSeconds} />
-          <ExamTimer key={clockKey} seconds={questionSeconds} question active={phase === "ANSWERING" && globalSeconds > 0 && !isAdvancing && !isFinishing} />
+          {phase !== 'MEDIA' && <ExamTimer key={clockKey} seconds={questionSeconds} question active={phase === "ANSWERING" && globalSeconds > 0 && !isAdvancing && !isFinishing} />}
         </View>
         <Text style={styles.position}>{index + 1}/32</Text>
       </View>
@@ -264,34 +341,61 @@ function ActiveExamScreen({ id }: { id: string }) {
         <View style={styles.phaseNotice}>
           <Text style={styles.phaseNoticeText}>{t(phaseCopy)}</Text>
         </View>
-        {clockReady && <QuestionMedia examMode filename={question.mediaFilename} />}
+        <Text style={styles.question}>{question.question}</Text>
+        {language !== question.contentLanguage ? <Text style={styles.muted}>{t("Brak oficjalnego tłumaczenia — pytanie w języku polskim.")}</Text> : null}
+        {phase === 'READING' && <View style={styles.readingAction}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !mediaReady || isAdvancing || isFinishing || Boolean(actionError) || (hasVideo && !(clock.videoDurationSeconds && clock.videoDurationSeconds > 0)) }}
+            disabled={!mediaReady || isAdvancing || isFinishing || Boolean(actionError) || (hasVideo && !(clock.videoDurationSeconds && clock.videoDurationSeconds > 0))}
+            onPress={() => void startQuestionMedia()} style={[styles.primaryButton, styles.readingButton, (!mediaReady || isAdvancing || isFinishing || Boolean(actionError) || (hasVideo && !(clock.videoDurationSeconds && clock.videoDurationSeconds > 0))) && styles.readingButtonDisabled]}>
+            <Text style={styles.primaryButtonText}>{t(hasVideo ? 'Odtwórz film' : 'Przejdź do odpowiedzi')}</Text>
+          </Pressable>
+          <Text style={styles.readingHint}>{t(hasVideo ? 'Film ruszy także automatycznie po czasie na czytanie.' : 'Po czasie na czytanie automatycznie przejdziesz do odpowiedzi.')}</Text>
+        </View>}
+        <View style={hasVideo && phase === 'READING' && mediaReady ? styles.hiddenMedia : undefined} accessibilityElementsHidden={hasVideo && phase === 'READING' && mediaReady}>
+        {clockReady && <QuestionMedia questionId={question.id} examMode filename={question.mediaFilename}
+          examPlayback={phase === 'READING' ? 'waiting' : hasVideo && completedVideo !== question.id && clock?.videoFinishedAt === undefined ? 'playing' : 'finished'}
+          videoStartedAt={clock?.readingEndsAt} onVideoDuration={configureVideo}
+          onReadyChange={ready => { if (visibleMedia.current === `${sessionId}:${index}`) setReadyMedia(ready ? question.id : null); }}
+          onVideoEnd={finishVideo} />}
+        </View>
         {actionError && <View style={styles.phaseNotice}>
           <Text accessibilityRole="alert" style={styles.muted}>{t(actionError)}</Text>
           <Pressable accessibilityRole="button" style={styles.primaryButton} onPress={() => {
             const retry = retryAction.current;
             if (retry?.type === 'finish') void finishExam(retry.answers);
             else if (retry?.type === 'advance') void advance(retry.answer);
+            else if (retry?.type === 'choice') void persistChoice(retry.answer);
+            else if (retry?.type === 'reading') void startQuestionMedia();
+            else if (retry?.type === 'videoDuration') { setActionError(null); void configureVideo(retry.duration); }
+            else if (retry?.type === 'videoEnd') { setActionError(null); void finishVideo(retry.finishedAt); }
             else setReload(value => value + 1);
           }}>
             <Text style={styles.primaryButtonText}>{t("Ponów zapis")}</Text>
           </Pressable>
         </View>}
-        <Text style={styles.question}>{question.question}</Text>
-        {language !== question.contentLanguage ? <Text style={styles.muted}>{t("Brak oficjalnego tłumaczenia — pytanie w języku polskim.")}</Text> : null}
-        <View style={styles.answers}>
-          {question.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={question.answers} disabled={!canAnswer} locked={phase !== "ANSWERING"} onAnswer={chooseAnswer} /> : question.answers.map((answer) => (
+        {phase === 'ANSWERING' && <><View style={styles.answers}>
+          {question.scope === "PODSTAWOWY" ? <BasicAnswerButtons neutral answers={question.answers} selectedAnswer={selections[question.id]} disabled={!canAnswer} locked={phase !== "ANSWERING"} onAnswer={chooseAnswer} /> : question.answers.map((answer) => (
             <Pressable
-              accessibilityState={{ disabled: !canAnswer }}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canAnswer, selected: selections[question.id] === answer.label }}
               disabled={!canAnswer}
               key={answer.label}
               onPress={() => chooseAnswer(answer.label)}
-              style={[styles.answer, !canAnswer && styles.answerDisabled]}
+              style={[styles.answer, !canAnswer && styles.answerDisabled, selections[question.id] === answer.label && styles.answerSelected]}
             >
-              <Text style={styles.answerLetter}>{answer.label}</Text>
+              <Text style={[styles.answerLetter, selections[question.id] === answer.label && styles.answerLetterSelected]}>{answer.label}</Text>
               <Text style={styles.answerText}>{answer.answer}</Text>
+              <View accessible={false} style={[styles.selectionRing, selections[question.id] === answer.label && styles.selectionRingActive]}>
+                {selections[question.id] === answer.label ? <View style={styles.selectionDot} /> : null}
+              </View>
             </Pressable>
           ))}
         </View>
+        <Pressable accessibilityRole="button" disabled={!canAnswer} accessibilityState={{ disabled: !canAnswer }}
+          onPress={() => void advance(selections[question.id] ?? null)} style={[styles.primaryButton, !canAnswer && styles.answerDisabled]}>
+          <Text style={[styles.primaryButtonText, !canAnswer && { color: colors.textSecondary }]}>{t('Następne pytanie')}</Text>
+        </Pressable>
+        </>}
         </QuestionTransition>
       </ScrollView>
     </SafeAreaView>
@@ -316,8 +420,18 @@ const createStyles = (colors: AppTheme) => StyleSheet.create({
   phaseNoticeText: { color: colors.textPrimary, fontSize: 13, fontWeight: "700" },
   question: { color: colors.textPrimary, fontSize: 23, fontWeight: "700", lineHeight: 31, marginBottom: 24, marginTop: 4 },
   answers: { gap: 12 },
+  readingAction: { gap: 8, marginBottom: 16 },
+  readingButton: { marginTop: 0 },
+  readingButtonDisabled: { opacity: 0.45 },
+  hiddenMedia: { height: 0, overflow: 'hidden' },
+  readingHint: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
   answer: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: "row", minHeight: 68, padding: 16 },
   answerDisabled: { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+  answerSelected: { borderColor: colors.selection, borderWidth: 3, backgroundColor: colors.selectionSurface },
+  answerLetterSelected: { backgroundColor: colors.selection, color: colors.background },
+  selectionRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
+  selectionRingActive: { borderColor: colors.selection },
+  selectionDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.selection },
   answerLetter: { backgroundColor: colors.primarySurface, borderRadius: 16, color: colors.primaryText, fontWeight: "800", height: 32, marginRight: 12, overflow: "hidden", paddingTop: 7, textAlign: "center", width: 32 },
   answerText: { color: colors.textPrimary, flex: 1, fontSize: 15, lineHeight: 21 },
   result: { alignItems: "center", flexGrow: 1, justifyContent: "center", padding: 32 },

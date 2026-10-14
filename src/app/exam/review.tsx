@@ -126,7 +126,7 @@ export default function ExamReviewScreen() {
             {selected ? (
               <ScrollView contentContainerStyle={styles.sheetContent}>
                 <Text style={styles.kicker}>{t("PYTANIE")} {selected.position + 1} · {selected.points} {t("PKT")}</Text>
-                <QuestionMedia filename={selected.mediaFilename} />
+                <QuestionMedia questionId={selected.id} filename={selected.mediaFilename} />
                 <Text style={styles.question}>{selected.question}</Text>
                 {selected.contentLanguage !== review.language ? <Text style={styles.muted}>{t("Brak oficjalnego tłumaczenia — pytanie w języku polskim.")}</Text> : null}
                 {selected.scope === "PODSTAWOWY" ? <BasicAnswerButtons answers={selected.answers} selectedAnswer={selected.selectedAnswer} correctAnswer={selected.correctAnswer} /> : selected.answers.map((answer) => {

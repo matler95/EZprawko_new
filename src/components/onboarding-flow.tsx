@@ -13,6 +13,7 @@ import { setUiLanguage } from '@/domain/ui-language';
 import { emptyOnboarding, readOnboardingDraft, saveOnboardingDraft, finishOnboarding, type OnboardingDraft } from '@/database/onboarding';
 import { LoadingError, LoadingSkeleton } from '@/components/skeleton';
 import { AppButton, AppCard, AppStatus, AppHeading } from '@/components/ui/app-controls';
+import { MediaAccountCard } from '@/components/media-account-card';
 
 export type OnboardingDestination = 'study' | 'dashboard' | 'settings';
 export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingCategory, destination: OnboardingDestination) => void }) {
@@ -85,6 +86,8 @@ export function OnboardingFlow({ onComplete }: { onComplete: (category: DrivingC
         <AppCard><AppHeading>{t("Nauka — bez presji czasu")}</AppHeading><Text style={s.copy}>{t("Po odpowiedzi zobaczysz poprawny wybór i dostępne wyjaśnienie. Wracaj do pytań i powtarzaj błędy.")}</Text></AppCard>
         <AppCard><AppHeading>{t("Egzamin próbny — jak w WORD")}</AppHeading><Text style={s.copy}>{t("32 pytania, 25 minut, próg 68/74. Nie wracasz do poprzednich pytań; wynik i odpowiedzi zobaczysz na końcu.")}</Text></AppCard>
         <Text style={s.copy}>{t('Pobieranie zdjęć i filmów wymaga logowania.')}</Text>
+        <Text style={s.copy}>{t('Zaloguj się teraz, aby przygotować egzamin w tle. Możesz też zrobić to później.')}</Text>
+        <MediaAccountCard />
         <Text style={s.copy}>{t("Postępy zapisują się tylko na tym urządzeniu. Logowanie nie tworzy kopii ani synchronizacji w chmurze.")}</Text>
         <AppButton variant='link' label={t(detailsExpanded ? 'Ukryj informacje o materiałach offline' : 'Jak działają materiały offline?')}
           accessibilityState={{ expanded: detailsExpanded }} onPress={() => setDetailsExpanded(value => !value)} />

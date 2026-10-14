@@ -4,14 +4,15 @@ const root = path.resolve(__dirname, '..'), modules = new Map(), files = new Map
 const directory = 'file:///cache/question-media/';
 const native = { cacheDirectory: 'file:///cache/', makeDirectoryAsync: async () => {},
   getInfoAsync: async uri => files.has(uri) ? { exists: true, isDirectory: false, size: files.get(uri), modificationTime: 1 } : { exists: false },
-  downloadAsync: async (url, uri, options) => { downloads.push({ url, options }); files.set(uri, 123); return { status: 200 }; },
+  downloadAsync: async (url, uri, options) => { downloads.push({ url, options }); files.set(uri, require('../assets/data/media-delivery.json').sizes[decodeURIComponent(new URL(url).pathname.slice('/media/'.length))] ?? 123); return { status: 200 }; },
   moveAsync: async ({ from, to }) => { files.set(to, files.get(from)); files.delete(from); },
   deleteAsync: async uri => files.delete(uri),
   readDirectoryAsync: async () => [...files.keys()].filter(uri => uri.startsWith(directory)).map(uri => uri.slice(directory.length)) };
 function load(file) {
   if (modules.has(file)) return modules.get(file);
   const exports = {};
-  new Function('require', 'exports', 'process', ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(name => {
+  new Function('require', 'exports', 'process', ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop:true } }).outputText)(name => {
+    if (name.startsWith('@/assets/')) return require(path.join(root,name.slice(2)));
     if (name === 'expo-file-system/legacy') return native;
     if (name === '@/services/media-auth') return { mediaGrant: async key => { grants.push(key); return 'test-grant'; } };
     if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);

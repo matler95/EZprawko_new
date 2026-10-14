@@ -179,7 +179,7 @@ export default function SettingsScreen() {
         <MediaDownloadCard disabled={clearing} canStart={() => !clearLock.current} onBusyChange={downloadChanged} />
         <AppCard>
           <Text style={s.label}>{t("Pobrane materiały")}</Text>
-          <Text style={s.sub}>{cacheReading ? t("Sprawdzanie zajętości…") : cacheError ? t("Zajętość aktualnie niedostępna.") : cache === null ? t("Zajętość nieznana.") : t("{0} MB · limit 1 GB", [formatUiNumber(cache / 1024 / 1024, interfaceLanguage, 1)])}</Text>
+          <Text style={s.sub}>{cacheReading ? t("Sprawdzanie zajętości…") : cacheError ? t("Zajętość aktualnie niedostępna.") : cache === null ? t("Zajętość nieznana.") : t("{0} MiB · limit 200 MiB", [formatUiNumber(cache / 1024 / 1024, interfaceLanguage, 1)])}</Text>
           <AppButton variant='link' label={t(cacheDetails ? 'Ukryj informacje o materiałach offline' : 'Jak działają materiały offline?')}
             accessibilityState={{ expanded: cacheDetails }} onPress={() => setCacheDetails(value => !value)} />
           {cacheDetails && <Text style={s.sub}>{t('Pobrane materiały działają offline, dopóki są w pamięci podręcznej. Mogą zostać usunięte, aby zwolnić miejsce; wtedy wymagają ponownego pobrania.')}</Text>}

@@ -13,7 +13,11 @@ try { questions = db.prepare('SELECT id,categories,media_filename FROM questions
 finally { db.close(); }
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/media-manifest.json'), 'utf8'));
 const mapping = {};
-new Function('exports', 'process', ts.transpileModule(fs.readFileSync(path.join(root, 'src/config/media.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(mapping, { env: {} });
+new Function('exports', 'process', 'require', ts.transpileModule(fs.readFileSync(path.join(root, 'src/config/media.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS,esModuleInterop:true } }).outputText)(mapping, { env: {} }, name => {
+  if(name==='@/assets/data/media-delivery.json')return require('../assets/data/media-delivery.json');
+  if(name==='@/domain/media-version')return {mediaDeliveryVersion:'local'};
+  throw Error(name);
+});
 const archiveNames = ['multimedia_do_pytan.zip', 'Multimedia_do_pytań_-_cz_2_02042026.zip'];
 const available = archiveNames.filter(name => fs.existsSync(path.join(root, name)));
 const inventory = JSON.parse(execFileSync('python', [path.join(root, 'scripts/media-archive-inventory.py'), ...available.map(name => path.join(root, name))], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }));

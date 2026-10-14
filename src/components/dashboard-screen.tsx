@@ -70,7 +70,7 @@ export default function DashboardScreen() {
       setReadiness(nextReadiness);
       setActiveExamId(active?.id ?? null);
       setTopics(insights.topics); setHistoricalMistakes(insights.historicalMistakes);
-      if (completed && !active) void warmRecommendedStudy(db, category, insights, () => mounted && current === request).catch(() => {});
+      if (completed && !active && !startLock.current) void warmRecommendedStudy(db, category, insights, () => mounted && current === request && !startLock.current).catch(() => {});
       setOnboardingChecked(true);
     }).catch(() => { if (mounted && current === request) setFailedRevision(reload); }); };
     refresh();
@@ -89,7 +89,7 @@ export default function DashboardScreen() {
     setMediaProgress(null);
     setStartError(null);
     try {
-      const prepared = await ensurePreparedExam(db, category, progress => { if (!prepareCancelled.current) setMediaProgress(progress); });
+      const prepared = await ensurePreparedExam(db, category, progress => { if (!prepareCancelled.current) setMediaProgress(progress); }, () => !prepareCancelled.current);
       if (prepareCancelled.current) return;
       const active = await startActiveExam(db, category,
         async (questions) => { await verifyPreparedMedia(questions);

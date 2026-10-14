@@ -27,7 +27,7 @@ const text=tree=>typeof tree==='string'||typeof tree==='number'?String(tree):tre
 const render=Screen=>{si=ri=0;effects=[];focuses=[];return Screen();};
 const tick=()=>new Promise(setImmediate);
 (async()=>{
-  const Signs=load('src/app/signs.tsx').default;
+  const Signs=load('src/app/(tabs)/signs.tsx').default;
   let tree=render(Signs);const cleanup=focuses.at(-1)();await tick();tree=render(Signs);
   const list=nodes(tree).find(n=>n.type==='FlatList');
   assert(nodes(list.props.ListHeaderComponent).filter(n=>n.type==='Pressable').every(n=>n.props.style[0].minHeight>=48));

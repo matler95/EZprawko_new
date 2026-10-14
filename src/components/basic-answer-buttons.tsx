@@ -10,6 +10,7 @@ type Props = {
   locked?: boolean;
   selectedAnswer?: string | null;
   correctAnswer?: string;
+  neutral?: boolean;
   onAnswer?: (label: string) => void;
 };
 
@@ -19,7 +20,7 @@ export function basicAnswerText(answers: Answer[], key: string | null | undefine
   return (answers.find((answer) => answer.label === key)?.answer ?? (key === "T" ? "Tak" : "Nie")).toLocaleUpperCase();
 }
 
-export function BasicAnswerButtons({ answers, disabled = false, locked = false, selectedAnswer, correctAnswer, onAnswer }: Props) {
+export function BasicAnswerButtons({ answers, disabled = false, locked = false, selectedAnswer, correctAnswer, neutral = false, onAnswer }: Props) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const s = styles(colors);
@@ -35,9 +36,12 @@ export function BasicAnswerButtons({ answers, disabled = false, locked = false, 
         accessibilityLabel={[basicAnswerText(answers, key), marks].filter(Boolean).join(", ")}
         accessibilityState={{ disabled: unavailable, selected }} disabled={unavailable}
         onPress={() => { if (!unavailable) onAnswer?.(key); }}
-        style={[s.button, key === "T" ? s.yes : s.no, selected && s.selected, review && correct && s.correct, review && selected && !correct && s.wrong, locked && s.locked]}>
-        <Text style={[s.label, key === "T" ? s.yesText : s.noText, locked && s.lockedText]}>{basicAnswerText(answers, key)}</Text>
-        {marks ? <Text style={s.mark}>{marks}</Text> : null}
+        style={[s.button, key === "T" ? s.yes : s.no, neutral && s.neutral, selected && s.selected, neutral && selected && s.examSelected, review && correct && s.correct, review && selected && !correct && s.wrong, locked && s.locked]}>
+        {neutral && !review ? <View accessible={false} style={[s.selectionRing, selected && s.selectionRingActive]}>
+          {selected ? <View style={s.selectionDot} /> : null}
+        </View> : null}
+        <Text style={[s.label, key === "T" ? s.yesText : s.noText, neutral && s.neutralText, neutral && selected && s.examSelectedText, locked && s.lockedText]}>{basicAnswerText(answers, key)}</Text>
+        {marks && (!neutral || review) ? <Text style={s.mark}>{marks}</Text> : null}
       </Pressable>;
     })}</View>
   </View>;
@@ -50,7 +54,13 @@ const styles = (colors: AppTheme) => StyleSheet.create({
   no: { backgroundColor: colors.errorSurface, borderColor: colors.error },
   label: { fontSize: 24, fontWeight: "700", textAlign: "center" },
   yesText: { color: colors.success }, noText: { color: colors.error },
+  neutral: { backgroundColor: colors.surface, borderColor: colors.border }, neutralText: { color: colors.textPrimary },
   selected: { borderWidth: 4 }, correct: { backgroundColor: colors.successSurface, borderColor: colors.success },
+  examSelected: { borderWidth: 4, borderColor: colors.selection, backgroundColor: colors.selectionSurface },
+  examSelectedText: { color: colors.selectionText },
+  selectionRing: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  selectionRingActive: { borderColor: colors.selection },
+  selectionDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.selection },
   wrong: { backgroundColor: colors.errorSurface, borderColor: colors.error },
   mark: { color: colors.textPrimary, fontSize: 12, textAlign: "center", lineHeight: 18 },
   locked: { backgroundColor: colors.disabledSurface, borderColor: colors.border }, lockedText: { color: colors.textSecondary },

@@ -34,12 +34,12 @@ function text(t) { if (typeof t === 'string' || typeof t === 'number') return St
 function button(tree, label) { return nodes(tree).findLast(n => n.type === 'Pressable' && text(n).trim() === label); }
 function render(Screen) { si = ri = 0; return Screen(); }
 (async () => {
-  const Screen = load('src/app/settings.tsx').default;
+  const Screen = load('src/app/(tabs)/settings.tsx').default;
   for (theme of ['light', 'dark']) {
     states = []; refs = []; writes = clears = 0; language = 'en'; preference = 'system'; cacheBytes = 5242880; cacheReadError = languageReadError = themeError = false;
     render(Screen); const blur = focus(); await tick(); let tree = render(Screen);
-    assert.match(text(tree), /5,0 MB/); assert(button(tree, 'English').props.accessibilityState.checked);
-    load('src/domain/ui-language.ts').setUiLanguage('en');assert(text(render(Screen)).includes('5.0 MB'));
+    assert.match(text(tree), /5,0 MiB/); assert(button(tree, 'English').props.accessibilityState.checked);
+    load('src/domain/ui-language.ts').setUiLanguage('en');assert(text(render(Screen)).includes('5.0 MiB'));
     load('src/domain/ui-language.ts').setUiLanguage('pl');tree=render(Screen);
     assert(!text(tree).includes('Mogą zostać usunięte'));
     const details=button(tree,'Jak działają materiały offline?');assert.equal(details.props.accessibilityState.expanded,false);
@@ -53,15 +53,15 @@ function render(Screen) { si = ri = 0; return Screen(); }
     tree = render(Screen); assert(button(tree, 'Polski').props.accessibilityState.checked); assert.match(text(tree), /zapisano/);
     themeError = true; button(tree, 'Ciemny').props.onPress(); await tick(); tree = render(Screen); assert(button(tree, 'Systemowy').props.accessibilityState.checked); themeError = false;
     button(tree, 'Ciemny').props.onPress(); await tick(); assert(button(render(Screen), 'Ciemny').props.accessibilityState.checked);
-    cacheReadError = true; foreground('active'); await tick(); tree = render(Screen); assert.match(text(tree), /Zajętość aktualnie niedostępna/); assert(!text(tree).includes('0,0 MB'));
-    cacheReadError = false; button(tree, 'Odśwież zajętość').props.onPress(); await tick(); tree = render(Screen); assert.match(text(tree), /5,0 MB/);
+    cacheReadError = true; foreground('active'); await tick(); tree = render(Screen); assert.match(text(tree), /Zajętość aktualnie niedostępna/); assert(!text(tree).includes('0,0 MiB'));
+    cacheReadError = false; button(tree, 'Odśwież zajętość').props.onPress(); await tick(); tree = render(Screen); assert.match(text(tree), /5,0 MiB/);
     const download = nodes(tree).find(n => n.type === '@/components/media-download-card');
     download.props.onBusyChange(true); tree = render(Screen); assert(button(tree, 'Usuń pobrane materiały').props.disabled);
     download.props.onBusyChange(false); await tick(); tree = render(Screen);
     button(tree, 'Usuń pobrane materiały').props.onPress(); assert.equal(clears, 0, 'confirmation precedes deletion'); assert.equal(download.props.canStart(), false, 'synchronous lock blocks download before rerender');
     alert[2][0].onPress(); assert.equal(clears, 0);
     button(render(Screen), 'Usuń pobrane materiały').props.onPress(); clearError = true; alert[2][1].onPress(); await tick(); tree = render(Screen); assert.match(text(tree), /Nie udało się usunąć/); assert(!button(tree, 'Usuń pobrane materiały').props.disabled);
-    clearError = false; button(tree, 'Usuń pobrane materiały').props.onPress(); alert[2][1].onPress(); await tick(); tree = render(Screen); assert.match(text(tree), /0,0 MB/);
+    clearError = false; button(tree, 'Usuń pobrane materiały').props.onPress(); alert[2][1].onPress(); await tick(); tree = render(Screen); assert.match(text(tree), /0,0 MiB/);
     languageReadError = true; foreground('active'); await tick(); tree = render(Screen); assert(button(tree, 'Ponów odczyt języka')); languageReadError = false; language = 'en'; button(tree, 'Ponów odczyt języka').props.onPress(); await tick(); assert(button(render(Screen), 'English').props.accessibilityState.checked);
     saveDelay = new Promise(r => { release = r; }); button(render(Screen), 'Polski').props.onPress(); blur(); release(); await tick(); saveDelay = null;
     focus(); await tick(); tree = render(Screen); assert(button(tree, 'Polski').props.accessibilityState.checked); assert(!button(tree, 'Polski').props.disabled, 'offscreen save must not leave controls locked on return');

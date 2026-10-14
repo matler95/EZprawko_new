@@ -17,6 +17,7 @@ export async function resetUserProgress(db: SQLiteDatabase, allSettings = false)
     for (const { name } of await existingLegacyTables(tx)) await tx.execAsync(`DELETE FROM ${name}`);
     await tx.runAsync("DELETE FROM settings WHERE key LIKE ?", "exam-language:%");
     await tx.runAsync("DELETE FROM settings WHERE key LIKE ?", "exam-clock:%");
+    await tx.runAsync('DELETE FROM settings WHERE key IN (?, ?) OR key LIKE ? OR key LIKE ?', 'exam-reuse', 'prepared-exam', 'exam-exposure:%', 'exam-lineage:%');
     if (allSettings) await tx.runAsync(`DELETE FROM settings WHERE key NOT IN (${catalogKeys.map(() => "?").join(",")})`, catalogKeys);
   });
 }

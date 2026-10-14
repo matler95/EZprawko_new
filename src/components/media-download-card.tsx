@@ -52,7 +52,7 @@ function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBus
       if (request !== generation.current || cancelled.current) return;
       const result = await preloadMedia(filenames, (value) => {
         if (request === generation.current) setProgress(value);
-      }, () => request === generation.current && !cancelled.current);
+      }, () => request === generation.current && !cancelled.current, 'foreground');
       if (request === generation.current) {
         setProgress(result);
         if (result.completed < result.total) setError(t("Pobieranie przerwane. Możesz je ponowić; zapisane pliki zostaną wykorzystane."));
@@ -77,7 +77,7 @@ function CategoryMediaDownloadCard({ category, disabled = false, canStart, onBus
       <View style={styles.copy}>
         <Text style={styles.title}>{t("Materiały offline")}</Text>
         <Text style={styles.detail}>{t(detail)}</Text>
-        <Text style={styles.detail}>{t('To część materiałów kategorii. Zapisane pliki mogą zostać usunięte przez system lub po przekroczeniu limitu 1 GB.')}</Text>
+        <Text style={styles.detail}>{t('To część materiałów kategorii. Zapisane pliki mogą zostać usunięte przez system lub po przekroczeniu limitu 200 MiB.')}</Text>
         {error ? <AppStatus tone="error" message={t(error)} /> : null}
       </View>
       <AppButton variant="gold" disabled={!mediaConfig.enabled || disabled} busy={busy} label={busy ? t('Przygotowujemy…') : error ? t("Spróbuj ponownie") : t("Pobierz")} onPress={preload} />

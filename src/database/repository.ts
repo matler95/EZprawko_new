@@ -5,9 +5,12 @@ import { installQuestionSigns } from "@/database/signs";
 import { getQuestionExplanation, installExplanations } from "@/database/explanations";
 import { categoryClause, isDrivingCategory, type DrivingCategory } from "@/domain/driving-categories";
 import { userDataRevision, userDataWritable } from "@/domain/data-maintenance";
-import { newExamClock, type ExamClock } from '@/domain/exam-clock';
+import { isExamVideo, newExamClock, type ExamClock } from '@/domain/exam-clock';
 import { validExamSelection } from '@/domain/exam-selection';
 import { eligibleQuestionMediaSql, hasAvailableQuestionMedia } from '@/domain/media-eligibility';
+import { markExamExposure, preserveUnseenExam, readExamReuse } from '@/database/exam-reuse';
+import { examPreferencesChanged } from '@/domain/exam-preparation-events';
+import { recordMediaDiagnostic } from '@/services/media-diagnostics';
 
 export type Question = ExamQuestion & {
   question: string;
@@ -108,6 +111,7 @@ export async function topicProgress(db: SQLiteDatabase, category?: string): Prom
 export async function createExam(
   db: SQLiteDatabase,
   category: string,
+  preparationLanguage?: QuestionLanguage,
 ): Promise<Question[]> {
   const rows = await db.getAllAsync<QuestionRow>(
     "SELECT id, scope, points, categories, question, correct_answer, media_filename FROM questions",
@@ -118,8 +122,11 @@ export async function createExam(
     points: row.points,
     categories: JSON.parse(row.categories),
   }));
-  const exam = buildOfficialExam(pool, category);
-  const language = await selectedQuestionLanguage(db);
+  const language = preparationLanguage ?? await selectedQuestionLanguage(db);
+  const seed = await readExamReuse(db, category, language);
+  const exam = buildOfficialExam(pool, category, Math.random, seed);
+  if (seed) recordMediaDiagnostic({stage:'selection',kind:'mixed',elapsedMs:0,status:'ok',reason:exam.reuseFallback,
+    items:exam.questions.filter(q=>seed.retainedIds.includes(q.id)).length});
   const byId = new Map(rows.map((row) => [row.id, row]));
   return Promise.all(
     exam.questions.map(async (examQuestion) => {
@@ -179,6 +186,7 @@ export async function saveCompletedExam(
       await transaction.runAsync('DELETE FROM active_exam_questions WHERE session_id = ?', activeSessionId);
       await transaction.runAsync('DELETE FROM active_exam WHERE id = ?', activeSessionId);
       await transaction.runAsync('DELETE FROM settings WHERE key = ?', `exam-clock:${activeSessionId}`);
+      await transaction.runAsync('DELETE FROM settings WHERE key = ? OR key = ? OR key = ?', 'exam-reuse', `exam-exposure:${activeSessionId}`, `exam-lineage:${activeSessionId}`);
     }
   });
   return { id, score, passed: score >= 68 };
@@ -526,7 +534,7 @@ async function hydrateQuestions(
 export async function startActiveExam(db: SQLiteDatabase, category: string,
   prepare?: (questions: readonly Question[]) => Promise<void>,
   canStart: () => boolean = () => true,
-  prepared?: { category: string; language: QuestionLanguage; questions: Question[] },
+  prepared?: { category: string; language: QuestionLanguage; questions: Question[]; reuseSourceId?: string },
 ) {
   const revision = userDataRevision();
   if (!isDrivingCategory(category)) throw new Error("Unsupported theory exam category");
@@ -534,18 +542,8 @@ export async function startActiveExam(db: SQLiteDatabase, category: string,
   if (prepared && (prepared.category !== category || prepared.language !== language)) throw new Error('Zmieniono ustawienia. Przygotuj próbę ponownie.');
   if (prepared && !validExamSelection(prepared.questions, category)) throw new Error('Nieprawidłowy zestaw egzaminu. Przygotuj próbę ponownie.');
   if (prepared && !prepared.questions.every(question => hasAvailableQuestionMedia(question.id))) throw new Error('Zestaw zawiera niedostępne multimedia. Przygotuj próbę ponownie.');
-  const rows = prepared ? [] : await db.getAllAsync<QuestionRow>(
-    "SELECT id, scope, points, categories FROM questions",
-  );
-  const base = prepared ? { durationSeconds: 1500, questions: prepared.questions } : buildOfficialExam(
-    rows.filter((row) => hasAvailableQuestionMedia(row.id) && JSON.parse(row.categories).includes(category)).map((row) => ({
-      id: row.id,
-      scope: row.scope,
-      points: row.points,
-      categories: JSON.parse(row.categories),
-    })),
-    category,
-  );
+  const expectedReuseSource = prepared ? prepared.reuseSourceId : (await readExamReuse(db, category, language))?.sourceId;
+  const base = { durationSeconds: 1500, questions: prepared?.questions ?? await createExam(db, category) };
   const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   // Hydrate before replacement: a read/translation failure cannot strand a new
   // partial session or destroy the previous resumable attempt.
@@ -556,11 +554,19 @@ export async function startActiveExam(db: SQLiteDatabase, category: string,
     if (!userDataWritable(revision)) throw new Error("Data reset interrupted exam creation");
     if (!canStart()) throw new Error("Exam preparation cancelled");
     expiresAt = Date.now() + base.durationSeconds * 1000;
+    const replaced = await transaction.getFirstAsync<{ id: string }>('SELECT id FROM active_exam LIMIT 1');
+    if (replaced) await transaction.runAsync('DELETE FROM settings WHERE key = ? AND NOT EXISTS (SELECT 1 FROM exam_sessions WHERE id = ?)', `exam-language:${replaced.id}`,replaced.id);
     await transaction.execAsync(
       "DELETE FROM active_exam_questions; DELETE FROM active_exam;",
     );
     await transaction.runAsync('DELETE FROM settings WHERE key LIKE ?', 'exam-clock:%');
+    await transaction.runAsync('DELETE FROM settings WHERE key LIKE ? OR key LIKE ?', 'exam-exposure:%', 'exam-lineage:%');
     if (prepared) await transaction.runAsync("DELETE FROM settings WHERE key = 'prepared-exam'");
+    const reuse = await readExamReuse(transaction, category, language);
+    if (expectedReuseSource !== reuse?.sourceId) throw new Error('Ta próba zmieniła się. Przygotuj egzamin ponownie.');
+    if (reuse) await transaction.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-lineage:${id}`, JSON.stringify(reuse));
+    await transaction.runAsync('DELETE FROM settings WHERE key = ?', 'exam-reuse');
+    await transaction.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-exposure:${id}`, '[]');
     await transaction.runAsync(
       "INSERT INTO active_exam VALUES (?, ?, ?, ?)",
       id,
@@ -670,11 +676,31 @@ export async function saveActiveProgress(
   });
 }
 
-export async function clearActiveExam(db: SQLiteDatabase) {
+/** Save the current neutral selection without advancing or exposing correctness. */
+export async function saveActiveChoice(db: SQLiteDatabase, sessionId: string, index: number, questionId: number, answer: string) {
+  const revision = userDataRevision();
   await db.withExclusiveTransactionAsync(async tx => {
+    if (!userDataWritable(revision)) throw new Error('Data reset interrupted exam');
+    const active = await tx.getFirstAsync<{ current_index: number }>('SELECT current_index FROM active_exam WHERE id = ?', sessionId);
+    if (!active || active.current_index !== index) throw new Error('Exam changed');
+    const position = await tx.getFirstAsync<{ question_id: number }>('SELECT question_id FROM active_exam_questions WHERE session_id = ? AND position = ?', sessionId, index);
+    if (position?.question_id !== questionId) throw new Error('Exam question changed');
+    await tx.runAsync('UPDATE active_exam_questions SET selected_answer = ? WHERE session_id = ? AND question_id = ?', answer, sessionId, questionId);
+  });
+}
+
+export async function clearActiveExam(db: SQLiteDatabase) {
+  const revision = userDataRevision();
+  await db.withExclusiveTransactionAsync(async tx => {
+    if (!userDataWritable(revision)) throw new Error('Exam changed');
+    const abandoned = await tx.getFirstAsync<{ id: string }>('SELECT id FROM active_exam LIMIT 1');
+    await preserveUnseenExam(tx);
+    if (abandoned) await tx.runAsync('DELETE FROM settings WHERE key = ? AND NOT EXISTS (SELECT 1 FROM exam_sessions WHERE id = ?)', `exam-language:${abandoned.id}`,abandoned.id);
     await tx.execAsync("DELETE FROM active_exam_questions; DELETE FROM active_exam;");
     await tx.runAsync('DELETE FROM settings WHERE key LIKE ?', 'exam-clock:%');
+    await tx.runAsync('DELETE FROM settings WHERE key LIKE ? OR key LIKE ?', 'exam-exposure:%', 'exam-lineage:%');
   });
+  examPreferencesChanged();
 }
 
 export async function questionClock(db: SQLiteDatabase, sessionId: string, index: number, question: Question): Promise<ExamClock> {
@@ -684,6 +710,7 @@ export async function questionClock(db: SQLiteDatabase, sessionId: string, index
     if (!userDataWritable(revision)) throw new Error('Data reset interrupted exam');
     const active = await tx.getFirstAsync<{ current_index: number }>('SELECT current_index FROM active_exam WHERE id = ?', sessionId);
     if (!active || active.current_index !== index) throw new Error('Exam changed');
+    await markExamExposure(tx, sessionId, question.id, index);
     const stored = await tx.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', `exam-clock:${sessionId}`);
     if (stored) {
       try {
@@ -692,7 +719,78 @@ export async function questionClock(db: SQLiteDatabase, sessionId: string, index
       } catch { /* Replace an invalid legacy clock with a valid one. */ }
     }
     clock = newExamClock(index, question.readingTimeSeconds, question.answeringTimeSeconds);
+    if (question.scope === 'PODSTAWOWY' && isExamVideo(question.mediaFilename)) clock.videoDurationSeconds = -1;
     await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', `exam-clock:${sessionId}`, JSON.stringify(clock));
+  });
+  return clock;
+}
+
+/** End only the current basic-question reading phase; never restart media/time. */
+export async function finishExamReading(db: SQLiteDatabase, sessionId: string, index: number): Promise<ExamClock> {
+  const revision = userDataRevision();
+  let clock!: ExamClock;
+  await db.withExclusiveTransactionAsync(async tx => {
+    if (!userDataWritable(revision)) throw new Error('Exam changed');
+    const active = await tx.getFirstAsync<{ current_index: number; expires_at: number }>('SELECT current_index, expires_at FROM active_exam WHERE id = ?', sessionId);
+    const now = Date.now();
+    if (!active || active.current_index !== index || active.expires_at <= now) throw new Error('Exam changed');
+    const question = await tx.getFirstAsync<{ scope: string }>('SELECT q.scope FROM active_exam_questions aq JOIN questions q ON q.id = aq.question_id WHERE aq.session_id = ? AND aq.position = ?', sessionId, index);
+    if (question?.scope !== 'PODSTAWOWY') throw new Error('Not a basic question');
+    const key = `exam-clock:${sessionId}`;
+    const stored = await tx.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', key);
+    if (!stored) throw new Error('Missing exam clock');
+    clock = JSON.parse(stored.value) as ExamClock;
+    if (clock.index !== index || !Number.isFinite(clock.readingEndsAt) || !Number.isFinite(clock.answeringEndsAt) || clock.answeringEndsAt < clock.readingEndsAt) throw new Error('Invalid exam clock');
+    if (now >= clock.readingEndsAt || clock.videoFinishedAt !== undefined) return; // double tap, retry or automatic boundary
+    if (clock.videoDurationSeconds === -1) throw new Error('Video is not ready');
+    clock.answeringEndsAt -= clock.readingEndsAt - now;
+    clock.readingEndsAt = now;
+    await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(clock));
+  });
+  return clock;
+}
+
+/** Fix the media timeline once; retries/resume cannot restart or extend it. */
+export async function configureExamVideoClock(db: SQLiteDatabase, sessionId: string, index: number, duration: number): Promise<ExamClock> {
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 300) throw new Error('Invalid video duration');
+  const revision = userDataRevision();
+  let clock!: ExamClock;
+  await db.withExclusiveTransactionAsync(async tx => {
+    if (!userDataWritable(revision)) throw new Error('Data reset interrupted exam');
+    const active = await tx.getFirstAsync<{ current_index: number }>('SELECT current_index FROM active_exam WHERE id = ?', sessionId);
+    if (!active || active.current_index !== index) throw new Error('Exam changed');
+    const key = `exam-clock:${sessionId}`;
+    const stored = await tx.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', key);
+    if (!stored) throw new Error('Missing exam clock');
+    clock = JSON.parse(stored.value) as ExamClock;
+    if (clock.index !== index) throw new Error('Exam changed');
+    if (clock.videoDurationSeconds !== -1) return;
+    // A late native decoder does not consume the candidate's answer time.
+    clock.readingEndsAt = Math.max(clock.readingEndsAt, Date.now());
+    clock.videoDurationSeconds = duration;
+    clock.answeringEndsAt = clock.readingEndsAt + (duration + 15) * 1000;
+    await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(clock));
+  });
+  return clock;
+}
+
+export async function completeExamVideoClock(db: SQLiteDatabase, sessionId: string, index: number, finishedAt = Date.now()): Promise<ExamClock> {
+  const revision = userDataRevision();
+  let clock!: ExamClock;
+  await db.withExclusiveTransactionAsync(async tx => {
+    if (!userDataWritable(revision)) throw new Error('Data reset interrupted exam');
+    const active = await tx.getFirstAsync<{ current_index: number }>('SELECT current_index FROM active_exam WHERE id = ?', sessionId);
+    if (!active || active.current_index !== index) throw new Error('Exam changed');
+    const key = `exam-clock:${sessionId}`;
+    const stored = await tx.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', key);
+    if (!stored) throw new Error('Missing exam clock');
+    clock = JSON.parse(stored.value) as ExamClock;
+    if (clock.index !== index || !clock.videoDurationSeconds || clock.videoDurationSeconds < 0) throw new Error('Invalid video clock');
+    if (clock.videoFinishedAt !== undefined) return;
+    if (!Number.isFinite(finishedAt) || finishedAt < clock.readingEndsAt || finishedAt > Date.now()) throw new Error('Invalid video end');
+    clock.videoFinishedAt = finishedAt;
+    clock.answeringEndsAt = finishedAt + 15_000;
+    await tx.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', key, JSON.stringify(clock));
   });
   return clock;
 }

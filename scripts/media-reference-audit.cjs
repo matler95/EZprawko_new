@@ -28,8 +28,7 @@ function auditMediaReferences(questions, manifest, archives, mapping) {
     const name = reference.filename;
     const key = mapping.deliveredMediaKey(name);
     const deliveredFilename = mapping.deliveredMediaFilename(name);
-    // Exact current media-cache safeName rule; changes require a regression review.
-    const cacheName = deliveredFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const cacheName = mapping.mediaCacheName?.(name) ?? deliveredFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const supported = /\.(wmv|mp4|m4v|mov|jpg|jpeg|png|webp)$/i.test(name);
     const matches = archiveIndex.get(name.split('/').at(-1)) ?? [];
     if (!manifestNames.has(name)) issues.push({ kind: 'missingFromManifest', filename: name, questionIds: reference.questionIds });

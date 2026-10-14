@@ -1,5 +1,5 @@
 import { useTranslation } from '@/hooks/use-translation';
-import { DarkTheme, DefaultTheme, ThemeProvider, router, useRootNavigationState, useNavigationContainerRef, usePathname } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router, useRootNavigationState, useNavigationContainerRef, usePathname } from 'expo-router';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -8,7 +8,6 @@ import { ActivityIndicator, Alert, Text, useColorScheme, View } from 'react-nati
 import { DataMaintenanceContext } from '@/context/data-maintenance-context';
 import { withDataMaintenance } from '@/domain/data-maintenance';
 
-import AppTabs from '@/components/app-tabs';
 import { TabBarContext } from '@/context/tab-bar-context';
 import { AppThemeContext } from '@/context/app-theme-context';
 import { initializeDatabase, selectedCategory, setSelectedCategory, setThemePreference, themePreference, hasCompletedOnboarding, type ThemePreference } from '@/database/repository';
@@ -21,7 +20,7 @@ import { readUiLanguage } from '@/database/ui-language';
 import { setUiLanguage } from '@/domain/ui-language';
 import { refreshDailyReminderLanguage } from '@/services/reminders';
 
-export const unstable_settings = { screenErrorBoundary: ScreenErrorBoundary };
+export const unstable_settings = { initialRouteName: '(tabs)', screenErrorBoundary: ScreenErrorBoundary };
 
 SplashScreen.preventAutoHideAsync();
 
@@ -127,8 +126,14 @@ function AppAppearance({ recoverHome }: { recoverHome: boolean }) {
         }, acceptPersistedCategory: (value) => { setCategory(value); setCategoryError(null); setOnboardingRequired(false); } }}>
         <TabBarContext value={{ isTabBarHidden: isTabBarHidden || onboardingRequired, setIsTabBarHidden }}>
           <StatusBar style={dark ? 'light' : 'dark'} />
-          <AppTabs />
-          {!onboardingRequired && <ExamPreparation />}
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="exam/[id]" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="exam/review" />
+            <Stack.Screen name="legal/privacy" />
+            <Stack.Screen name="legal/terms" />
+          </Stack>
+          <ExamPreparation />
         </TabBarContext>
         </TargetCategoryContext>
         </AppThemeContext>

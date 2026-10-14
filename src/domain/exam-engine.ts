@@ -12,6 +12,7 @@ export type ExamQuestion = {
 };
 
 export type Exam = {
+  reuseFallback?: 'insufficient-pool';
   category: string;
   durationSeconds: number;
   passScore: number;
@@ -42,22 +43,31 @@ export function buildOfficialExam(
   questions: ExamQuestionSource[],
   category: string,
   random = Math.random,
+  reuse?: { retainedIds: readonly number[]; excludedIds: readonly number[] },
 ): Exam {
+  const retained = new Set(reuse?.retainedIds);
+  const excluded = new Set(reuse?.excludedIds);
+  // Keep the original random selection policy when a reuse bucket is exhausted.
+  if (reuse && (['PODSTAWOWY', 'SPECJALISTYCZNY'] as const).some(scope =>
+    ([3, 2, 1] as const).some(points => questions.filter(q => q.scope === scope && q.points === points &&
+      q.categories.includes(category) && !excluded.has(q.id)).length < QUOTAS[scope][points]))) {
+    return { ...buildOfficialExam(questions, category, random), reuseFallback: 'insufficient-pool' };
+  }
   const questionsByScope = {} as Record<ExamScope, ExamQuestion[]>;
   for (const scope of ['PODSTAWOWY', 'SPECJALISTYCZNY'] as const) {
     const selected: ExamQuestion[] = [];
     for (const points of [3, 2, 1] as const) {
       const candidates = questions.filter((question) =>
         question.scope === scope && question.points === points &&
-        (scope === 'PODSTAWOWY' || question.categories.includes(category))
+        (scope === 'PODSTAWOWY' || question.categories.includes(category)) && !excluded.has(question.id)
       );
       const needed = QUOTAS[scope][points];
       if (candidates.length < needed) {
         throw new Error(`Not enough ${scope} ${points}-point questions for category ${category}`);
       }
+      const kept = candidates.filter(q => retained.has(q.id)).slice(0, needed);
       selected.push(
-        ...shuffle(candidates, random)
-          .slice(0, needed)
+        ...[...kept, ...shuffle(candidates.filter(q => !retained.has(q.id)), random).slice(0, needed - kept.length)]
           .map((question) => ({
             ...question,
             readingTimeSeconds: scope === 'PODSTAWOWY' ? 20 : 0,

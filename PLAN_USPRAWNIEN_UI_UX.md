@@ -7,6 +7,12 @@ Data: 2026-10-13. Status: wdrożenie częściowe; lokalna regresja zaliczona.
 Status lokalny nie oznacza odbioru na fizycznych urządzeniach ani gotowości publikacji.
 Historia checkpointów pozostaje w `IMPLEMENTATION_PROGRESS.md`.
 
+Aktualizacja 2026-10-14: start egzaminu potwierdzony przez użytkownika po
+poprawce routingu. Zgłoszone około 60 s przygotowania pozostaje otwarte P0;
+nie wszystkie problemy są zamknięte. Rejestracja/reset hasła/freemium to
+następny, warunkowy zakres: [PLAN_KONTA_I_FREEMIUM.md](PLAN_KONTA_I_FREEMIUM.md).
+Nie rozpoczęto jego implementacji ani zmian backendu.
+
 | Faza | Wdrożone lokalnie | Pozostały zakres |
 | --- | --- | --- |
 | F0 | Baseline i kontrakty regresji | Pomiary czasu oraz zadania na telefonach |
@@ -16,9 +22,23 @@ Historia checkpointów pozostaje w `IMPLEMENTATION_PROGRESS.md`.
 | F4 | Rekomendacje z danych, ostatnie wyniki per dział i próbka, osobne opanowanie, akcje ćwiczenia | F4.1 uzgodniona definicja kolejki powtórek; część F4.2 dotycząca wznowienia Nauki |
 | F5 | Wspólne tokeny i kontrolki; F5.1 nagłówki i tokeny Start/Nauka/onboarding/Ustawienia/Postęp, formatowanie locale; F5.3 krótszy onboarding i wybór kategorii przed partią; F5.4 dostępność ekranów | F5.2 porównanie nawigacji; fizyczna dostępność i odbiór |
 | F6 | Nie rozpoczęto — opcjonalne rozszerzenie | Trwałe wznowienie jednej sesji wymaga osobnej decyzji; bez nowej historii/trybów |
-| F7 | 41 skryptów regresji, dotychczasowe 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, rzeczywiste dekodowanie/cache i pomiary startu |
+| F7 | 48 skryptów regresji, dotychczasowe 34 pary kontrastów, lint i TypeScript zaliczone | Pełna macierz Android/iOS, największe fonty, keyboard, VoiceOver/TalkBack, odtwarzanie jednokrotne/stop-klatka, rzeczywiste dekodowanie/cache i pomiary startu |
 
 ### Kolejne zadania według priorytetu
+
+Checkpoint 2026-10-14: lokalna implementacja M2/M2E/M4, rozmiary R2 i pilotaż
+M3 wykonane; aktualny cache 200 MiB. Odbiór na telefonach i publikacja pozostają
+otwarte. Szczegóły: [docs/MEDIA_OPTIMIZATION_STATUS.md](docs/MEDIA_OPTIMIZATION_STATUS.md).
+
+Priorytet optymalizacji multimediów: odbiór urządzeniowy M0–M1, jakość i publikacja
+M3 po zgodzie, pomiary regresji M2/M2E/M4 oraz pełny odbiór M5.
+Rozszerzenie M2E po M1: nowy egzamin po porzuceniu zachowuje niewidziane pytania,
+wymienia pokazane i pobiera tylko brakujące media; bez pełnego następcy w tle
+podczas aktywnej próby. Wznów pozostaje kontynuacją tej samej próby.
+Szczegółowy plan: [PLAN_OPTYMALIZACJI_MULTIMEDIOW.md](PLAN_OPTYMALIZACJI_MULTIMEDIOW.md).
+Dotychczasowe checkpointy pozostają historią wdrożeń. Pierwotny kandydat
+150–250 MB został doprecyzowany po inwentarzu: w kodzie jest 200 MiB. Polityka ma
+ograniczać pobieranie następnych zestawów, nie osłabiać ochronę aktywnego egzaminu.
 
 P0 — pierwszy kolejny checkpoint: F1.0, pełna weryfikacja kompletności i dostępności
 multimediów do pytań. Obejmuje źródło, mapowanie, rzeczywisty storage, dostęp przez
@@ -187,6 +207,11 @@ Zakres: `question-media.tsx`, `media-error.ts`, `media-auth.ts`,
 `media-preload.ts`, `media-cache.ts`, `media-download-card.tsx`.
 
 ### F1.2 — przygotowanie materiałów konkretnej partii
+
+Checkpoint egzaminu: neutralne odpowiedzi i jawne zatwierdzenie, wynik dopiero
+na końcu, faza pojedynczego filmu bez kontrolek, 15 s po rzeczywistym końcu
+filmu, 50 s specjalistyczne. Nauka/przegląd mają replay. Odbiór na telefonach
+i ocena dokładnej zgodności WORD pozostają otwarte: docs/EXAM_BEHAVIOR.md.
 
 Aktualny checkpoint „kliknięcie i gotowe”: wybrane zestawy 5/12 i rekomendowane
 ćwiczenie są przygotowywane przed kliknięciem. Nowa partia powstaje w połowie

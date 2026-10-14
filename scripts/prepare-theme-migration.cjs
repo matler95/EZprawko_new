@@ -2,10 +2,10 @@
 const fs = require('node:fs');
 const targets = [
   ['src/components/dashboard-screen.tsx', 'DashboardScreen', 'styles'],
-  ['src/app/study.tsx', 'StudyScreen', 's'],
-  ['src/app/settings.tsx', 'SettingsScreen', 's'],
-  ['src/app/progress.tsx', 'ProgressScreen', 's'],
-  ['src/app/signs.tsx', 'SignsScreen', 's'],
+  ['src/app/(tabs)/study.tsx', 'StudyScreen', 's'],
+  ['src/app/(tabs)/settings.tsx', 'SettingsScreen', 's'],
+  ['src/app/(tabs)/progress.tsx', 'ProgressScreen', 's'],
+  ['src/app/(tabs)/signs.tsx', 'SignsScreen', 's'],
   ['src/app/exam/[id].tsx', 'ExamScreen', 'styles'],
   ['src/app/exam/review.tsx', 'ExamReviewScreen', 'styles'],
   ['src/components/question-media.tsx', 'QuestionMedia', 'styles'],
@@ -75,7 +75,7 @@ for (const [path, component, styleName] of targets) {
   }
   patch += patchFile(path, before, after);
 }
-const indexPath = 'src/app/index.tsx';
+const indexPath = 'src/app/(tabs)/index.tsx';
 const beforeIndex = fs.readFileSync(indexPath, 'utf8').replace(/\r\n/g, '\n');
 if (beforeIndex.includes('Historical implementation retained temporarily')) {
   patch += patchFile(indexPath, beforeIndex, 'export { default } from "@/components/dashboard-screen";\n');

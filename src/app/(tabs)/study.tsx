@@ -81,9 +81,11 @@ function StudySession() {
   const focused = useRef(false);
   const [prefetchFocus, setPrefetchFocus] = useState(0);
   useEffect(() => {
-    protectMedia(mediaGroup, (roundItems ?? items.slice(0, STUDY_MEDIA_WINDOW)).flatMap(item => item.media_filename ? [item.media_filename] : []));
+    const pool = roundItems ?? items;
+    const start = Math.max(0, activeIndex);
+    protectMedia(mediaGroup, pool.slice(start, start + STUDY_MEDIA_WINDOW + 1).flatMap(item => item.media_filename ? [item.media_filename] : []));
     return () => releaseProtectedMedia(mediaGroup);
-  }, [mediaGroup, roundItems, items]);
+  }, [activeIndex, mediaGroup, roundItems, items]);
   const [summary, setSummary] = useState<ReturnType<typeof studySummary> | null>(null);
   const [masteryAfter, setMasteryAfter] = useState<MasterySnapshot | null>(null);
   const [masteryDelta, setMasteryDelta] = useState<number | null>(null);
@@ -182,7 +184,7 @@ function StudySession() {
     baseline.current = nextBaseline;
     setBusy(false);
     setRoundItems((previous) => previous ?? questions);
-    protectMedia(mediaGroup, questions.flatMap(q => q.media_filename ? [q.media_filename] : []));
+    protectMedia(mediaGroup, questions.slice(itemIndex, itemIndex + STUDY_MEDIA_WINDOW + 1).flatMap(q => q.media_filename ? [q.media_filename] : []));
     consumePreparedStudyBatch(db, questions);
     setActiveIndex(itemIndex);
     setMediaReady(!item.media_filename);
@@ -384,7 +386,7 @@ function StudySession() {
           </View>
           <Text style={s.cardPosition}>{activeIndex + 1} {t("z")} {batch.length}</Text>
           {repeatedCount > 0 && <Text style={s.sub}>{t('Mała pula pytań: {0} z tej partii powtarza poprzedni zestaw.', [repeatedCount])}</Text>}
-          <QuestionMedia filename={active.media_filename} onReadyChange={setMediaReady} />
+          <QuestionMedia questionId={active.id} filename={active.media_filename} onReadyChange={setMediaReady} />
           {!mediaReady && <Text style={s.sub}>{t('Poczekaj na materiał lub pomiń pytanie bez zapisywania odpowiedzi.')}</Text>}
           <Text style={s.question}>{active.question}</Text>
           {active.contentLanguage !== language ? <Text style={s.sub}>{t("Brak oficjalnego tłumaczenia — pytanie w języku polskim.")}</Text> : null}

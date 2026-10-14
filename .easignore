@@ -26,6 +26,7 @@ yarn-error.*
 .env*
 *.tsbuildinfo
 __pycache__/
+.media-pilot/
 example
 /ios
 /android

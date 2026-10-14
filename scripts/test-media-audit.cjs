@@ -2,7 +2,11 @@ const assert = require('node:assert/strict'), fs = require('node:fs'), path = re
 const { execFileSync } = require('node:child_process');
 const { auditMediaReferences } = require('./media-reference-audit.cjs');
 const root = path.resolve(__dirname, '..'), mapping = {};
-new Function('exports', 'process', ts.transpileModule(fs.readFileSync(path.join(root, 'src/config/media.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(mapping, { env: {} });
+new Function('exports', 'process', 'require', ts.transpileModule(fs.readFileSync(path.join(root, 'src/config/media.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS,esModuleInterop:true } }).outputText)(mapping, { env: {} }, name => {
+  if(name==='@/assets/data/media-delivery.json')return require('../assets/data/media-delivery.json');
+  if(name==='@/domain/media-version')return {mediaDeliveryVersion:'local'};
+  throw Error(name);
+});
 const question = (id, name, categories = ['B']) => ({ id, media_filename: name, categories: JSON.stringify(categories) });
 const entry = (filename, size = 10, crc = 42) => ({ filename, path: `folder/${filename}`, archive: 'test.zip', size, crc });
 const report = auditMediaReferences([question(1, 'clip.wmv', ['A', 'B', 'B']), question(2, 'clip.wmv'), question(3, null)],
@@ -14,7 +18,7 @@ assert.equal(report.summary.referencesFoundInArchives, 1);
 assert.deepEqual(report.files[0].questionIds, [1, 2]);
 assert.deepEqual(report.files[0].categories, ['A', 'B']);
 assert.equal(report.files[0].deliveredKey, 'wideo/clip.mp4');
-assert.equal(report.files[0].cacheName, 'clip.mp4');
+assert.equal(report.files[0].cacheName, mapping.mediaCacheName('clip.wmv'));
 assert.equal(report.summary.byCategory.find(row => row.category === 'B').questionsWithMedia, 2);
 assert.equal(report.files[0].deliveryAvailability, 'unverified');
 assert.equal(report.files[0].integrity, 'unverified');

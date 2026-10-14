@@ -3,6 +3,15 @@ import { uiLanguage, type UiLanguage } from '@/domain/ui-language';
 // remain separately sourced. Placeholder values are not translated implicitly.
 type Row = readonly [string, string, string, string];
 export const uiCopy: readonly Row[] = [
+  ['Odtwórz film', 'Play video', 'Video starten', 'Відтворити відео'],
+  ['Przejdź do odpowiedzi', 'Continue to answers', 'Zu den Antworten', 'Перейти до відповідей'],
+  ['Film ruszy także automatycznie po czasie na czytanie.', 'The video also starts automatically when reading time ends.', 'Das Video startet auch automatisch nach Ablauf der Lesezeit.', 'Відео також почнеться автоматично після завершення часу на читання.'],
+  ['Po czasie na czytanie automatycznie przejdziesz do odpowiedzi.', 'You will also move to the answers automatically when reading time ends.', 'Nach Ablauf der Lesezeit gelangst du automatisch zu den Antworten.', 'Після завершення часу на читання ви автоматично перейдете до відповідей.'],
+  ['Nie udało się rozpocząć tego etapu. Spróbuj ponownie.', 'Could not start this stage. Try again.', 'Dieser Schritt konnte nicht gestartet werden. Versuche es erneut.', 'Не вдалося почати цей етап. Спробуйте ще раз.'],
+  ['Zaloguj się teraz, aby przygotować egzamin w tle. Możesz też zrobić to później.', 'Sign in now to prepare the exam in the background. You can also do this later.', 'Melde dich jetzt an, um die Prüfung im Hintergrund vorzubereiten. Du kannst das auch später tun.', 'Увійдіть зараз, щоб підготувати іспит у фоновому режимі. Це також можна зробити пізніше.'],
+  ['Odtwórz ponownie', 'Replay', 'Erneut abspielen', 'Відтворити ще раз'],
+  ['Oglądaj film', 'Watch the video', 'Video ansehen', 'Перегляньте відео'],
+  ['Następne pytanie', 'Next question', 'Nächste Frage', 'Наступне запитання'],
   ['Sprawdzanie powiązanych pytań…', 'Checking related questions…', 'Zugehörige Fragen werden geprüft…', 'Перевірка пов’язаних запитань…'],
   ['Zamknij podgląd pytania', 'Close question preview', 'Fragenvorschau schließen', 'Закрити перегляд запитання'],
   ['Nie udało się odczytać powiązanych pytań. Spróbuj ponownie.', 'Could not load related questions. Try again.', 'Zugehörige Fragen konnten nicht geladen werden. Versuche es erneut.', 'Не вдалося завантажити пов’язані запитання. Спробуйте ще раз.'],
@@ -113,7 +122,7 @@ export const uiCopy: readonly Row[] = [
   ['Zmień godzinę przypomnienia, obecnie {0}','Change reminder time, currently {0}','Erinnerungszeit ändern, aktuell {0}','Змінити час нагадування, зараз {0}'],
   ['Nie udało się zapisać: {0}. Wybierz opcję ponownie, aby spróbować jeszcze raz.','Could not save: {0}. Select again to retry.','Nicht gespeichert: {0}. Wähle erneut, um es noch einmal zu versuchen.','Не вдалося зберегти: {0}. Виберіть знову, щоб повторити спробу.'],
   ['{0}: zapisano.','{0}: saved.','{0}: gespeichert.','{0}: збережено.'],
-  ['{0} MB · limit 1 GB','{0} MB · 1 GB limit','{0} MB · Limit 1 GB','{0} МБ · ліміт 1 ГБ'],
+  ['{0} MiB · limit 200 MiB','{0} MiB · 200 MiB limit','{0} MiB · Limit 200 MiB','{0} МіБ · ліміт 200 МіБ'],
   ['Nie udało się zalogować. Sprawdź e-mail i hasło.','Sign-in failed. Check your email and password.','Anmeldung fehlgeschlagen. Prüfe E-Mail und Passwort.','Не вдалося увійти. Перевірте електронну адресу й пароль.'],
   ['Adres e-mail nie został potwierdzony. Sprawdź wiadomość otrzymaną przy tworzeniu konta.','Email not confirmed. Check your account confirmation message.','E-Mail nicht bestätigt. Prüfe die Bestätigungsnachricht.','Адресу не підтверджено. Перевірте повідомлення для підтвердження облікового запису.'],
   ['Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.','Too many attempts. Wait and try again.','Zu viele Versuche. Warte und versuche es erneut.','Забагато спроб. Зачекайте й спробуйте ще раз.'],
@@ -124,7 +133,7 @@ export const uiCopy: readonly Row[] = [
   ['Zdjęcie lub film jest teraz niedostępny. Spróbuj później.','This photo or video is currently unavailable. Try later.','Dieses Foto oder Video ist derzeit nicht verfügbar. Versuche es später.','Це фото або відео наразі недоступне. Спробуйте пізніше.'],
   ['Nie udało się odtworzyć materiału. Spróbuj ponownie.','Could not display the media. Try again.','Das Material konnte nicht wiedergegeben werden. Versuche es erneut.','Не вдалося відтворити матеріал. Спробуйте ще раз.'],
   ['Dostęp do materiału nie został przyznany.','Access to this media was not granted.','Zugriff auf dieses Material wurde nicht gewährt.','Доступ до цього матеріалу не надано.'],
-  ['To część materiałów kategorii. Zapisane pliki mogą zostać usunięte przez system lub po przekroczeniu limitu 1 GB.','This is part of the category’s media. The system or 1 GB limit may remove saved files.','Dies ist ein Teil der Medien. System oder Speicherlimit von 1 GB können Dateien entfernen.','Це частина матеріалів категорії. Система або ліміт 1 ГБ можуть видалити файли.'],
+  ['To część materiałów kategorii. Zapisane pliki mogą zostać usunięte przez system lub po przekroczeniu limitu 200 MiB.','This is part of the category’s media. The system or 200 MiB limit may remove saved files.','Dies ist ein Teil der Medien. System oder Speicherlimit von 200 MiB können Dateien entfernen.','Це частина матеріалів категорії. Система або ліміт 200 МіБ можуть видалити файли.'],
   ['Ten język będzie używany w aplikacji i domyślnie w pytaniach. Język pytań możesz później ustawić osobno.','This language is used throughout the app and for questions by default. You can choose a different question language later.','Diese Sprache gilt für die App und standardmäßig für Fragen. Du kannst später eine andere Fragensprache wählen.','Ця мова використовується в застосунку й за замовчуванням у запитаннях. Мову запитань можна змінити окремо.'],
   ['Zmienia interfejs i domyślny język pytań. Poniżej możesz wybrać inny język pytań.','Changes the interface and default question language. You can choose a different question language below.','Ändert die Oberfläche und die Standardsprache der Fragen. Unten kannst du eine andere Fragensprache wählen.','Змінює інтерфейс і стандартну мову запитань. Нижче можна вибрати іншу мову запитань.'],
   ['Dostosuj naukę i korzystanie z aplikacji na tym urządzeniu.','Customize learning and the app on this device.','Passe das Lernen und die App auf diesem Gerät an.','Налаштуйте навчання й застосунок на цьому пристрої.'],
@@ -482,6 +491,9 @@ export const uiCopy: readonly Row[] = [
   ['Ukryj szczegóły danych lokalnych','Hide local data details','Details zu lokalen Daten ausblenden','Приховати відомості про локальні дані'],
   ['Zapisz kategorię','Save category','Klasse speichern','Зберегти категорію'],
   ['Zmiana dotyczy Nauki i nowych egzaminów. Rozpoczęty egzamin zachowuje swoją kategorię. Filtry zostają, wyszukiwanie zacznie się od nowa.','This changes Study and new exams. An active exam keeps its category. Filters remain; search starts fresh.','Dies ändert Lernen und neue Prüfungen. Eine laufende Prüfung behält ihre Klasse. Filter bleiben; die Suche beginnt neu.','Зміна стосується навчання та нових іспитів. Поточний іспит зберігає свою категорію. Фільтри залишаються; пошук почнеться заново.'],
+  ['Brak miejsca na telefonie. Zwolnij miejsce i spróbuj ponownie.','Not enough space on your phone. Free up space and try again.','Nicht genug Speicher auf dem Telefon. Speicher freigeben und erneut versuchen.','Недостатньо місця на телефоні. Звільніть місце та спробуйте ще раз.'],
+  ['Pobieranie trwało zbyt długo. Sprawdź połączenie i spróbuj ponownie.','The download took too long. Check your connection and try again.','Der Download dauerte zu lange. Verbindung prüfen und erneut versuchen.','Завантаження тривало надто довго. Перевірте з’єднання та спробуйте ще раз.'],
+  ['Rozmiar materiału nie zgadza się z katalogiem. Spróbuj ponownie po aktualizacji aplikacji.','The media size does not match the catalogue. Update the app and try again.','Die Mediengröße stimmt nicht mit dem Katalog überein. App aktualisieren und erneut versuchen.','Розмір матеріалу не відповідає каталогу. Оновіть застосунок і спробуйте ще раз.'],
 ];
 const copy = new Map(uiCopy.map(row => [row[0], row]));
 export function t(key: string | null | undefined, values: readonly (string | number)[] = [], language: UiLanguage = uiLanguage()) {

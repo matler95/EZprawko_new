@@ -67,8 +67,32 @@ for (const [yes,no] of [['Tak','Nie'],['Yes','No'],['Ja','Nein'],['Так','Ні
   assert(text(review).includes('Klucz MI'));
   assert(nodes(review).filter((n) => n.type === 'Pressable').every((n) => n.props.disabled));
   assert.equal(basicAnswerText(answers,'N'),no.toLocaleUpperCase());
+  const neutral=BasicAnswerButtons({answers,neutral:true,selectedAnswer:'T',onAnswer(){}});
+  const neutralButtons=nodes(neutral).filter(n=>n.type==='Pressable');
+  const merged=n=>Object.assign({},...n.props.style.filter(Boolean));
+  const palette=load('src/constants/theme.ts').Colors[testTheme];
+  assert.equal(merged(neutralButtons[0]).backgroundColor,palette.selectionSurface);
+  assert.equal(merged(neutralButtons[0]).borderColor,palette.selection);
+  assert.notEqual(merged(neutralButtons[0]).backgroundColor,merged(neutralButtons[1]).backgroundColor,'selected answer has a distinct fill');
+  assert(!text(neutral).includes('Twój wybór'),'exam selection is graphical, not a visible caption');
+  assert(neutralButtons[0].props.accessibilityLabel.includes('Twój wybór'),'screen readers retain selection wording');
+  assert(!text(neutral).includes('Klucz MI'),'a selected exam answer reveals no answer key');
 }
 const { ExamBriefing } = load('src/components/exam-briefing.tsx');
+for(testTheme of ['light','dark'])for(const selectedAnswer of ['T','N']){
+  const palette=load('src/constants/theme.ts').Colors[testTheme];
+  const tree=BasicAnswerButtons({answers:[{label:'T',answer:'Tak'},{label:'N',answer:'Nie'}],neutral:true,selectedAnswer,disabled:true,onAnswer(){}});
+  const buttons=nodes(tree).filter(n=>n.type==='Pressable');
+  const selected=buttons.find(n=>n.props.accessibilityState.selected),other=buttons.find(n=>!n.props.accessibilityState.selected);
+  const style=n=>Object.assign({},...n.props.style.filter(Boolean));
+  assert.equal(style(selected).backgroundColor,palette.selectionSurface);
+  assert.equal(style(selected).borderColor,palette.selection);
+  assert.equal(style(other).backgroundColor,palette.surface);
+  assert.notEqual(palette.selection,palette.success);assert.notEqual(palette.selection,palette.error);
+  assert.equal(selected.props.disabled,true,'busy save retains selection, without allowing double taps');
+  assert(!text(tree).includes('Twój wybór'));assert(!text(tree).includes('Klucz MI'));
+}
+testTheme='light';
 const { AppButton, AppStatus } = load('src/components/ui/app-controls.tsx');
 const { AppHeading } = load('src/components/ui/app-controls.tsx');
 const heading = AppHeading({children:'Section'});

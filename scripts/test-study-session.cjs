@@ -39,7 +39,7 @@ function nodes(t){if(!t||typeof t!=='object')return [];if(typeof t.type==='funct
 function text(t){if(typeof t==='string'||typeof t==='number')return String(t);if(!t||typeof t!=='object')return '';if(typeof t.type==='function'&&/^App(Button|Card|Status|Heading)$/.test(t.type.name))return text(t.type(t.props));const c=t.props?.children;return (Array.isArray(c)?c.flat(Infinity):[c]).map(text).join(' ').replace(/\s+/g,' ');}
 function button(t,label){const n=nodes(t).find(n=>n.type==='Pressable'&&text(n).includes(label));assert(n,`Missing ${label}: ${text(t)}`);return n;}
 const tick=()=>new Promise(setImmediate);
-const Screen=load('src/app/study.tsx').default().type;
+const Screen=load('src/app/(tabs)/study.tsx').default().type;
 function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.forEach(f=>f());return t;}
 (async()=>{
   const {studySummary}=load('src/domain/study-session.ts');
@@ -63,7 +63,7 @@ function render(){si=ri=ei=0;const t=Screen();const run=pending;pending=[];run.f
     assert(button(tree,'Anuluj').props.disabled);assert.equal(categoryWrites,2,'failed save plus one retry, not duplicate');
     release();await tick();categoryDelay=null;assert.equal(category,'A1');
     assert.equal(routeParams.filter,'three');assert.equal(routeParams.topic,'Znaki i sygnały drogowe');
-    assert.equal(load('src/app/study.tsx').default().key,JSON.stringify(['A1','three','Znaki i sygnały drogowe',null,null,null]));
+    assert.equal(load('src/app/(tabs)/study.tsx').default().key,JSON.stringify(['A1','three','Znaki i sygnały drogowe',null,null,null]));
     blur();category='B';routeParams={};
   }
   assert.deepEqual(studySummary([1,1,2,3],{1:{label:'A',correct:true},2:{label:'B',correct:false},99:{correct:false}}),{total:3,correct:1,incorrect:1,unanswered:1,mistakes:[2]});

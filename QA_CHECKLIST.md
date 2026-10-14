@@ -468,3 +468,82 @@ Run this checklist on a physical Android device and, before public release, an i
 - [ ] Deploy the Supabase function separately, reload app, confirm fewer auth requests for simultaneous cache misses and rejection of cross-file token reuse.
 - [ ] Confirm logout/expiry/relogin fences delayed grants; old backend falls back only on incompatible HTTP 400.
 - [ ] Repeat 1 GB/cache clearing/OS eviction checks; failed new over-budget files cannot pass a later cache-only retry.
+
+## Exam fidelity and Study replay
+
+- [ ] New basic-film question: 20 s reading, single autoplay, last frame, then full 15 s answering.
+- [ ] Photo is hidden while reading; specialist question still has 50 s total.
+- [ ] No exam pause, seek, replay, fullscreen/native-controls escape or PiP; check Android/iOS and accessibility actions.
+- [ ] T/N and A/B/C reveal only neutral selection, never correctness or intermediate score.
+- [ ] Change current selection, Next, timeout and quick duplicate taps: persist the final choice exactly once, no back navigation.
+- [ ] Background/reload during and after film: no replay from zero or renewed answer deadline; global 25 minutes continues.
+- [ ] Simulate clock/choice save failure: retry original operation without restarting film or changing selected answer.
+- [ ] Final result/review exposes score and answer key only after completion.
+- [ ] Study/review replay starts the cached film again; pause/seek controls work without a new download.
+- [ ] Test a new attempt after reload; legacy active-question deadlines are not reset by the upgrade.
+## Multimedia optimization — 2026-10-14 (physical acceptance still open)
+
+- [ ] Cold/warm/partial Study and Exam on physical Android AND iOS, fixed sets,
+  Wi-Fi/slow/offline, at least 20 samples/scenario; median/p95/peak app storage.
+- [ ] Enable development-only sanitized media diagnostics; reproduce the reported
+  unavailable-image/movie error and identify grant/download/commit/decode stage.
+- [ ] One Study media intent; old queued scope stops, current content has priority;
+  next-batch text reuse does not start another speculative media batch.
+- [ ] Abandon after showing only question 1: 31 retained IDs, one replacement;
+  after displaying question 2: 30 retained. No download of retained cached files.
+- [ ] Multiple abandon/restart cycles: no immediate reintroduction of exposed IDs;
+  new ID/blank choices/new clock only after preparation. Resume never rerolls.
+- [ ] Crash/restart, raw expiry, saved final result/review, 24h TTL, changed scope,
+  reset and insufficient-pool fallback preserve history and valid 32/74 quotas.
+- [ ] Same movie in two different questions: independent one-shot autoplay,
+  shared bytes, stale decoder/end events do not affect the current question.
+- [ ] Verify native timeout/oversize cancel actually stops writes before cleanup;
+  temporary peak, free-space headroom and reservation/shared-download accounting.
+- [ ] Existing cache migration to 200 MiB: protect active files, use valid legacy
+  originals without bulk copying; remove only unprotected LRU/orphan temporary files.
+- [ ] Review image pilot on small screens and necessary signs/text/scene details;
+  reject larger video candidates. Source/last-frame/audio review before any rollout.
+- [ ] Explicit approval before publishing accepted NEW variant keys/manifest;
+  matching app version, authenticated MIME/bytes smoke test and rollback ready.
+- [ ] Verify actual deployed batch/legacy endpoint with a real session, including
+  401/403/expiry/logout. No credentials, signed URLs or account IDs in diagnostics.
+## Pierwsza instalacja — wcześniejsze przygotowanie egzaminu
+
+Pełny scenariusz i ostrzeżenia o resecie: docs/NEW_USER_EXAM_QA.md.
+
+- [ ] Czysty stan: onboarding, brak lokalnej sesji i brak cache.
+- [ ] Potwierdzenie kategorii rozpoczyna przygotowanie jednego zestawu;
+      przed potwierdzeniem nie pobieramy domyślnej B.
+- [ ] A1 + English używa roboczych preferencji już przed zakończeniem onboardingu.
+- [ ] Logowanie na kroku opisu trybów ponawia przygotowanie od razu.
+- [ ] Logowanie pominięte: bez pobierania chronionych plików i bez zegara;
+      poprawny komunikat przy próbie startu.
+- [ ] Logowanie w Ustawieniach rozpoczyna przygotowanie przed powrotem do panelu.
+- [ ] Szybki vs wolniejszy przebieg po logowaniu: zanotowany czas klik→pytanie
+      i liczba gotowych plików, bez obietnicy zerowego zimnego startu.
+- [ ] Anulowanie i ponowienie nie losuje nowego zestawu ani nie zeruje cache.
+- [ ] Zmiana potwierdzonej kategorii zatrzymuje stare przygotowanie.
+- [ ] Nauka i aktywny egzamin nie pobierają niezależnego pełnego następcy.
+## Regresja startu i wznowienia po poprawce nawigacji
+
+- [ ] Pełny reload aplikacji po zmianie struktury routingu; bez resetowania danych.
+- [ ] Wznów istniejącą poprawną próbę: otwiera się ekran pytania, nie panel Start.
+- [ ] Nowy egzamin: po przygotowaniu otwiera się pytanie i działa zegar.
+- [ ] Porzucenie usuwa starą aktywną próbę; kolejny start otwiera nową, nie pętlę panelu.
+- [ ] Przegląd końcowego wyniku oraz dokumenty prywatności/regulaminu otwierają się.
+- [ ] Nauka, Postęp, Ustawienia i Znaki nadal dostępne pod dotychczasowymi adresami.
+- [ ] iOS nie pozwala ominąć potwierdzenia opuszczenia egzaminu gestem wstecz.
+- [ ] Osobny pomiar czasu przygotowania: grant-request/download/cache/decode,
+      preparation i screen-load; 60 s nie jest automatycznie uznane za rozwiązane.
+## Naturalne wcześniejsze rozpoczęcie pytania
+
+- [ ] Podstawowe wideo: czytanie → Odtwórz film → jedna projekcja → 15 s odpowiedzi.
+- [ ] Podstawowe zdjęcie/tekst: Przejdź do odpowiedzi → pełne 15 s.
+- [ ] Bez kliknięcia: automatyczne przejście po 20 s, bez utknięcia w czytaniu.
+- [ ] Przycisk pod pytaniem, bez pustego pola odtwarzacza podczas czytania.
+- [ ] Podwójny klik nie restartuje filmu i nie daje więcej czasu.
+- [ ] Wznowienie zachowuje wcześniejszy start i globalny deadline.
+- [ ] Błąd startu: retry działa także po automatycznym zakończeniu czytania.
+- [ ] Przy błędzie multimediów przycisk retry pozostaje dostępny dla czytnika ekranu.
+- [ ] Specjalistyczne mają 50 s i nie pokazują przycisku skracania czytania.
+- [ ] Nauka nadal pozwala odtwarzać filmy ponownie.
